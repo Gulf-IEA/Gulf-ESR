@@ -2,12 +2,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.34">
+<meta name="generator" content="quarto-1.8.25">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Gulf of America Integrated Ecosystem Assessment Program">
-<meta name="dcterms.date" content="2025-09-09">
+<meta name="dcterms.date" content="2025-10-13">
 
 <title>[Template] Ecosystem Status Report</title>
 <style>
@@ -55,14 +55,15 @@ div.csl-indent {
 <link href="./report/assets/favicon.ico" rel="icon">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-c8ad9e5dbd60b7b70b38521ab19b7da4.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-872c1a08ee464f6f4a0f517161213825.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-53d8d0f2b1f0c752eb530063c8217679.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
 <link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
 <link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
@@ -121,7 +122,8 @@ div.csl-indent {
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
     <div class="pt-lg-2 mt-2 text-center sidebar-header sidebar-header-stacked">
       <a href="./index.html" class="sidebar-logo-link">
-      <img src="https://raw.githubusercontent.com/nmfs-opensci/assets/main/logo/nmfs-opensci-logo3.png" alt="" class="sidebar-logo py-0 d-lg-inline d-none">
+      <img src="https://raw.githubusercontent.com/nmfs-opensci/assets/main/logo/nmfs-opensci-logo3.png" alt="" class="sidebar-logo light-content py-0 d-lg-inline d-none">
+      <img src="https://raw.githubusercontent.com/nmfs-opensci/assets/main/logo/nmfs-opensci-logo3.png" alt="" class="sidebar-logo dark-content py-0 d-lg-inline d-none">
       </a>
     <div class="sidebar-title mb-0 py-0">
       <a href="./">[Template] Ecosystem Status Report</a> 
@@ -248,7 +250,7 @@ div.csl-indent {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">September 9, 2025</p>
+      <p class="date">October 13, 2025</p>
     </div>
   </div>
   
@@ -266,7 +268,7 @@ div.csl-indent {
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Editing this template page
+<span class="screen-reader-only">Note</span>Editing this template page
 </div>
 </div>
 <div class="callout-body-container callout-body">
@@ -282,7 +284,7 @@ Editing this template page
 <section id="indicator-selection" class="level2" data-number="0.2">
 <h2 data-number="0.2" class="anchored" data-anchor-id="indicator-selection"><span class="header-section-number">0.2</span> Indicator selection</h2>
 <p>The CFMC’s Science and Statistical Committee, as well as the region’s Ecosystem-Based Fishery Management Technical Advisory Panel (EBFM TAP), recently completed a series of conceptual models linking key components of the ecosystem and human activities related to fishing <span class="citation" data-cites="seara2024">(<a href="report/content/references.html#ref-seara2024" role="doc-biblioref">Seara et al. 2024</a>)</span>. This report used these conceptual models as a starting list of proposed indicators and matched the indicators to address progress toward FMP objectives when possible (<a href="#fig-flowchart" class="quarto-xref">Figure&nbsp;<span>1</span></a>).</p>
-<div id="fig-flowchart" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center" alt="A figure of a flow chart diagram">
+<div id="fig-flowchart" class="quarto-float quarto-figure quarto-figure-center anchored" alt="A figure of a flow chart diagram" data-fig-align="center">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-flowchart-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <a href="figures/images/process_flow_chart.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Figure&nbsp;1: Process for selecting indicators for the U.S. Caribbean Ecosystem Status Report."><img src="figures/images/process_flow_chart.png" class="img-fluid quarto-figure quarto-figure-center figure-img" alt="A figure of a flow chart diagram" width="515"></a>
@@ -371,13 +373,14 @@ Seara, Tarsila, Stacey M. Williams, Kiara Acevedo, Graciela Garcia-Molliner, Ori
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy
