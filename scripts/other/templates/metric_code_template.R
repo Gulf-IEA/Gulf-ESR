@@ -19,6 +19,8 @@ plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
 # Automated data: Add script for data call (API, package, etc.)
 # Confidential data: Store locally in the confidential data folder
 #   - This folder is excluded using gitignore and will not push to the GitHub repo
+# If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
+#   - Filename should use the syntax rootname_descriptivename
 
 
 --------------------------------

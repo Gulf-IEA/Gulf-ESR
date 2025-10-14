@@ -6,7 +6,7 @@ execute:
   warning: false
 ---
 
-File created on FILE CREATION DATE
+File created on 2025-10-14
 
 # 0. Setup
 Add any packages that are needed for analysis in this code chunk. 
@@ -18,7 +18,7 @@ File Naming Setup.
 !! Auto generated-Do Not Change !!
 ```{r}
 
-root_name<- "WILL CHANGE WHEN CREATED"
+root_name<- "example"
 
 csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv") 
 object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")

@@ -1,4 +1,4 @@
-# File created on 2025-10-07
+# File created on 2025-10-14
 
 #### 0. Setup ####
 # Add any packages that are needed for analysis here.
@@ -6,7 +6,7 @@ library(IEAnalyzeR)
 
 # File Naming Setup.
 # !! Auto generated-Do Not Change !!
-root_name<- "test_metric"
+root_name<- "example"
 
 csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")
 object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
@@ -19,6 +19,8 @@ plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
 # Automated data: Add script for data call (API, package, etc.)
 # Confidential data: Store locally in the confidential data folder
 #   - This folder is excluded using gitignore and will not push to the GitHub repo
+# If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
+#   - Filename should use the syntax rootname_descriptivename
 
 
 --------------------------------
