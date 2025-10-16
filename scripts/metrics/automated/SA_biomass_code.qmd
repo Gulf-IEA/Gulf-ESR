@@ -1,0 +1,227 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+---
+
+File created on 2025-10-16
+
+# 0. Setup
+
+Set the working directory
+```{r}
+# 1. Install and load the 'here' package (if necessary)
+if (!requireNamespace("here", quietly = TRUE)) {
+  install.packages("here")
+}
+library(here)
+```
+
+Add any packages that are needed for analysis in this code chunk. 
+```{r packages}
+library(IEAnalyzeR)
+library (here)
+library(r4ss)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
+library(rlist)
+```
+
+File Naming Setup.
+!! Auto generated-Do Not Change !!
+```{r}
+
+root_name<- "SA_biomass"
+
+csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv") 
+object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
+plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
+
+```
+
+# 1. Read Data
+Pull data from its source:
+Manual data: data/unformatted data
+Automated data: Add script for data call (API, package, etc.)
+Confidential data: Store locally in the confidential data folder
+    - This folder is excluded using gitignore and will not push to the GitHub repo
+If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
+    - Filename should use the syntax rootname_descriptivename
+```{r}
+# load helper function
+source(here("scripts/helper_functions/process_SS_assessments.R"))
+
+# Pull all assessment model outputs from Google drive folder. Only need to do this when new assessments are added or updated
+process_SS_assessments() 
+
+#Start here if you don't need to load new assessments
+SS_outputs_all = readRDS(here("data/intermediate/SS_outputs_all.rds"))
+```
+
+# 2. Data Transformation
+Transform the data to fit the IEA data format. 
+For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
+
+Loop to pull all the biomass data, save it and plot it.
+```{r}
+# Define the output folder outside the loop
+output_data_folder <- here("data/intermediate/")
+output_plots_folder <- here("figures/plots/")
+
+# Get the names of the list items to iterate through
+model_names <- names(SS_outputs_all)
+
+# Loop through each model name
+for (name in model_names) {
+  
+  # Set the current model as 'base'
+  base <- SS_outputs_all[[name]]
+  
+  dir_path <- base$inputs$dir
+  path_elements <- unlist(strsplit(dir_path, split = "/|\\\\"))
+  path_elements <- path_elements[path_elements != ""]
+  
+  # The species name is the second to last element
+  Species <- path_elements[length(path_elements) - 1]
+  # The assessment name is the last element
+  Assessment <- path_elements[length(path_elements)]
+  
+  # Check if timeseries data exists and has a 'Bio_smry' column
+  if (!is.null(base$timeseries) && "Bio_smry" %in% colnames(base$timeseries)) {
+    # Filter and process the biomass data
+    biomass <- base$timeseries %>%
+      filter(Era != "FORE") %>%
+      filter(Yr >= 2000) %>%
+      mutate(Bio_mil_lbs = (Bio_smry * 2204.62) / 1000000)
+    
+    # Check if there is data after filtering
+    if (nrow(biomass) > 0) {
+      
+      # Generate the plot
+      a <- ggplot(biomass, aes(x = Yr, y = Bio_mil_lbs, group = as.factor(Area), col = as.factor(Area))) +
+        geom_line(linewidth = 1.2) +
+        geom_point(size = 2) +
+        xlab("Year") +
+        ylab("Biomass (million pounds)") +
+        theme_classic() +
+        ggtitle(paste0(Species, " ", Assessment)) +
+        theme(
+          axis.title = element_text(size = 14),
+          axis.text = element_text(size = 12),
+          axis.title.y = element_text(vjust = 2),
+          axis.title.x = element_text(vjust = -1)
+        ) +
+        scale_x_continuous(breaks = unique(biomass$Yr)) +
+        scale_color_discrete(name = "Area")
+      
+      # Save the plot
+      output_file <- paste0(Species, "_", Assessment, "_biomass.png")
+      ggsave(filename = file.path(output_plots_folder, output_file), plot = a,
+             width = 10, height = 6, dpi = 300)
+      
+      # --- Code to save separate RDS files for each area ---
+      unique_areas <- unique(biomass$Area)
+      
+      for (area in unique_areas) {
+        area_data <- biomass %>%
+          filter(Area == area) %>%
+          select(Yr, Bio_smry, Bio_mil_lbs, Area) %>%
+          as.data.frame()
+        
+        file_name <- paste0(Species, "_Area", area, "_", Assessment, "_biomass.rds")
+        
+        saveRDS(area_data, file = file.path(output_data_folder, file_name))
+      }
+      
+    } else {
+      warning(paste("No data for plotting after filtering for", name))
+    }
+  } else {
+    warning(paste("Timeseries data or 'Bio_smry' column not found for", name))
+  }
+  
+  # Print a message to show progress
+  print(paste("Processed:", name))
+}
+```
+
+Combine all the biomass datasets into one data frame
+```{r}
+# Set the folder where .rds files are stored
+input_folder = here("data/intermediate/")
+
+# List all RDS files that match the pattern *_biomass.rds
+files <- list.files(input_folder, pattern = "_biomass\\.rds$", full.names = TRUE)
+
+#check all the files
+for (file in files) {
+  dat <- readRDS(file)
+  print(basename(file))
+  print(names(dat))
+}
+
+# Read and combine
+biomass_df_list <- map(files, function(file) {
+  # Read the .rds file
+  dat <- readRDS(file)
+  
+  # Extract species_assessment from filename
+  filename <- basename(file)
+  name <- str_remove(filename, "_biomass\\.rds$")  # remove suffix
+  
+  # Keep only Yr and Bio_mil_lbs, rename Bio_mil_lbs to species_assessment name
+  dat %>%
+    select(Yr, Bio_mil_lbs) %>%
+    rename(!!name := Bio_mil_lbs)
+})
+
+# Merge all data frames by Yr
+# Reduce joins all the data frames by Yr column
+combined_biomass <- reduce(biomass_df_list, full_join, by = "Yr")
+
+# Arrange by year
+combined_biomass <- combined_biomass %>% arrange(Yr)
+
+saveRDS(combined_biomass, file = file.path(input_folder, "combined_biomass_trends.rds"))
+```
+
+
+# 3. Create Data_Prep object
+Please use your formatted CSV to create a "data_prep" object.
+For more info on the data_prep function please go HERE
+```{r}
+data_obj<-IEAnalyzeR::data_prep()
+```
+
+# 4. Save Formatted csv and data_prep object
+This will save your data to the appropriate folders. 
+Please replace "formatted_csv" with the name of your final formatted data.
+```{r}
+#Save formatted CSV
+write.csv(formatted_csv, file = csv_filename, row.names = F)
+
+#Save data_prep object
+saveRDS(data_obj, file = object_filename)
+```
+
+# 5. Preview Plot
+Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
+For more info on the plot_fn_obj function go HERE
+```{r}
+
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj)
+
+```
+
+# 6. Save plot
+This will save the plot to the correct folder.
+Adjust height & width using (height=, width=, unit="in") if needed.
+```{r}
+ggsave(filename = plot_filename)
+```
+
