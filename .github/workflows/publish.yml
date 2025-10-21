@@ -36,13 +36,13 @@ jobs:
 
       # --- MODIFICATION 3: Install R Dependencies (Fixes IEAnalyzeR rate limit) ---
       # Inject GITHUB_TOKEN here to bypass rate limits for public GitHub packages (IEAnalyzeR)
-      - name: Install R Dependencies
-        uses: r-lib/actions/setup-renv@v2
-        with:
-          extra-packages: remotes, here
-          cache-version: 2 # Optional: Increment cache version after a major R/dependency change
+      - name: Install R Dependencies (Forced Order)
+        run: |
+          if (!requireNamespace("renv", quietly=TRUE)) install.packages("renv")
+          Rscript -e 'install.packages(c("here", "remotes"))'
+          Rscript -e 'renv::restore()'
         env:
-          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }} # Added for GitHub package download rate limits
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@v2
