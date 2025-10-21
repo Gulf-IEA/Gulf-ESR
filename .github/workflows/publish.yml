@@ -30,10 +30,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libmagick++-dev
 
-      - name: Install R Dependencies
-        uses: r-lib/actions/setup-renv@v2
+      - name: Install R Dependencies (renv::restore)
+        # Use r-lib's action to install R dependencies efficiently
+        # This action automatically runs renv::restore() if it finds an renv.lock file.
+        uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          cache-version: 1
+          # 1. Install 'remotes' first, as it is the package that handles GitHub installations
+          extra-packages: remotes
+        env:
+          # 2. Use the built-in GITHUB_TOKEN for high-speed download access.
+          #    This is not for authentication, but for bypassing rate limits.
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@v2
