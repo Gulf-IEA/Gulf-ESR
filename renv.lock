@@ -69,6 +69,7 @@
       "Description": "This package contains standardized functions used to create and plot indicator data for NOAA IEA Ecosystem Status Reports. It was specifically created for the Gulf of Mexico IEA.",
       "License": "What license is it under?",
       "Encoding": "UTF-8",
+      "LazyData": "true",
       "RoxygenNote": "7.3.2",
       "Imports": [
         "ggplot2",
@@ -79,14 +80,13 @@
         "ggimage",
         "lubridate"
       ],
+      "Author": "Carissa Gervasi [aut, cre] (<https://orcid.org/0000-0001-8049-7069>), Brittany Troast [aut], Brendan Turley [aut], Willem Klajbor [aut]",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteRepo": "IEAnalyzeR",
       "RemoteUsername": "Gulf-IEA",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "6949a66b6c8e8cfb81e917fcda66927928ab8ef4",
-      "NeedsCompilation": "no",
-      "Author": "Carissa Gervasi [aut, cre] (<https://orcid.org/0000-0001-8049-7069>), Brittany Troast [aut], Brendan Turley [aut], Willem Klajbor [aut]"
+      "RemoteRepo": "IEAnalyzeR",
+      "RemoteRef": "main",
+      "RemoteSha": "6949a66b6c8e8cfb81e917fcda66927928ab8ef4"
     },
     "R6": {
       "Package": "R6",
@@ -3686,6 +3686,56 @@
       "NeedsCompilation": "no",
       "Author": "Gábor Csárdi [aut, cre], Matthew Lincoln [ctb]",
       "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
+      "Repository": "RSPM"
+    },
+    "renv": {
+      "Package": "renv",
+      "Version": "1.0.3",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Project Environments",
+      "Authors@R": "c( person(\"Kevin\", \"Ushey\", role = c(\"aut\", \"cre\"), email = \"kevin@rstudio.com\", comment = c(ORCID = \"0000-0003-2880-7407\")), person(\"Hadley\", \"Wickham\", role = c(\"aut\"), email = \"hadley@rstudio.com\", comment = c(ORCID = \"0000-0003-4757-117X\")), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
+      "Description": "A dependency management toolkit for R. Using 'renv', you can create and manage project-local R libraries, save the state of these libraries to a 'lockfile', and later restore your library as required. Together, these tools can help make your projects more isolated, portable, and reproducible.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://rstudio.github.io/renv/, https://github.com/rstudio/renv",
+      "BugReports": "https://github.com/rstudio/renv/issues",
+      "Imports": [
+        "utils"
+      ],
+      "Suggests": [
+        "BiocManager",
+        "cli",
+        "covr",
+        "cpp11",
+        "devtools",
+        "gitcreds",
+        "jsonlite",
+        "knitr",
+        "miniUI",
+        "packrat",
+        "pak",
+        "R6",
+        "remotes",
+        "reticulate",
+        "rmarkdown",
+        "rstudioapi",
+        "shiny",
+        "testthat",
+        "uuid",
+        "waldo",
+        "yaml",
+        "webfakes"
+      ],
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.2.3",
+      "VignetteBuilder": "knitr",
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Config/testthat/edition": "3",
+      "Config/testthat/parallel": "true",
+      "Config/testthat/start-first": "bioconductor,python,install,restore,snapshot,retrieve,remotes",
+      "NeedsCompilation": "no",
+      "Author": "Kevin Ushey [aut, cre] (<https://orcid.org/0000-0003-2880-7407>), Hadley Wickham [aut] (<https://orcid.org/0000-0003-4757-117X>), Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Kevin Ushey <kevin@rstudio.com>",
       "Repository": "RSPM"
     },
     "reprex": {
