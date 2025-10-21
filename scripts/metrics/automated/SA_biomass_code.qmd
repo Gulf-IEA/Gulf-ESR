@@ -10,15 +10,6 @@ File created on 2025-10-16
 
 # 0. Setup
 
-Set the working directory
-```{r}
-# 1. Install and load the 'here' package (if necessary)
-if (!requireNamespace("here", quietly = TRUE)) {
-  install.packages("here")
-}
-library(here)
-```
-
 Add any packages that are needed for analysis in this code chunk. 
 ```{r packages}
 library(IEAnalyzeR)
