@@ -39,6 +39,7 @@ jobs:
       - name: Install R Dependencies
         uses: r-lib/actions/setup-renv@v2
         with:
+          extra-packages: remotes, here
           cache-version: 2 # Optional: Increment cache version after a major R/dependency change
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }} # Added for GitHub package download rate limits
