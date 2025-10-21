@@ -38,8 +38,13 @@ jobs:
       # Inject GITHUB_TOKEN here to bypass rate limits for public GitHub packages (IEAnalyzeR)
       - name: Install R Dependencies (Forced Order)
         run: |
-          if (!requireNamespace("renv", quietly=TRUE)) install.packages("renv")
+          # Use Rscript -e for single-line commands; the `if` is unnecessary here
+          # since `setup-renv` ensures it's available.
+          
+          # 1. Install critical dependencies using Rscript -e
           Rscript -e 'install.packages(c("here", "remotes"))'
+          
+          # 2. Run renv::restore()
           Rscript -e 'renv::restore()'
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
