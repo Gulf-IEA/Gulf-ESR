@@ -48,11 +48,63 @@ If intermediate data (shapefiles etc.) are needed, please put them in data>inter
 source(here("scripts/helper_functions/process_SS_assessments.R"))
 
 # Pull all assessment model outputs from Google drive folder. Only need to do this when new assessments are added or updated
-process_SS_assessments() 
+#process_SS_assessments() 
 
 #Start here if you don't need to load new assessments
 SS_outputs_all = readRDS(here("data/intermediate/SS_outputs_all.rds"))
 ```
+
+Remove all the older assessments, keeping only the newest ones for each species. Also remove the funky yellowtail report that was accidentally created.
+```{r}
+assessment_names = names(SS_outputs_all) 
+
+# --- 1. Filter out the specific accidental report ---
+# This removes the "Assessment Report.sso files_Yellowtail Snapper" entry
+filtered_names = assessment_names[!grepl("Assessment Report.sso files", assessment_names)]
+
+# --- 2. Create a Data Frame for Parsing and Sorting ---
+# Create a data frame from the filtered names
+df = data.frame(full_name = filtered_names) %>%
+    # Extract the Species and Assessment ID
+    # Species: Everything before the last '_'
+    # ID: Everything after the last 'SEDAR'
+    separate(full_name, 
+             into = c("species", "sedar", "id_raw"), 
+             sep = "_SEDAR", 
+             remove = FALSE, 
+             extra = "merge") %>%
+    # Clean up the species name (since 'SEDAR' might have split it weirdly)
+    mutate(
+        # Recalculate species by dropping the trailing _SEDAR[ID]
+        species = sub("(_SEDAR.*)", "", full_name), 
+        # Extract the numeric part of the ID (e.g., 28 from 28U, 68 from 68OA)
+        id_num = as.numeric(str_extract(id_raw, "^\\d+")),
+        # Determine the complexity/newness rank of the suffix
+        # Suffixes (U, OA, etc.) make an assessment newer than one with no suffix
+        suffix_rank = ifelse(grepl("[A-Za-z]", id_raw), 1, 0)
+    )
+
+# --- 3. Group and Keep the Newest Assessment for Each Species ---
+final_keepers = df %>%
+    group_by(species) %>%
+    # Arrange by numeric ID (highest is newest) then by suffix rank (1 is newest)
+    # The last row in the group after sorting is the one to keep.
+    arrange(id_num, suffix_rank, .by_group = TRUE) %>%
+    # Keep only the last (newest) entry for each species group
+    slice_tail(n = 1) %>%
+    ungroup() %>%
+    pull(full_name) # Extract the vector of final names to keep
+
+# --- 4. Filter the main list ---
+SS_outputs_newest = SS_outputs_all[final_keepers] 
+
+# --- Resulting names (for verification) ---
+cat("Names to keep:\n")
+print(final_keepers)
+
+saveRDS(SS_outputs_newest, here("data/intermediate/SS_outputs_newest.rds"))
+```
+
 
 # 2. Data Transformation
 Transform the data to fit the IEA data format. 
@@ -65,13 +117,13 @@ output_data_folder <- here("data/intermediate/")
 output_plots_folder <- here("figures/plots/")
 
 # Get the names of the list items to iterate through
-model_names <- names(SS_outputs_all)
+model_names <- names(SS_outputs_newest)
 
 # Loop through each model name
 for (name in model_names) {
   
   # Set the current model as 'base'
-  base <- SS_outputs_all[[name]]
+  base <- SS_outputs_newest[[name]]
   
   dir_path <- base$inputs$dir
   path_elements <- unlist(strsplit(dir_path, split = "/|\\\\"))
@@ -105,7 +157,8 @@ for (name in model_names) {
           axis.title = element_text(size = 14),
           axis.text = element_text(size = 12),
           axis.title.y = element_text(vjust = 2),
-          axis.title.x = element_text(vjust = -1)
+          axis.title.x = element_text(vjust = -1),
+          axis.text.x = element_text(angle = 45, hjust = 1)
         ) +
         scale_x_continuous(breaks = unique(biomass$Yr)) +
         scale_color_discrete(name = "Area")
