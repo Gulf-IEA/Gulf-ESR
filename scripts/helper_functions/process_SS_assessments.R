@@ -34,7 +34,7 @@ process_SS_assessments <- function(
     message("Processing: ", dir)
     
     tryCatch({
-      base <- SS_output(
+      base <- r4ss::SS_output(
         dir = dir,
         dir.mcmc = NULL, 
         repfile = "Report.sso", 
