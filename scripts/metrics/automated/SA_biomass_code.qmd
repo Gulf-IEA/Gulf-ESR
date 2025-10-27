@@ -177,10 +177,26 @@ for (name in model_names) {
           select(Yr, Bio_smry, Bio_mil_lbs, Area) %>%
           as.data.frame()
         
-        file_name <- paste0(Species, "_Area", area, "_", Assessment, "_biomass.rds")
+        file_name <- paste0(Species, "_Area", area, "_", Assessment, "_biomass.csv")
         
-        saveRDS(area_data, file = file.path(output_data_folder, file_name))
+        write.csv(area_data, file = file.path(output_data_folder, file_name), row.names = FALSE)
       }
+      
+      # Save data for each assessment by area
+      biomass_for_pivot = biomass %>% 
+        mutate(Area_Name = paste0("Bio_Area", Area)) %>% 
+        select(Yr, Area_Name, Bio_mil_lbs)
+      
+      pivoted_biomass = biomass_for_pivot %>% 
+        pivot_wider(
+          names_from = Area_Name,
+          values_from = Bio_mil_lbs
+        ) %>% 
+        select(Yr, starts_with("Bio_Area")) %>% 
+        as.data.frame()
+      
+      file_name = paste0(Species, "_", Assessment, "biomass_test.csv")
+      write.csv(pivoted_biomass, file = file.path(output_data_folder, file_name), row.names = FALSE)
       
     } else {
       warning(paste("No data for plotting after filtering for", name))
