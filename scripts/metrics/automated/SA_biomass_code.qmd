@@ -210,6 +210,87 @@ for (name in model_names) {
 }
 ```
 
+
+test just outputting data into IEA format
+```{r}
+# Define the output folder outside the loop
+output_data_folder <- here("data/formatted/formatted_csvs")
+
+# Get the names of the list items to iterate through
+model_names <- names(SS_outputs_newest)
+
+# Loop through each model name
+for (name in model_names) {
+  
+  # Set the current model as 'base'
+  base <- SS_outputs_newest[[name]]
+  
+  dir_path <- base$inputs$dir
+  path_elements <- unlist(strsplit(dir_path, split = "/|\\\\"))
+  path_elements <- path_elements[path_elements != ""]
+  
+  # The species name is the second to last element
+  Species <- path_elements[length(path_elements) - 1]
+  # The assessment name is the last element
+  Assessment <- path_elements[length(path_elements)]
+  
+  # Check if timeseries data exists and has a 'Bio_smry' column
+  if (!is.null(base$timeseries) && "Bio_smry" %in% colnames(base$timeseries)) {
+    # Filter and process the biomass data, convert tons to million lbs
+    biomass <- base$timeseries %>%
+      filter(Era != "FORE") %>%
+      filter(Yr >= 2000) %>%
+      mutate(Bio_mil_lbs = (Bio_smry * 2204.62) / 1000000)
+    
+    # Check if there is data after filtering
+    if (nrow(biomass) > 0) {
+      
+      # Format data for each assessment by area
+      biomass_for_pivot = biomass %>% 
+        mutate(Area_Name = paste0("Bio_Area", Area)) %>% 
+        select(Yr, Area_Name, Bio_mil_lbs)
+      
+      pivoted_biomass = biomass_for_pivot %>% 
+        pivot_wider(
+          names_from = Area_Name,
+          values_from = Bio_mil_lbs
+        ) %>% 
+        select(Yr, starts_with("Bio_Area")) %>% 
+        as.data.frame()
+      
+      #Use the convert_cleaned_data function in IEAnalyzeR to add metadata to the data frame
+      
+      #set up the metadata
+      num_data_cols = ncol(pivoted_biomass) - 1
+      area_col_names = colnames(pivoted_biomass)[-1]
+      
+      indicator_text = paste0(Species, " ", Assessment, " ", "Biomass")
+      indicator_names = c(rep(indicator_text, num_data_cols))
+      
+      unit_text = "Million pounds"
+      unit_names = c(rep(unit_text, num_data_cols))
+      
+      extent_text = gsub("Bio_Area", "Area ", area_col_names)
+      extent_names = c(extent_text)
+      
+      final_csv = IEAnalyzeR::convert_cleaned_data(pivoted_biomass, indicator_names, unit_names, extent_names)
+      
+      file_name = paste0(Species, "_", Assessment, "biomass_formatted.csv")
+      write.csv(final_csv, file = file.path(output_data_folder, file_name), row.names = FALSE)
+      
+    } else {
+      warning(paste("No data after filtering for", name))
+    }
+  } else {
+    warning(paste("Timeseries data or 'Bio_smry' column not found for", name))
+  }
+  
+  # Print a message to show progress
+  print(paste("Processed:", name))
+}
+```
+
+
 Combine all the biomass datasets into one data frame
 ```{r}
 # Set the folder where .rds files are stored
