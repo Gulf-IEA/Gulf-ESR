@@ -110,108 +110,6 @@ saveRDS(SS_outputs_newest, here("data/intermediate/SS_outputs_newest.rds"))
 Transform the data to fit the IEA data format. 
 For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
 
-Loop to pull all the biomass data, save it and plot it.
-```{r}
-# Define the output folder outside the loop
-output_data_folder <- here("data/intermediate/")
-output_plots_folder <- here("figures/plots/")
-
-# Get the names of the list items to iterate through
-model_names <- names(SS_outputs_newest)
-
-# Loop through each model name
-for (name in model_names) {
-  
-  # Set the current model as 'base'
-  base <- SS_outputs_newest[[name]]
-  
-  dir_path <- base$inputs$dir
-  path_elements <- unlist(strsplit(dir_path, split = "/|\\\\"))
-  path_elements <- path_elements[path_elements != ""]
-  
-  # The species name is the second to last element
-  Species <- path_elements[length(path_elements) - 1]
-  # The assessment name is the last element
-  Assessment <- path_elements[length(path_elements)]
-  
-  # Check if timeseries data exists and has a 'Bio_smry' column
-  if (!is.null(base$timeseries) && "Bio_smry" %in% colnames(base$timeseries)) {
-    # Filter and process the biomass data
-    biomass <- base$timeseries %>%
-      filter(Era != "FORE") %>%
-      filter(Yr >= 2000) %>%
-      mutate(Bio_mil_lbs = (Bio_smry * 2204.62) / 1000000)
-    
-    # Check if there is data after filtering
-    if (nrow(biomass) > 0) {
-      
-      # Generate the plot
-      a <- ggplot(biomass, aes(x = Yr, y = Bio_mil_lbs, group = as.factor(Area), col = as.factor(Area))) +
-        geom_line(linewidth = 1.2) +
-        geom_point(size = 2) +
-        xlab("Year") +
-        ylab("Biomass (million pounds)") +
-        theme_classic() +
-        ggtitle(paste0(Species, " ", Assessment)) +
-        theme(
-          axis.title = element_text(size = 14),
-          axis.text = element_text(size = 12),
-          axis.title.y = element_text(vjust = 2),
-          axis.title.x = element_text(vjust = -1),
-          axis.text.x = element_text(angle = 45, hjust = 1)
-        ) +
-        scale_x_continuous(breaks = unique(biomass$Yr)) +
-        scale_color_discrete(name = "Area")
-      
-      # Save the plot
-      output_file <- paste0(Species, "_", Assessment, "_biomass.png")
-      ggsave(filename = file.path(output_plots_folder, output_file), plot = a,
-             width = 10, height = 6, dpi = 300)
-      
-      # --- Code to save separate RDS files for each area ---
-      unique_areas <- unique(biomass$Area)
-      
-      for (area in unique_areas) {
-        area_data <- biomass %>%
-          filter(Area == area) %>%
-          select(Yr, Bio_smry, Bio_mil_lbs, Area) %>%
-          as.data.frame()
-        
-        file_name <- paste0(Species, "_Area", area, "_", Assessment, "_biomass.csv")
-        
-        write.csv(area_data, file = file.path(output_data_folder, file_name), row.names = FALSE)
-      }
-      
-      # Save data for each assessment by area
-      biomass_for_pivot = biomass %>% 
-        mutate(Area_Name = paste0("Bio_Area", Area)) %>% 
-        select(Yr, Area_Name, Bio_mil_lbs)
-      
-      pivoted_biomass = biomass_for_pivot %>% 
-        pivot_wider(
-          names_from = Area_Name,
-          values_from = Bio_mil_lbs
-        ) %>% 
-        select(Yr, starts_with("Bio_Area")) %>% 
-        as.data.frame()
-      
-      file_name = paste0(Species, "_", Assessment, "biomass_test.csv")
-      write.csv(pivoted_biomass, file = file.path(output_data_folder, file_name), row.names = FALSE)
-      
-    } else {
-      warning(paste("No data for plotting after filtering for", name))
-    }
-  } else {
-    warning(paste("Timeseries data or 'Bio_smry' column not found for", name))
-  }
-  
-  # Print a message to show progress
-  print(paste("Processed:", name))
-}
-```
-
-
-test just outputting data into IEA format
 ```{r}
 # Define the output folder outside the loop
 output_data_folder <- here("data/formatted/formatted_csvs")
@@ -275,7 +173,7 @@ for (name in model_names) {
       
       final_csv = IEAnalyzeR::convert_cleaned_data(pivoted_biomass, indicator_names, unit_names, extent_names)
       
-      file_name = paste0(Species, "_", Assessment, "biomass_formatted.csv")
+      file_name = paste0(Species, "_", Assessment, "_", "Biomass_formatted.csv")
       write.csv(final_csv, file = file.path(output_data_folder, file_name), row.names = FALSE)
       
     } else {
@@ -336,7 +234,35 @@ saveRDS(combined_biomass, file = file.path(input_folder, "combined_biomass_trend
 Please use your formatted CSV to create a "data_prep" object.
 For more info on the data_prep function please go HERE
 ```{r}
-data_obj<-IEAnalyzeR::data_prep()
+# Set the output folder
+output_data_folder <- here("data/formatted/final_objects")
+
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/formatted_csvs")
+
+# List all csv files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files <- files[grepl("SEDAR", files) & grepl("Biomass", files)]
+
+for (file in files) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = read.csv(file)
+  
+  data_obj<-IEAnalyzeR::data_prep(dat)
+  
+  file_name = paste0(Species, "_", Assessment, "_", "Biomass_object.rds")
+  saveRDS(data_obj, file = file.path(output_data_folder, file_name))
+  
+}
 ```
 
 # 4. Save Formatted csv and data_prep object
@@ -354,9 +280,35 @@ saveRDS(data_obj, file = object_filename)
 Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 ```{r}
+# Set the output folder
+output_data_folder <- here("figures/plots")
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj)
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/final_objects")
 
+# List all rds files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files <- files[grepl("SEDAR", files) & grepl("Biomass", files)]
+
+for (file in files) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = readRDS(file)
+  
+  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "Biomass"), trend = TRUE)
+  
+  file_name = paste0(Species, "_", Assessment, "_", "Biomass_plot.png")
+  ggsave(plot, file = file.path(output_data_folder, file_name))
+  
+}
 ```
 
 # 6. Save plot

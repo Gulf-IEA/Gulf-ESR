@@ -12,6 +12,14 @@ File created on 2025-10-16
 Add any packages that are needed for analysis in this code chunk. 
 ```{r packages}
 library(IEAnalyzeR)
+library (here)
+library(r4ss)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
+library(rlist)
 ```
 
 File Naming Setup.
@@ -35,19 +43,386 @@ Confidential data: Store locally in the confidential data folder
 If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
     - Filename should use the syntax rootname_descriptivename
 ```{r}
+# load helper function
+source(here("scripts/helper_functions/process_SS_assessments.R"))
 
+# Pull all assessment model outputs from Google drive folder. Only need to do this when new assessments are added or updated
+#process_SS_assessments() 
+
+#Start here if you don't need to load new assessments
+SS_outputs_all = readRDS(here("data/intermediate/SS_outputs_all.rds"))
+```
+
+Remove all the older assessments, keeping only the newest ones for each species. Also remove the funky yellowtail report that was accidentally created.
+```{r}
+assessment_names = names(SS_outputs_all) 
+
+# --- 1. Filter out the specific accidental report ---
+# This removes the "Assessment Report.sso files_Yellowtail Snapper" entry
+filtered_names = assessment_names[!grepl("Assessment Report.sso files", assessment_names)]
+
+# --- 2. Create a Data Frame for Parsing and Sorting ---
+# Create a data frame from the filtered names
+df = data.frame(full_name = filtered_names) %>%
+    # Extract the Species and Assessment ID
+    # Species: Everything before the last '_'
+    # ID: Everything after the last 'SEDAR'
+    separate(full_name, 
+             into = c("species", "sedar", "id_raw"), 
+             sep = "_SEDAR", 
+             remove = FALSE, 
+             extra = "merge") %>%
+    # Clean up the species name (since 'SEDAR' might have split it weirdly)
+    mutate(
+        # Recalculate species by dropping the trailing _SEDAR[ID]
+        species = sub("(_SEDAR.*)", "", full_name), 
+        # Extract the numeric part of the ID (e.g., 28 from 28U, 68 from 68OA)
+        id_num = as.numeric(str_extract(id_raw, "^\\d+")),
+        # Determine the complexity/newness rank of the suffix
+        # Suffixes (U, OA, etc.) make an assessment newer than one with no suffix
+        suffix_rank = ifelse(grepl("[A-Za-z]", id_raw), 1, 0)
+    )
+
+# --- 3. Group and Keep the Newest Assessment for Each Species ---
+final_keepers = df %>%
+    group_by(species) %>%
+    # Arrange by numeric ID (highest is newest) then by suffix rank (1 is newest)
+    # The last row in the group after sorting is the one to keep.
+    arrange(id_num, suffix_rank, .by_group = TRUE) %>%
+    # Keep only the last (newest) entry for each species group
+    slice_tail(n = 1) %>%
+    ungroup() %>%
+    pull(full_name) # Extract the vector of final names to keep
+
+# --- 4. Filter the main list ---
+SS_outputs_newest = SS_outputs_all[final_keepers] 
+
+# --- Resulting names (for verification) ---
+cat("Names to keep:\n")
+print(final_keepers)
+
+saveRDS(SS_outputs_newest, here("data/intermediate/SS_outputs_newest.rds"))
 ```
 
 # 2. Data Transformation
 Transform the data to fit the IEA data format. 
 For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
-```{r}
 
+First, we need to define the fleets
+```{r}
+# Get the names of the list items to iterate through
+model_names <- names(SS_outputs_newest)
+
+# Create an empty list to store the data frames
+all_fleet_dfs_list <- list()
+
+# Loop through each model name
+for (name in model_names) {
+  base <- SS_outputs_newest[[name]]
+  
+  # Create a data frame for the current assessment
+  fleet_df <- data.frame(
+    Assessment = name,
+    FleetName = base$FleetNames
+  )
+  
+  # Add the new data frame to your list
+  all_fleet_dfs_list[[name]] <- fleet_df
+}
+
+# Use bind_rows to combine all the data frames in the list
+fleet_names_df <- bind_rows(all_fleet_dfs_list)
+
+fleet_names_wide <- fleet_names_df %>%
+  # Create a unique row identifier for each assessment
+  group_by(Assessment) %>%
+  mutate(row_id = row_number()) %>%
+  ungroup() %>%
+  # Pivot the data
+  pivot_wider(
+    id_cols = row_id, 
+    names_from = Assessment, 
+    values_from = FleetName
+  ) %>%
+  # Remove the temporary row_id column and re-arrange
+  select(-row_id)
+
+folder = here("data/intermediate/")
+write.csv(fleet_names_df, row.names = F, file = file.path(folder, "fleet_names.csv"))
+
+#Fleet Type	     Keywords (Case-Insensitive)
+#Commercial	     com, comm, chl, cm, hl, ll, gn, nt, vl, trap, rr
+#Recreational	   rec, recreational, mrfss, headboat, hb, charter, cbt, private, pr, shore
+#Survey          survey, srv, seamap, video, pc, fwri, nmfs, trawl, plank, bll, rov, index, age
+#Bycatch         shrimp, shr, smp
+```
+
+
+```{r}
+# Define the output folder outside the loop
+output_data_folder <- here("data/formatted/formatted_csvs")
+
+# Get the names of the list items to iterate through
+model_names <- names(SS_outputs_newest)
+
+# Create an empty list to store the final summary results
+summary_list <- list()
+
+# Loop through each model name
+for (name in model_names) {
+  base <- SS_outputs_newest[[name]]
+  ts = base$timeseries
+  
+  dir_path <- base$inputs$dir
+  path_elements <- unlist(strsplit(dir_path, split = "/|\\\\"))
+  path_elements <- path_elements[path_elements != ""]
+  
+  # The species name is the second to last element
+  Species <- path_elements[length(path_elements) - 1]
+  # The assessment name is the last element
+  Assessment <- path_elements[length(path_elements)]
+  
+  # Check if both FleetNames and timeseries exist, otherwise skip
+  if (is.null(base$FleetNames) || is.null(base$timeseries)) {
+    warning(paste("Missing FleetNames or timeseries objects:", name))
+    next
+  }
+  
+  ts = ts %>% 
+    filter(Era == "TIME") %>%
+    filter(Yr >= 2000)
+  
+  # Step 1: Identify which fleets have corresponding data in timeseries
+  timeseries_cols <- colnames(ts)
+  
+  # Use regular expressions to find all "dead(B):_" columns
+  retain_cols <- timeseries_cols[str_detect(timeseries_cols, "dead\\(B\\):_")]
+  
+  # Extract the fleet numbers from the column names
+  retain_fleet_numbers <- as.integer(str_extract(retain_cols, "\\d+"))
+  
+  # Find the fleets that exist in both FleetNames and timeseries
+  available_fleet_names <- base$FleetNames[base$FleetNames %in% base$FleetNames[retain_fleet_numbers]]
+  available_fleet_numbers <- retain_fleet_numbers
+  
+  # Step 2: create a new mapping dataframe with only the available fleets
+  # Create a dataframe to map fleet number to fleet type
+  fleet_mapping <- data.frame(
+    FleetName = available_fleet_names,
+    FleetNumber = available_fleet_numbers
+  )
+  
+  # Categorize fleets based on their names
+  fleet_mapping <- fleet_mapping %>%
+    mutate(
+      FleetType = case_when(
+        str_detect(FleetName, regex("rec|mrfss|headboat|hb|charter|cbt|private|pr|shore|cp", ignore_case = TRUE)) ~ "Recreational",
+        str_detect(FleetName, regex("com|comm|chl|cm|hl|ll|gn|nt|vl|trap|rr", ignore_case = TRUE)) ~ "Commercial",
+        str_detect(FleetName, regex("shrimp|shr|smp", ignore_case = TRUE)) ~ "Bycatch",
+        TRUE ~ "Survey"
+      )
+    )
+  
+  # Step 3: Identify the column names to sum, ensuring they are empty if no fleets are found
+  get_cols <- function(fleet_type, prefix) {
+    fleets_to_sum <- fleet_mapping %>%
+      filter(FleetType == fleet_type) %>%
+      pull(FleetNumber)
+    if (length(fleets_to_sum) > 0) {
+      return(paste0(prefix, fleets_to_sum))
+    } else {
+      return(c())
+    }
+  }
+  
+  commercial_land_fleets <- get_cols("Commercial", "retain(B):_")
+  recreational_land_fleets <- get_cols("Recreational", "retain(N):_")
+  commercial_tot_fleets <- get_cols("Commercial", "dead(B):_")
+  recreational_tot_fleets <- get_cols("Recreational", "dead(N):_")
+  bycatch_disc_fleets <- get_cols("Bycatch", "dead(B):_")
+  
+  
+  # Step 4: Sum the retained catch for commercial and recreational fleets
+  if (length(commercial_land_fleets) > 0) {
+    commercial_landings <- rowSums(ts[, commercial_land_fleets, drop = FALSE], na.rm = TRUE)
+  } else {
+    commercial_landings <- rep(0, nrow(ts))
+  }
+  
+  if (length(commercial_tot_fleets) > 0) {
+    commercial_totcatch <- rowSums(ts[, commercial_tot_fleets, drop = FALSE], na.rm = TRUE)
+  } else {
+    commercial_totcatch <- rep(0, nrow(ts))
+  }
+  
+  if (length(recreational_land_fleets) > 0) {
+    recreational_landings <- rowSums(ts[, recreational_land_fleets, drop = FALSE], na.rm = TRUE)
+  } else {
+    recreational_landings <- rep(0, nrow(ts))
+  }
+  
+  if (length(recreational_tot_fleets) > 0) {
+    recreational_totcatch <- rowSums(ts[, recreational_tot_fleets, drop = FALSE], na.rm = TRUE)
+  } else {
+    recreational_totcatch <- rep(0, nrow(ts))
+  }
+  
+  if (length(bycatch_disc_fleets) > 0) {
+    bycatch_discards <- rowSums(ts[, bycatch_disc_fleets, drop = FALSE], na.rm = TRUE)
+  } else {
+    bycatch_discards <- rep(0, nrow(ts))
+  }
+  
+  #calculate discards and ratios
+  commercial_dead_discards = commercial_totcatch - commercial_landings
+  commercial_ratio = commercial_landings / commercial_dead_discards
+  recreational_dead_discards = recreational_totcatch - recreational_landings
+  recreational_ratio = recreational_landings / recreational_dead_discards
+  
+  # Store the results in two lists
+  summary_list_com <- data.frame(
+    year = ts$Yr,
+    commercial_landings = commercial_landings,
+    commercial_totcatch = commercial_totcatch,
+    commercial_dead_discards = commercial_dead_discards,
+    commercial_ratio = commercial_ratio,
+    bycatch_discards = bycatch_discards
+  )
+  
+    summary_list_rec <- data.frame(
+    year = ts$Yr,
+    recreational_landings = recreational_landings,
+    recreational_totcatch = recreational_totcatch,
+    recreational_dead_discards = recreational_dead_discards,
+    recreational_ratio = recreational_ratio
+  )
+  
+  # Combine all the results into a single data frame
+  final_catch_summary_com <- bind_rows(summary_list_com)
+  final_catch_summary_rec <- bind_rows(summary_list_rec)
+  
+  # Delete any columns that sum to zero or Inf
+  
+  #Use the convert_cleaned_data function in IEAnalyzeR to add metadata to the data frame
+      
+  #set up the metadata - commercial
+  num_data_cols_com = ncol(final_catch_summary_com) - 1
+  data_col_names_com = colnames(final_catch_summary_com)[-1]
+      
+  indicator_text_com = paste0(Species, "_", Assessment, "_", "Commercial_Catch")
+  indicator_names_com = c(rep(indicator_text_com, num_data_cols_com))
+      
+  unit_text_com = "Metric tons" #need to probably change this and check if correct
+  unit_names_com = c(rep(unit_text_com, num_data_cols_com))
+      
+  #extent_text = gsub("Bio_Area", "Area ", area_col_names)
+  extent_names_com = c(data_col_names_com)
+      
+  final_csv_com = IEAnalyzeR::convert_cleaned_data(final_catch_summary_com, indicator_names_com, unit_names_com, extent_names_com)
+      
+  file_name_com = paste0(Species, "_", Assessment, "_", "Commercial_Catch_formatted.csv")
+  write.csv(final_csv_com, file = file.path(output_data_folder, file_name_com), row.names = FALSE)
+  
+  #set up the metadata - recreational
+  num_data_cols_rec = ncol(final_catch_summary_rec) - 1
+  data_col_names_rec = colnames(final_catch_summary_rec)[-1]
+      
+  indicator_text_rec = paste0(Species, "_", Assessment, "_", "Recreational_Catch")
+  indicator_names_rec = c(rep(indicator_text_rec, num_data_cols_rec))
+      
+  unit_text_rec = "Thousands of fish" 
+  unit_names_rec = c(rep(unit_text_rec, num_data_cols_rec))
+      
+  #extent_text = gsub("Bio_Area", "Area ", area_col_names)
+  extent_names_rec = c(data_col_names_rec)
+      
+  final_csv_rec = IEAnalyzeR::convert_cleaned_data(final_catch_summary_rec, indicator_names_rec, unit_names_rec, extent_names_rec)
+      
+  file_name_rec = paste0(Species, "_", Assessment, "_", "Recreational_Catch_formatted.csv")
+  write.csv(final_csv_rec, file = file.path(output_data_folder, file_name_rec), row.names = FALSE)
+  
+}
 ```
 
 # 3. Create Data_Prep object
 Please use your formatted CSV to create a "data_prep" object.
 For more info on the data_prep function please go HERE
+```{r}
+# Set the output folder
+output_data_folder <- here("data/formatted/final_objects")
+
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/formatted_csvs")
+
+# List all csv files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files_com <- files[grepl("SEDAR", files) & grepl("Commercial", files) & grepl("Catch", files)]
+files_rec <- files[grepl("SEDAR", files) & grepl("Recreational", files) & grepl("Catch", files)]
+
+for (file in files_com) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = read.csv(file)
+  
+  data_obj<-IEAnalyzeR::data_prep(dat)
+  
+  file_name = paste0(Species, "_", Assessment, "_", "Commercial_Catch_object.rds")
+  saveRDS(data_obj, file = file.path(output_data_folder, file_name))
+  
+}
+
+for (file in files_rec) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  Species <- file_elements[1]
+  Assessment <- file_elements[2]
+  
+  # Read the CSV file
+  dat = read.csv(file)
+  
+  # Initialize status message
+  process_status <- paste("ERROR processing", filename, "— skipped.")
+  
+  # Use tryCatch for the critical steps
+  tryCatch({
+    
+    # 1. Attempt the data preparation
+    data_obj <- IEAnalyzeR::data_prep(dat)
+    
+    # 2. If successful, save the RDS file
+    file_name = paste0(Species, "_", Assessment, "_", "Recreational_Catch_object.rds")
+    saveRDS(data_obj, file = file.path(output_data_folder, file_name))
+    
+    # 3. Update the status message upon success
+    process_status <- paste("SUCCESS:", filename, "processed and saved.")
+    
+  }, error = function(e) {
+    # This block executes ONLY if an error occurs and updates the error message
+    
+    cat("\n--- ERROR SKIPPED ---\n")
+    cat("File:", filename, "\n")
+    cat("Error Message:", conditionMessage(e), "\n")
+    cat("---------------------\n")
+    
+    # The 'process_status' variable retains the initial error message
+  })
+  
+  # Print the final result (success or error) for each file
+  print(process_status)
+}
+```
+
+
 ```{r}
 data_obj<-IEAnalyzeR::data_prep()
 ```
