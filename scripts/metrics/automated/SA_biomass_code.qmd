@@ -162,7 +162,7 @@ for (name in model_names) {
       num_data_cols = ncol(pivoted_biomass) - 1
       area_col_names = colnames(pivoted_biomass)[-1]
       
-      indicator_text = paste0(Species, " ", Assessment, " ", "Biomass")
+      indicator_text = paste0(Species, "_", Assessment, "_", "Biomass")
       indicator_names = c(rep(indicator_text, num_data_cols))
       
       unit_text = "Million pounds"
@@ -257,7 +257,7 @@ for (file in files) {
   
   dat = read.csv(file)
   
-  data_obj<-IEAnalyzeR::data_prep(dat)
+  data_obj<-IEAnalyzeR::data_prep(dat, subind = "extent")
   
   file_name = paste0(Species, "_", Assessment, "_", "Biomass_object.rds")
   saveRDS(data_obj, file = file.path(output_data_folder, file_name))
@@ -303,10 +303,10 @@ for (file in files) {
   
   dat = readRDS(file)
   
-  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "Biomass"), trend = TRUE)
+  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "Biomass"), trend = TRUE, xbreaks_by = 2, fig.width = 7)
   
   file_name = paste0(Species, "_", Assessment, "_", "Biomass_plot.png")
-  ggsave(plot, file = file.path(output_data_folder, file_name))
+  ggsave(plot, file = file.path(output_data_folder, file_name), height = 4, width = 7, units = "in")
   
 }
 ```

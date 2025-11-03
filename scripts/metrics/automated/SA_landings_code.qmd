@@ -157,7 +157,7 @@ write.csv(fleet_names_df, row.names = F, file = file.path(folder, "fleet_names.c
 #Bycatch         shrimp, shr, smp
 ```
 
-
+Now create the csvs
 ```{r}
 # Define the output folder outside the loop
 output_data_folder <- here("data/formatted/formatted_csvs")
@@ -302,9 +302,21 @@ for (name in model_names) {
   final_catch_summary_rec <- bind_rows(summary_list_rec)
   
   # Delete any columns that sum to zero or Inf
+  is_numeric <- sapply(final_catch_summary_com, is.numeric)
+  is_numeric[1] <- FALSE
+  col_sums <- sapply(final_catch_summary_com[, is_numeric], sum, na.rm = TRUE)
+  cols_to_remove <- names(col_sums)[!is.finite(col_sums) | (abs(col_sums) < 1e-10)]
+  final_catch_summary_com <- as.data.frame(final_catch_summary_com[, !(names(final_catch_summary_com) %in% cols_to_remove)])
+  
+  is_numeric <- sapply(final_catch_summary_rec, is.numeric)
+  is_numeric[1] <- FALSE
+  col_sums <- sapply(final_catch_summary_rec[, is_numeric], sum, na.rm = TRUE)
+  cols_to_remove <- names(col_sums)[!is.finite(col_sums) | (abs(col_sums) < 1e-10)]
+  final_catch_summary_rec <- as.data.frame(final_catch_summary_rec[, !(names(final_catch_summary_rec) %in% cols_to_remove)])
   
   #Use the convert_cleaned_data function in IEAnalyzeR to add metadata to the data frame
-      
+  
+  if (ncol(final_catch_summary_com) > 1) { 
   #set up the metadata - commercial
   num_data_cols_com = ncol(final_catch_summary_com) - 1
   data_col_names_com = colnames(final_catch_summary_com)[-1]
@@ -322,25 +334,35 @@ for (name in model_names) {
       
   file_name_com = paste0(Species, "_", Assessment, "_", "Commercial_Catch_formatted.csv")
   write.csv(final_csv_com, file = file.path(output_data_folder, file_name_com), row.names = FALSE)
+  } else {
+    # This block executes if ncol <= 1, effectively skipping the processing.
+      warning(paste("Skipping commercial catch for:", Species, Assessment, "due to no data columns remaining."))
+  }
   
-  #set up the metadata - recreational
-  num_data_cols_rec = ncol(final_catch_summary_rec) - 1
-  data_col_names_rec = colnames(final_catch_summary_rec)[-1]
-      
-  indicator_text_rec = paste0(Species, "_", Assessment, "_", "Recreational_Catch")
-  indicator_names_rec = c(rep(indicator_text_rec, num_data_cols_rec))
-      
-  unit_text_rec = "Thousands of fish" 
-  unit_names_rec = c(rep(unit_text_rec, num_data_cols_rec))
-      
-  #extent_text = gsub("Bio_Area", "Area ", area_col_names)
-  extent_names_rec = c(data_col_names_rec)
-      
-  final_csv_rec = IEAnalyzeR::convert_cleaned_data(final_catch_summary_rec, indicator_names_rec, unit_names_rec, extent_names_rec)
-      
-  file_name_rec = paste0(Species, "_", Assessment, "_", "Recreational_Catch_formatted.csv")
-  write.csv(final_csv_rec, file = file.path(output_data_folder, file_name_rec), row.names = FALSE)
-  
+  if (ncol(final_catch_summary_rec) > 1) { 
+    #set up the metadata - recreational
+    num_data_cols_rec = ncol(final_catch_summary_rec) - 1
+    data_col_names_rec = colnames(final_catch_summary_rec)[-1]
+    
+    indicator_text_rec = paste0(Species, "_", Assessment, "_", "Recreational_Catch")
+    indicator_names_rec = c(rep(indicator_text_rec, num_data_cols_rec))
+    
+    unit_text_rec = "Thousands of fish" 
+    unit_names_rec = c(rep(unit_text_rec, num_data_cols_rec))
+    
+    #extent_text = gsub("Bio_Area", "Area ", area_col_names)
+    extent_names_rec = c(data_col_names_rec)
+    
+    # This line will only execute if ncol > 1
+    final_csv_rec = IEAnalyzeR::convert_cleaned_data(final_catch_summary_rec, indicator_names_rec, unit_names_rec, extent_names_rec)
+    
+    file_name_rec = paste0(Species, "_", Assessment, "_", "Recreational_Catch_formatted.csv")
+    write.csv(final_csv_rec, file = file.path(output_data_folder, file_name_rec), row.names = FALSE)
+  } else {
+    # This block executes if ncol <= 1, effectively skipping the processing.
+      warning(paste("Skipping recreational catch for:", Species, Assessment, "due to no data columns remaining."))
+  }
+
 }
 ```
 
