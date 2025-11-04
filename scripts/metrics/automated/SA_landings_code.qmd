@@ -6,7 +6,7 @@ execute:
   warning: false
 ---
 
-File created on 2025-10-16
+File created on 2025-10-16 - draft completed 11/4/25 by C. Gervasi
 
 # 0. Setup
 Add any packages that are needed for analysis in this code chunk. 
@@ -20,18 +20,6 @@ library(ggplot2)
 library(purrr)
 library(stringr)
 library(rlist)
-```
-
-File Naming Setup.
-!! Auto generated-Do Not Change !!
-```{r}
-
-root_name<- "SA_landings"
-
-csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv") 
-object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
-plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
-
 ```
 
 # 1. Read Data
@@ -282,6 +270,7 @@ for (name in model_names) {
   # Store the results in two lists
   summary_list_com <- data.frame(
     year = ts$Yr,
+    area = ts$Area,
     commercial_landings = commercial_landings,
     commercial_totcatch = commercial_totcatch,
     commercial_dead_discards = commercial_dead_discards,
@@ -291,6 +280,7 @@ for (name in model_names) {
   
     summary_list_rec <- data.frame(
     year = ts$Yr,
+    area = ts$Area,
     recreational_landings = recreational_landings,
     recreational_totcatch = recreational_totcatch,
     recreational_dead_discards = recreational_dead_discards,
@@ -300,6 +290,24 @@ for (name in model_names) {
   # Combine all the results into a single data frame
   final_catch_summary_com <- bind_rows(summary_list_com)
   final_catch_summary_rec <- bind_rows(summary_list_rec)
+  
+  #Sum over areas for the assessments with multiple areas
+  final_catch_summary_com = final_catch_summary_com %>% 
+    group_by(year) %>% 
+    summarise(
+      commercial_landings = sum(commercial_landings),
+      commercial_totcatch = sum(commercial_totcatch),
+      commercial_dead_discards = sum(commercial_dead_discards),
+      commercial_ratio = sum(commercial_ratio),
+      bycatch_discards = sum(bycatch_discards))
+  
+    final_catch_summary_rec = final_catch_summary_rec %>% 
+    group_by(year) %>% 
+    summarise(
+      recreational_landings = sum(recreational_landings),
+      recreational_totcatch = sum(recreational_totcatch),
+      recreational_dead_discards = sum(recreational_dead_discards),
+      recreational_ratio = sum(recreational_ratio))
   
   # Delete any columns that sum to zero or Inf
   is_numeric <- sapply(final_catch_summary_com, is.numeric)
@@ -314,6 +322,7 @@ for (name in model_names) {
   cols_to_remove <- names(col_sums)[!is.finite(col_sums) | (abs(col_sums) < 1e-10)]
   final_catch_summary_rec <- as.data.frame(final_catch_summary_rec[, !(names(final_catch_summary_rec) %in% cols_to_remove)])
   
+  
   #Use the convert_cleaned_data function in IEAnalyzeR to add metadata to the data frame
   
   if (ncol(final_catch_summary_com) > 1) { 
@@ -327,7 +336,6 @@ for (name in model_names) {
   unit_text_com = "Metric tons" #need to probably change this and check if correct
   unit_names_com = c(rep(unit_text_com, num_data_cols_com))
       
-  #extent_text = gsub("Bio_Area", "Area ", area_col_names)
   extent_names_com = c(data_col_names_com)
       
   final_csv_com = IEAnalyzeR::convert_cleaned_data(final_catch_summary_com, indicator_names_com, unit_names_com, extent_names_com)
@@ -394,7 +402,7 @@ for (file in files_com) {
   
   dat = read.csv(file)
   
-  data_obj<-IEAnalyzeR::data_prep(dat)
+  data_obj<-IEAnalyzeR::data_prep(dat, subind = "extent")
   
   file_name = paste0(Species, "_", Assessment, "_", "Commercial_Catch_object.rds")
   saveRDS(data_obj, file = file.path(output_data_folder, file_name))
@@ -406,45 +414,23 @@ for (file in files_rec) {
   filename = basename(file)
   
   file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
   Species <- file_elements[1]
+  # The assessment name is the second element
   Assessment <- file_elements[2]
   
-  # Read the CSV file
   dat = read.csv(file)
   
-  # Initialize status message
-  process_status <- paste("ERROR processing", filename, "— skipped.")
+  data_obj<-IEAnalyzeR::data_prep(dat, subind = "extent")
   
-  # Use tryCatch for the critical steps
-  tryCatch({
-    
-    # 1. Attempt the data preparation
-    data_obj <- IEAnalyzeR::data_prep(dat)
-    
-    # 2. If successful, save the RDS file
-    file_name = paste0(Species, "_", Assessment, "_", "Recreational_Catch_object.rds")
-    saveRDS(data_obj, file = file.path(output_data_folder, file_name))
-    
-    # 3. Update the status message upon success
-    process_status <- paste("SUCCESS:", filename, "processed and saved.")
-    
-  }, error = function(e) {
-    # This block executes ONLY if an error occurs and updates the error message
-    
-    cat("\n--- ERROR SKIPPED ---\n")
-    cat("File:", filename, "\n")
-    cat("Error Message:", conditionMessage(e), "\n")
-    cat("---------------------\n")
-    
-    # The 'process_status' variable retains the initial error message
-  })
+  file_name = paste0(Species, "_", Assessment, "_", "Recreational_Catch_object.rds")
+  saveRDS(data_obj, file = file.path(output_data_folder, file_name))
   
-  # Print the final result (success or error) for each file
-  print(process_status)
 }
 ```
 
-# 5. Preview Plot
+# 4. Preview Plot
 Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 ```{r}
@@ -454,7 +440,7 @@ output_data_folder <- here("figures/plots")
 # Set the folder where .csv files are stored
 input_folder = here("data/formatted/final_objects")
 
-# List all csv files that contain SEDAR and Biomass
+# List all csv files that contain SEDAR and Commercial or Recreational Catch
 files <- list.files(input_folder, full.names = TRUE)
 files_com <- files[grepl("SEDAR", files) & grepl("Commercial", files) & grepl("Catch", files)]
 files_rec <- files[grepl("SEDAR", files) & grepl("Recreational", files) & grepl("Catch", files)]
@@ -472,18 +458,31 @@ for (file in files_com) {
   
   dat = readRDS(file)
   
-  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "Biomass"), trend = TRUE, xbreaks_by = 2, fig.width = 7)
+  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "Commercial", " ", "Catch"), trend = TRUE, xbreaks_by = 5, fig.width = 7)
   
-  file_name = paste0(Species, "_", Assessment, "_", "Biomass_plot.png")
+  file_name = paste0(Species, "_", Assessment, "_", "Commercial_Catch_plot.png")
+  ggsave(plot, file = file.path(output_data_folder, file_name), height = 4, width = 7, units = "in")
+  
+}
+
+for (file in files_rec) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = readRDS(file)
+  
+  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "Recreational", " ", "Catch"), trend = TRUE, xbreaks_by = 5, fig.width = 7)
+  
+  file_name = paste0(Species, "_", Assessment, "_", "Recreational_Catch_plot.png")
   ggsave(plot, file = file.path(output_data_folder, file_name), height = 4, width = 7, units = "in")
   
 }
 ```
-
-# 6. Save plot
-This will save the plot to the correct folder.
-Adjust height & width using (height=, width=, unit="in") if needed.
-```{r}
-ggsave(filename = plot_filename)
-```
-
+END SCRIPT

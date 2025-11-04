@@ -6,10 +6,9 @@ execute:
   warning: false
 ---
 
-File created on 2025-10-16
+File created on 2025-10-16 - draft completed 11/4/25 by C. Gervasi
 
 # 0. Setup
-
 Add any packages that are needed for analysis in this code chunk. 
 ```{r packages}
 library(IEAnalyzeR)
@@ -97,7 +96,6 @@ saveRDS(SS_outputs_newest, here("data/intermediate/SS_outputs_newest.rds"))
 # 2. Data Transformation
 Transform the data to fit the IEA data format. 
 For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
-
 ```{r}
 # Define the output folder outside the loop
 output_data_folder <- here("data/formatted/formatted_csvs")
