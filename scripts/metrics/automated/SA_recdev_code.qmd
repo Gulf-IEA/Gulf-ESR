@@ -109,8 +109,7 @@ Transform the data to fit the IEA data format.
 For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
 ```{r}
 # Define the output folder outside the loop
-output_data_folder <- here("data/intermediate/")
-output_plots_folder <- here("figures/plots/")
+output_data_folder <- here("data/formatted/formatted_csvs")
 
 # Get the names of the list items to iterate through
 model_names <- names(SS_outputs_newest)
@@ -148,29 +147,27 @@ for (name in model_names) {
     # Check if there is data after filtering
     if (nrow(recdev3) > 0) {
       
-      # Generate the plot
-      b <- ggplot(recdev3, aes(x = as.numeric(Yr), y = Value)) +
-        geom_line(linewidth = 0.8) +
-        geom_point(size = 2) +
-        geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
-        xlab("Year") +
-        ylab("log recruitment deviations") +
-        theme_classic() +
-        ggtitle(paste0(Species, " ", Assessment)) +
-        geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
-        theme(
-          axis.title = element_text(size = 14),
-          axis.text = element_text(size = 12),
-          axis.title.y = element_text(vjust = 2),
-          axis.title.x = element_text(vjust = -1)
-        ) +
-        #scale_x_continuous(breaks = unique(recdev3$Yr)) +
-        scale_color_discrete(name = "Area")
+      recdev3 = recdev3 %>% 
+        select("Yr", "Value", "upper", "lower")
       
-      # Save the plot
-      output_file <- paste0(Species, "_", Assessment, "_recdev.png")
-      ggsave(filename = file.path(output_plots_folder, output_file), plot = b,
-             width = 10, height = 6, dpi = 300)
+      #Use the convert_cleaned_data function in IEAnalyzeR to add metadata to the data frame
+      
+      #set up the metadata
+      num_data_cols = ncol(recdev3) - 1
+      col_names = colnames(recdev3)[-1]
+      
+      indicator_text = paste0(Species, "_", Assessment, "_", "RecDev")
+      indicator_names = c(rep(indicator_text, num_data_cols))
+      
+      unit_text = "log recruitment deviations"
+      unit_names = c(rep(unit_text, num_data_cols))
+      
+      extent_names = col_names
+      
+      final_csv = IEAnalyzeR::convert_cleaned_data(recdev3, indicator_names, unit_names, extent_names)
+      
+      file_name = paste0(Species, "_", Assessment, "_", "RecDev_formatted.csv")
+      write.csv(final_csv, file = file.path(output_data_folder, file_name), row.names = FALSE)
     
     } else {
       warning(paste("No data for plotting after filtering for", name))
@@ -188,7 +185,35 @@ for (name in model_names) {
 Please use your formatted CSV to create a "data_prep" object.
 For more info on the data_prep function please go HERE
 ```{r}
-data_obj<-IEAnalyzeR::data_prep()
+# Set the output folder
+output_data_folder <- here("data/formatted/final_objects")
+
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/formatted_csvs")
+
+# List all csv files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files <- files[grepl("SEDAR", files) & grepl("RecDev", files)]
+
+for (file in files) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = read.csv(file)
+  
+  data_obj<-IEAnalyzeR::data_prep(dat, subind = "extent")
+  
+  file_name = paste0(Species, "_", Assessment, "_", "Biomass_object.rds")
+  saveRDS(data_obj, file = file.path(output_data_folder, file_name))
+  
+}
 ```
 
 # 4. Save Formatted csv and data_prep object

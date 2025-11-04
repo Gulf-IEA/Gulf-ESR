@@ -444,29 +444,40 @@ for (file in files_rec) {
 }
 ```
 
-
-```{r}
-data_obj<-IEAnalyzeR::data_prep()
-```
-
-# 4. Save Formatted csv and data_prep object
-This will save your data to the appropriate folders. 
-Please replace "formatted_csv" with the name of your final formatted data.
-```{r}
-#Save formatted CSV
-write.csv(formatted_csv, file = csv_filename, row.names = F)
-
-#Save data_prep object
-saveRDS(data_obj, file = object_filename)
-```
-
 # 5. Preview Plot
 Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 ```{r}
+# Set the output folder
+output_data_folder <- here("figures/plots")
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj)
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/final_objects")
 
+# List all csv files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files_com <- files[grepl("SEDAR", files) & grepl("Commercial", files) & grepl("Catch", files)]
+files_rec <- files[grepl("SEDAR", files) & grepl("Recreational", files) & grepl("Catch", files)]
+
+for (file in files_com) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = readRDS(file)
+  
+  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "Biomass"), trend = TRUE, xbreaks_by = 2, fig.width = 7)
+  
+  file_name = paste0(Species, "_", Assessment, "_", "Biomass_plot.png")
+  ggsave(plot, file = file.path(output_data_folder, file_name), height = 4, width = 7, units = "in")
+  
+}
 ```
 
 # 6. Save plot

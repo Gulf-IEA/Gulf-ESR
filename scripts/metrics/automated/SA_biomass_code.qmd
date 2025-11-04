@@ -23,18 +23,6 @@ library(stringr)
 library(rlist)
 ```
 
-File Naming Setup.
-!! Auto generated-Do Not Change !!
-```{r}
-
-root_name<- "SA_biomass"
-
-csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv") 
-object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
-plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
-
-```
-
 # 1. Read Data
 Pull data from its source:
 Manual data: data/unformatted data
@@ -189,47 +177,6 @@ for (name in model_names) {
 ```
 
 
-Combine all the biomass datasets into one data frame
-```{r}
-# Set the folder where .rds files are stored
-input_folder = here("data/intermediate/")
-
-# List all RDS files that match the pattern *_biomass.rds
-files <- list.files(input_folder, pattern = "_biomass\\.rds$", full.names = TRUE)
-
-#check all the files
-for (file in files) {
-  dat <- readRDS(file)
-  print(basename(file))
-  print(names(dat))
-}
-
-# Read and combine
-biomass_df_list <- map(files, function(file) {
-  # Read the .rds file
-  dat <- readRDS(file)
-  
-  # Extract species_assessment from filename
-  filename <- basename(file)
-  name <- str_remove(filename, "_biomass\\.rds$")  # remove suffix
-  
-  # Keep only Yr and Bio_mil_lbs, rename Bio_mil_lbs to species_assessment name
-  dat %>%
-    select(Yr, Bio_mil_lbs) %>%
-    rename(!!name := Bio_mil_lbs)
-})
-
-# Merge all data frames by Yr
-# Reduce joins all the data frames by Yr column
-combined_biomass <- reduce(biomass_df_list, full_join, by = "Yr")
-
-# Arrange by year
-combined_biomass <- combined_biomass %>% arrange(Yr)
-
-saveRDS(combined_biomass, file = file.path(input_folder, "combined_biomass_trends.rds"))
-```
-
-
 # 3. Create Data_Prep object
 Please use your formatted CSV to create a "data_prep" object.
 For more info on the data_prep function please go HERE
@@ -265,18 +212,7 @@ for (file in files) {
 }
 ```
 
-# 4. Save Formatted csv and data_prep object
-This will save your data to the appropriate folders. 
-Please replace "formatted_csv" with the name of your final formatted data.
-```{r}
-#Save formatted CSV
-write.csv(formatted_csv, file = csv_filename, row.names = F)
-
-#Save data_prep object
-saveRDS(data_obj, file = object_filename)
-```
-
-# 5. Preview Plot
+# 4. Preview Plot
 Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 ```{r}
@@ -310,11 +246,4 @@ for (file in files) {
   
 }
 ```
-
-# 6. Save plot
-This will save the plot to the correct folder.
-Adjust height & width using (height=, width=, unit="in") if needed.
-```{r}
-ggsave(filename = plot_filename)
-```
-
+END SCRIPT
