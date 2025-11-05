@@ -6,7 +6,7 @@ execute:
   warning: false
 ---
 
-File created on 2025-10-16
+File created on 2025-10-16 - draft completed 11/4/25 by C. Gervasi
 
 # 0. Setup
 Add any packages that are needed for analysis in this code chunk. 
@@ -20,18 +20,6 @@ library(ggplot2)
 library(purrr)
 library(stringr)
 library(rlist)
-```
-
-File Naming Setup.
-!! Auto generated-Do Not Change !!
-```{r}
-
-root_name<- "SA_recdev"
-
-csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv") 
-object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
-plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
-
 ```
 
 # 1. Read Data
@@ -148,7 +136,7 @@ for (name in model_names) {
     if (nrow(recdev3) > 0) {
       
       recdev3 = recdev3 %>% 
-        select("Yr", "Value", "upper", "lower")
+        select("Yr", "Value") #ignore the stdev for now
       
       #Use the convert_cleaned_data function in IEAnalyzeR to add metadata to the data frame
       
@@ -210,36 +198,44 @@ for (file in files) {
   
   data_obj<-IEAnalyzeR::data_prep(dat, subind = "extent")
   
-  file_name = paste0(Species, "_", Assessment, "_", "Biomass_object.rds")
+  file_name = paste0(Species, "_", Assessment, "_", "RecDev_object.rds")
   saveRDS(data_obj, file = file.path(output_data_folder, file_name))
   
 }
-```
-
-# 4. Save Formatted csv and data_prep object
-This will save your data to the appropriate folders. 
-Please replace "formatted_csv" with the name of your final formatted data.
-```{r}
-#Save formatted CSV
-write.csv(formatted_csv, file = csv_filename, row.names = F)
-
-#Save data_prep object
-saveRDS(data_obj, file = object_filename)
 ```
 
 # 5. Preview Plot
 Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 ```{r}
+# Set the output folder
+output_data_folder <- here("figures/plots")
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj)
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/final_objects")
 
+# List all rds files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files <- files[grepl("SEDAR", files) & grepl("RecDev", files)]
+
+for (file in files) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = readRDS(file)
+  
+  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "RecDev"), trend = TRUE, xbreaks_by = 2, fig.width = 7)
+  
+  file_name = paste0(Species, "_", Assessment, "_", "RecDev_plot.png")
+  ggsave(plot, file = file.path(output_data_folder, file_name), height = 4, width = 7, units = "in")
+  
+}
 ```
-
-# 6. Save plot
-This will save the plot to the correct folder.
-Adjust height & width using (height=, width=, unit="in") if needed.
-```{r}
-ggsave(filename = plot_filename)
-```
-
+END SCRIPT
