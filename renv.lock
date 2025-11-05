@@ -26,10 +26,10 @@
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteUsername": "Gulf-IEA",
       "RemoteRepo": "IEAnalyzeR",
-      "RemoteRef": "main",
-      "RemoteSha": "6949a66b6c8e8cfb81e917fcda66927928ab8ef4",
+      "RemoteUsername": "Gulf-IEA",
+      "RemoteRef": "convert_csv_to_data_prep_format",
+      "RemoteSha": "af271fd7dd33b5fe5a419059545542a7df9a19bb",
       "Requirements": [
         "dplyr",
         "ggimage",
@@ -39,7 +39,7 @@
         "plotly",
         "tidyverse"
       ],
-      "Hash": "31c2b47d74ab78679747503369b086e7"
+      "Hash": "4b4674be122113fc73753fab6d6c4f4b"
     },
     "R6": {
       "Package": "R6",
@@ -1075,6 +1075,28 @@
       ],
       "Hash": "0080607b4a1a7b28979aecef976d8bc2"
     },
+    "janitor": {
+      "Package": "janitor",
+      "Version": "2.2.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "dplyr",
+        "hms",
+        "lifecycle",
+        "lubridate",
+        "magrittr",
+        "purrr",
+        "rlang",
+        "snakecase",
+        "stringi",
+        "stringr",
+        "tidyr",
+        "tidyselect"
+      ],
+      "Hash": "64f308bf1fbf5f856cdf4b4c7c0ce51b"
+    },
     "jquerylib": {
       "Package": "jquerylib",
       "Version": "0.1.4",
@@ -1766,6 +1788,18 @@
         "stringr"
       ],
       "Hash": "3838071b66e0c566d55cc26bd6e27bf4"
+    },
+    "snakecase": {
+      "Package": "snakecase",
+      "Version": "0.11.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "stringi",
+        "stringr"
+      ],
+      "Hash": "58767e44739b76965332e8a4fe3f91f1"
     },
     "stringi": {
       "Package": "stringi",
