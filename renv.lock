@@ -28,18 +28,21 @@
       "RemoteHost": "api.github.com",
       "RemoteRepo": "IEAnalyzeR",
       "RemoteUsername": "Gulf-IEA",
-      "RemoteRef": "convert_csv_to_data_prep_format",
-      "RemoteSha": "af271fd7dd33b5fe5a419059545542a7df9a19bb",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "bacd63f1edacd4460ef9e4634e1f479dca4fe924",
       "Requirements": [
         "dplyr",
         "ggimage",
         "ggplot2",
         "gt",
+        "here",
         "lubridate",
         "plotly",
+        "readr",
+        "tidyr",
         "tidyverse"
       ],
-      "Hash": "4b4674be122113fc73753fab6d6c4f4b"
+      "Hash": "aeb80b2ff776c18a4a3bd533064ce9a5"
     },
     "R6": {
       "Package": "R6",
