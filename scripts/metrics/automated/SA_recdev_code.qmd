@@ -1,0 +1,241 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+---
+
+File created on 2025-10-16 - draft completed 11/4/25 by C. Gervasi
+
+# 0. Setup
+Add any packages that are needed for analysis in this code chunk. 
+```{r packages}
+library(IEAnalyzeR)
+library (here)
+library(r4ss)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
+library(rlist)
+```
+
+# 1. Read Data
+Pull data from its source:
+Manual data: data/unformatted data
+Automated data: Add script for data call (API, package, etc.)
+Confidential data: Store locally in the confidential data folder
+    - This folder is excluded using gitignore and will not push to the GitHub repo
+If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
+    - Filename should use the syntax rootname_descriptivename
+```{r}
+# load helper function
+source(here("scripts/helper_functions/process_SS_assessments.R"))
+
+# Pull all assessment model outputs from Google drive folder. Only need to do this when new assessments are added or updated
+#process_SS_assessments() 
+
+#Start here if you don't need to load new assessments
+SS_outputs_all = readRDS(here("data/intermediate/SS_outputs_all.rds"))
+```
+
+Remove all the older assessments, keeping only the newest ones for each species. Also remove the funky yellowtail report that was accidentally created.
+```{r}
+assessment_names = names(SS_outputs_all) 
+
+# --- 1. Filter out the specific accidental report ---
+# This removes the "Assessment Report.sso files_Yellowtail Snapper" entry
+filtered_names = assessment_names[!grepl("Assessment Report.sso files", assessment_names)]
+
+# --- 2. Create a Data Frame for Parsing and Sorting ---
+# Create a data frame from the filtered names
+df = data.frame(full_name = filtered_names) %>%
+    # Extract the Species and Assessment ID
+    # Species: Everything before the last '_'
+    # ID: Everything after the last 'SEDAR'
+    separate(full_name, 
+             into = c("species", "sedar", "id_raw"), 
+             sep = "_SEDAR", 
+             remove = FALSE, 
+             extra = "merge") %>%
+    # Clean up the species name (since 'SEDAR' might have split it weirdly)
+    mutate(
+        # Recalculate species by dropping the trailing _SEDAR[ID]
+        species = sub("(_SEDAR.*)", "", full_name), 
+        # Extract the numeric part of the ID (e.g., 28 from 28U, 68 from 68OA)
+        id_num = as.numeric(str_extract(id_raw, "^\\d+")),
+        # Determine the complexity/newness rank of the suffix
+        # Suffixes (U, OA, etc.) make an assessment newer than one with no suffix
+        suffix_rank = ifelse(grepl("[A-Za-z]", id_raw), 1, 0)
+    )
+
+# --- 3. Group and Keep the Newest Assessment for Each Species ---
+final_keepers = df %>%
+    group_by(species) %>%
+    # Arrange by numeric ID (highest is newest) then by suffix rank (1 is newest)
+    # The last row in the group after sorting is the one to keep.
+    arrange(id_num, suffix_rank, .by_group = TRUE) %>%
+    # Keep only the last (newest) entry for each species group
+    slice_tail(n = 1) %>%
+    ungroup() %>%
+    pull(full_name) # Extract the vector of final names to keep
+
+# --- 4. Filter the main list ---
+SS_outputs_newest = SS_outputs_all[final_keepers] 
+
+# --- Resulting names (for verification) ---
+cat("Names to keep:\n")
+print(final_keepers)
+
+saveRDS(SS_outputs_newest, here("data/intermediate/SS_outputs_newest.rds"))
+```
+
+# 2. Data Transformation
+Transform the data to fit the IEA data format. 
+For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
+```{r}
+# Define the output folder outside the loop
+output_data_folder <- here("data/formatted/formatted_csvs")
+
+# Get the names of the list items to iterate through
+model_names <- names(SS_outputs_newest)
+
+# Loop through each model name
+for (name in model_names) {
+  
+  # Set the current model as 'base'
+  base <- SS_outputs_newest[[name]]
+  
+  dir_path <- base$inputs$dir
+  path_elements <- unlist(strsplit(dir_path, split = "/|\\\\"))
+  path_elements <- path_elements[path_elements != ""]
+  
+  # The species name is the second to last element
+  Species <- path_elements[length(path_elements) - 1]
+  # The assessment name is the last element
+  Assessment <- path_elements[length(path_elements)]
+  
+  # Check if parameters data exists
+  if (!is.null(base$parameters)) {
+    # Filter and process the recdev data
+    temp = base$parameters
+    temp2 = temp[grep("RecrDev", temp$Label), , drop = FALSE]
+    recdev2 = temp2[,c("Label","Value","Parm_StDev")]
+    recdev3 = as.data.frame(separate_wider_delim(recdev2, cols = Label, delim = "_", names = c("Era", "label", "Yr")))
+    
+    recdev3 = recdev3 %>% 
+      filter(Era == "Main") %>%
+      filter(Yr >= 2000)
+    
+    recdev3$upper = recdev3$Value + recdev3$Parm_StDev
+    recdev3$lower = recdev3$Value - recdev3$Parm_StDev
+    
+    # Check if there is data after filtering
+    if (nrow(recdev3) > 0) {
+      
+      recdev3 = recdev3 %>% 
+        select("Yr", "Value") #ignore the stdev for now
+      
+      #Use the convert_cleaned_data function in IEAnalyzeR to add metadata to the data frame
+      
+      #set up the metadata
+      num_data_cols = ncol(recdev3) - 1
+      col_names = colnames(recdev3)[-1]
+      
+      indicator_text = paste0(Species, "_", Assessment, "_", "RecDev")
+      indicator_names = c(rep(indicator_text, num_data_cols))
+      
+      unit_text = "log recruitment deviations"
+      unit_names = c(rep(unit_text, num_data_cols))
+      
+      extent_names = col_names
+      
+      final_csv = IEAnalyzeR::convert_cleaned_data(recdev3, indicator_names, unit_names, extent_names)
+      
+      file_name = paste0(Species, "_", Assessment, "_", "RecDev_formatted.csv")
+      write.csv(final_csv, file = file.path(output_data_folder, file_name), row.names = FALSE)
+    
+    } else {
+      warning(paste("No data for plotting after filtering for", name))
+    }
+  } else {
+    warning(paste("Timeseries data not found for", name))
+  }
+  
+  # Print a message to show progress
+  print(paste("Processed:", name))
+}
+```
+
+# 3. Create Data_Prep object
+Please use your formatted CSV to create a "data_prep" object.
+For more info on the data_prep function please go HERE
+```{r}
+# Set the output folder
+output_data_folder <- here("data/formatted/final_objects")
+
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/formatted_csvs")
+
+# List all csv files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files <- files[grepl("SEDAR", files) & grepl("RecDev", files)]
+
+for (file in files) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = read.csv(file)
+  
+  data_obj<-IEAnalyzeR::data_prep(dat, subind = "extent")
+  
+  file_name = paste0(Species, "_", Assessment, "_", "RecDev_object.rds")
+  saveRDS(data_obj, file = file.path(output_data_folder, file_name))
+  
+}
+```
+
+# 5. Preview Plot
+Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
+For more info on the plot_fn_obj function go HERE
+```{r}
+# Set the output folder
+output_data_folder <- here("figures/plots")
+
+# Set the folder where .csv files are stored
+input_folder = here("data/formatted/final_objects")
+
+# List all rds files that contain SEDAR and Biomass
+files <- list.files(input_folder, full.names = TRUE)
+files <- files[grepl("SEDAR", files) & grepl("RecDev", files)]
+
+for (file in files) {
+  
+  filename = basename(file)
+  
+  file_elements = strsplit(filename, "_")[[1]]
+  
+  # The species name is the first element
+  Species <- file_elements[1]
+  # The assessment name is the second element
+  Assessment <- file_elements[2]
+  
+  dat = readRDS(file)
+  
+  plot<-IEAnalyzeR::plot_fn_obj(df_obj = dat, manual_title = paste0(Species, " ", Assessment, " ", "RecDev"), trend = TRUE, xbreaks_by = 2, fig.width = 7)
+  
+  file_name = paste0(Species, "_", Assessment, "_", "RecDev_plot.png")
+  ggsave(plot, file = file.path(output_data_folder, file_name), height = 4, width = 7, units = "in")
+  
+}
+```
+END SCRIPT
