@@ -4,10 +4,10 @@ project:
 
 book: 
   page-navigation: true
-  title: "[Template] Ecosystem Status Report" 
+  title: "Gulf Ecosystem Status Report" 
   date: last-modified
-  site-url: "https://gulf-iea.github.io/ESR-Report-Template" 
-  repo-url: "https://github.com/Gulf-IEA/ESR-Report-Template"
+  site-url: "https://gulf-iea.github.io/Gulf-ESR" 
+  repo-url: "https://github.com/Gulf-IEA/Gulf-ESR"
   repo-actions: [edit, source, issue]
   favicon: report/assets/favicon.ico
   downloads: [pdf, docx]
