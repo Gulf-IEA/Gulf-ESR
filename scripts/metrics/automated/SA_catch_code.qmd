@@ -232,13 +232,13 @@ for (name in model_names) {
   
   # Step 4: Sum the retained catch for commercial and recreational fleets
   if (length(commercial_land_fleets) > 0) {
-    commercial_landings <- rowSums(ts[, commercial_land_fleets, drop = FALSE], na.rm = TRUE)
+    commercial_landings <- (rowSums(ts[, commercial_land_fleets, drop = FALSE], na.rm = TRUE))* 2.20462
   } else {
     commercial_landings <- rep(0, nrow(ts))
   }
   
   if (length(commercial_tot_fleets) > 0) {
-    commercial_totcatch <- rowSums(ts[, commercial_tot_fleets, drop = FALSE], na.rm = TRUE)
+    commercial_totcatch <- (rowSums(ts[, commercial_tot_fleets, drop = FALSE], na.rm = TRUE))* 2.20462
   } else {
     commercial_totcatch <- rep(0, nrow(ts))
   }
@@ -256,7 +256,7 @@ for (name in model_names) {
   }
   
   if (length(bycatch_disc_fleets) > 0) {
-    bycatch_discards <- rowSums(ts[, bycatch_disc_fleets, drop = FALSE], na.rm = TRUE)
+    bycatch_discards <- (rowSums(ts[, bycatch_disc_fleets, drop = FALSE], na.rm = TRUE))* 2.20462
   } else {
     bycatch_discards <- rep(0, nrow(ts))
   }
@@ -333,7 +333,7 @@ for (name in model_names) {
   indicator_text_com = paste0(Species, "_", Assessment, "_", "Commercial_Catch")
   indicator_names_com = c(rep(indicator_text_com, num_data_cols_com))
       
-  unit_text_com = "Metric tons" #need to probably change this and check if correct
+  unit_text_com = "Thousand pounds" #need to probably change this and check if correct
   unit_names_com = c(rep(unit_text_com, num_data_cols_com))
       
   extent_names_com = c(data_col_names_com)
