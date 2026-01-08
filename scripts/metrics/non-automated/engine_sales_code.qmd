@@ -1,0 +1,167 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+---
+
+File created on 2026-01-08
+
+# 0. Setup
+Add any packages that are needed for analysis in this code chunk. 
+```{r packages}
+library(IEAnalyzeR)
+library(pdftools)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(here)
+```
+
+File Naming Setup.
+!! Auto generated-Do Not Change !!
+```{r}
+
+root_name<- "engine_sales"
+
+csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv") 
+object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
+plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
+
+```
+
+# 1. Read Data
+Pull data from its source:
+Manual data: data/unformatted data
+Automated data: Add script for data call (API, package, etc.)
+Confidential data: Store locally in the confidential data folder
+    - This folder is excluded using gitignore and will not push to the GitHub repo
+If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
+    - Filename should use the syntax rootname_descriptivename
+```{r}
+# Outboard engine sales trend data come from the National Marine Manufacturers Association. They publish a U.S. Recreational Boating Statistical Abstract annually. The pdf can be dowloaded from [here](https://www.nmma.org/statistics/publications/statistical-abstract). You must create an account in order to download the pdfs. For this report, the pdf has been downloaded and saved to the data/unformatted folder.
+
+# We will start by extracting all the relevant data, then will summarize to make an indicator.
+
+file_path <- here("data/unformatted/2024 Outboard Engine Sales Trends.pdf")
+
+# First I need a function to scrape the data from any of the tables in the pdf. This function will scrape annual sales data from the Gulf states. Luckily the tables seem to always be in a consistent format.
+
+# Function to extract state-specific outboard sales by page/table
+extract_hp_data <- function(file_path, page_num) {
+  
+  # Load specific page text
+  pdf_text_raw <- pdf_text(file_path)[page_num]
+  lines <- str_split(pdf_text_raw, "\\n")[[1]]
+  lines <- str_trim(lines) # Clean whitespace
+  
+  # 2. Extract Table Title safely
+  # Look for the line that starts with "Table"
+  title_idx <- which(str_detect(lines, "^Table \\d+"))
+  clean_title <- if(length(title_idx) > 0) lines[title_idx[1]] else paste("Table_Page", page_num)
+  # Clean title for list naming
+  clean_title <- str_remove_all(clean_title, '[\"\\r]')
+  
+  # 3. Targeted States
+  target_states <- c("Alabama", "Florida", "Louisiana", "Mississippi", "Texas")
+  
+  scrape_row <- function(state_name) {
+    # Find line containing state name
+    # We look for the state name at the very beginning of the string
+    row_text <- lines[str_detect(lines, paste0("^", state_name))]
+    
+    if(length(row_text) == 0) return(rep(NA, 14))
+    
+    # Extract all sequences of numbers and commas
+    # This regex is more forgiving of font-encoding artifacts
+    values <- str_extract_all(row_text, "[\\d,.]+")[[1]]
+    
+    # Filter out single dots or commas that aren't numbers
+    values <- values[str_detect(values, "\\d")]
+    
+    # Clean commas and convert to numeric
+    numeric_vals <- as.numeric(gsub(",", "", values))
+    
+    # Return 2011-2024 (first 14 values)
+    # If the row had fewer than 14, pad with NA
+    if(length(numeric_vals) < 14) {
+      return(c(numeric_vals, rep(NA, 14 - length(numeric_vals))))
+    }
+    
+    return(numeric_vals[1:14])
+  }
+  
+  # 4. Build Data Frame
+  data_list <- lapply(target_states, scrape_row)
+  names(data_list) <- target_states
+  
+  df <- data.frame(
+    year = 2011:2024,
+    Texas = data_list$Texas,
+    Louisiana = data_list$Louisiana,
+    Mississippi = data_list$Mississippi,
+    Alabama = data_list$Alabama,
+    Florida = data_list$Florida
+  )
+  
+  return(list(name = clean_title, data = df))
+}
+
+
+# Now we will use this function to extract sales data for all the different engine sizes.There are 10 tables ranging from 4hp engine sales to 300+hp. 
+
+#The tables are on every other page starting on page 21 for the 2024 report.
+page_numbers = seq(21,41, by=2)
+
+hp_data_list <- list()
+
+for (p in page_numbers) {
+  result <- extract_hp_data(file_path, p)
+  # Store the dataframe in the list using the scraped table title as the key
+  hp_data_list[[result$name]] <- result$data
+}
+
+```
+
+# 2. Data Transformation
+Transform the data to fit the IEA data format. 
+For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
+```{r}
+
+```
+
+# 3. Create Data_Prep object
+Please use your formatted CSV to create a "data_prep" object.
+For more info on the data_prep function please go HERE
+```{r}
+data_obj<-IEAnalyzeR::data_prep()
+```
+
+# 4. Save Formatted csv and data_prep object
+This will save your data to the appropriate folders. 
+Please replace "formatted_csv" with the name of your final formatted data.
+```{r}
+#Save formatted CSV
+write.csv(formatted_csv, file = csv_filename, row.names = F)
+
+#Save data_prep object
+saveRDS(data_obj, file = object_filename)
+```
+
+# 5. Preview Plot
+Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
+For more info on the plot_fn_obj function go HERE
+```{r}
+
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj)
+
+```
+
+# 6. Save plot
+This will save the plot to the correct folder.
+Adjust height & width using (height=, width=, unit="in") if needed.
+```{r}
+ggsave(filename = plot_filename)
+```
+
