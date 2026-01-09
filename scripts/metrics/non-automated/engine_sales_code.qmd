@@ -182,7 +182,7 @@ head(outboard_summary)
 
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = rep("Boat sales by engine size", ncol(outboard_summary)-1)
+indicator_names = rep("Outboard Engine Sales Trends", ncol(outboard_summary)-1)
 unit_names = rep("units sold", ncol(outboard_summary)-1)
 extent_names = c("<30 hp", "30-150 hp", ">150 hp")
 
