@@ -12,11 +12,13 @@ File created on 2026-01-08
 Add any packages that are needed for analysis in this code chunk. 
 ```{r packages}
 library(IEAnalyzeR)
+library(here)
+library(ggplot2)
 library(pdftools)
 library(stringr)
 library(dplyr)
 library(tidyr)
-library(here)
+library(purrr)
 ```
 
 File Naming Setup.
@@ -25,20 +27,15 @@ File Naming Setup.
 
 root_name<- "engine_sales"
 
-csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv") 
-object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
-plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
+csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")) 
+object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
+plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
 
 ```
 
 # 1. Read Data
-Pull data from its source:
-Manual data: data/unformatted data
-Automated data: Add script for data call (API, package, etc.)
-Confidential data: Store locally in the confidential data folder
-    - This folder is excluded using gitignore and will not push to the GitHub repo
-If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
-    - Filename should use the syntax rootname_descriptivename
+
+Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
 ```{r}
 # Outboard engine sales trend data come from the National Marine Manufacturers Association. They publish a U.S. Recreational Boating Statistical Abstract annually. The pdf can be dowloaded from [here](https://www.nmma.org/statistics/publications/statistical-abstract). You must create an account in order to download the pdfs. For this report, the pdf has been downloaded and saved to the data/unformatted folder.
 
@@ -51,48 +48,65 @@ file_path <- here("data/unformatted/2024 Outboard Engine Sales Trends.pdf")
 # Function to extract state-specific outboard sales by page/table
 extract_hp_data <- function(file_path, page_num) {
   
-  # Load specific page text
-  pdf_text_raw <- pdf_text(file_path)[page_num]
+  #suppress warning here about the font (not necessary)
+  pdf_text_raw <- suppressMessages(suppressWarnings(pdftools::pdf_text(file_path)[page_num]))
   lines <- str_split(pdf_text_raw, "\\n")[[1]]
-  lines <- str_trim(lines) # Clean whitespace
+  lines <- str_trim(lines)
   
-  # 2. Extract Table Title safely
-  # Look for the line that starts with "Table"
-  title_idx <- which(str_detect(lines, "^Table \\d+"))
-  clean_title <- if(length(title_idx) > 0) lines[title_idx[1]] else paste("Table_Page", page_num)
-  # Clean title for list naming
-  clean_title <- str_remove_all(clean_title, '[\"\\r]')
+  # 1. Title Extraction
+  title_line <- lines[str_detect(lines, "^Table \\d+:")]
+  if(length(title_line) > 0) {
+    clean_title <- str_match(title_line[1], ":\\s*(.*?)\\s*unit sales")[,2]
+  } else {
+    clean_title <- paste("Segment_Page", page_num)
+  }
   
-  # 3. Targeted States
   target_states <- c("Alabama", "Florida", "Louisiana", "Mississippi", "Texas")
   
   scrape_row <- function(state_name) {
-    # Find line containing state name
-    # We look for the state name at the very beginning of the string
-    row_text <- lines[str_detect(lines, paste0("^", state_name))]
+    # 2. Targeted Regex: Starts with state name and ends with numeric rank
+    pattern <- paste0("^[\"\\s]*", state_name, ".*\\d$")
+    row_text <- lines[str_detect(lines, pattern)]
     
-    if(length(row_text) == 0) return(rep(NA, 14))
-    
-    # Extract all sequences of numbers and commas
-    # This regex is more forgiving of font-encoding artifacts
-    values <- str_extract_all(row_text, "[\\d,.]+")[[1]]
-    
-    # Filter out single dots or commas that aren't numbers
-    values <- values[str_detect(values, "\\d")]
-    
-    # Clean commas and convert to numeric
-    numeric_vals <- as.numeric(gsub(",", "", values))
-    
-    # Return 2011-2024 (first 14 values)
-    # If the row had fewer than 14, pad with NA
-    if(length(numeric_vals) < 14) {
-      return(c(numeric_vals, rep(NA, 14 - length(numeric_vals))))
+    # Fallback if rank column is missing or text layout is slightly shifted
+    if(length(row_text) == 0) {
+       pattern <- paste0("^[\"\\s]*", state_name)
+       potential_rows <- lines[str_detect(lines, pattern)]
+       if(length(potential_rows) == 0) return(rep(NA, 14))
+       # Take the longest matching line (likely the table row)
+       row_text <- potential_rows[which.max(nchar(potential_rows))]
     }
     
-    return(numeric_vals[1:14])
+    # 3. Handling Dashes and Numbers
+    # Remove state name from the start to avoid numeric interference
+    just_data_text <- str_remove(row_text, paste0("^[\"\\s]*", state_name))
+    
+    # 4. Handle Unicode Em-dashes and Numbers
+    # Regex for: 
+    # (a) Numbers/Commas: -?[\\d,.]+
+    # (b) Unicode Dash Placeholders: [\u2014\u2013]
+    values <- str_extract_all(just_data_text, "-?[\\d,.]+|[\u2014\u2013]")[[1]]
+    
+    # Convert to numeric or NA
+    clean_vals <- sapply(values, function(x) {
+      # If it's a dash or hyphen, it's missing data for that year
+      if (x %in% c("\u2014", "\u2013", "-")) return(NA)
+      # Otherwise clean commas and convert to numeric
+      return(as.numeric(gsub(",", "", x)))
+    })
+    
+    # Remove the string labels
+    numeric_vals <- unname(clean_vals)
+    
+    # 4. Return 2011-2024 (the first 14 columns of data)
+    if(length(numeric_vals) >= 14) {
+      return(as.numeric(numeric_vals[1:14]))
+    } else {
+      # If for some reason the row is short, pad with NA
+      return(as.numeric(c(numeric_vals, rep(NA, 14 - length(numeric_vals)))))
+    }
   }
   
-  # 4. Build Data Frame
   data_list <- lapply(target_states, scrape_row)
   names(data_list) <- target_states
   
@@ -117,51 +131,102 @@ page_numbers = seq(21,41, by=2)
 hp_data_list <- list()
 
 for (p in page_numbers) {
-  result <- extract_hp_data(file_path, p)
-  # Store the dataframe in the list using the scraped table title as the key
-  hp_data_list[[result$name]] <- result$data
+  tryCatch({
+    result <- extract_hp_data(file_path, p)
+    hp_data_list[[result$name]] <- result$data
+    message("Successfully scraped: ", result$name)
+  }, error = function(e) {
+    message("Error on page ", p, ": ", e$message)
+  })
 }
 
 ```
 
-# 2. Data Transformation
-Transform the data to fit the IEA data format. 
-For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
+# 2. Clean data and create time series csv
+
+Transform the data to fit the IEA data format.
+For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function.
 ```{r}
+#Now that we've scraped the data from all the relevant tables, we want to combine the information into an indicator. We will combine all Gulf states and just look at three categories of engine sizes. Small = Less than 30hp, Medium = 30-149.9hp, Large = 150+hp. 
+
+# Define the mapping of HP ranges to Categories
+category_map <- list(
+  "<30 hp"    = c("Less than 4 hp", "4–9.9 hp", "10–29.9 hp"),
+  "30-150 hp" = c("30–49.9 hp", "50–74.9 hp", "75–99.9 hp", "100–149.9 hp"),
+  ">150 hp"   = c("150–199.9 hp", "200–249.9 hp", "250–299.9 hp", "300 hp and greater")
+)
+
+# Process the list into 4-column table
+outboard_summary <- hp_data_list %>%
+  # Convert list of dataframes into one long dataframe
+  imap_dfr(~ .x %>% mutate(segment = .y)) %>%
+  # Create the new category labels
+  mutate(category = case_when(
+    segment %in% category_map[["<30 hp"]]    ~ "<30 hp",
+    segment %in% category_map[["30-150 hp"]] ~ "30-150 hp",
+    segment %in% category_map[[">150 hp"]]   ~ ">150 hp"
+  )) %>%
+  # Row-wise sum of the 5 states, then group-wise sum by category
+  mutate(five_state_total = Texas + Louisiana + Mississippi + Alabama + Florida) %>%
+  group_by(year, category) %>%
+  summarise(total_sales = sum(five_state_total, na.rm = TRUE), .groups = "drop") %>%
+  # Pivot to wide format to match your requested column structure
+  pivot_wider(names_from = category, values_from = total_sales) %>%
+  # Ensure columns are in the specific order you requested
+  select(year, `<30 hp`, `30-150 hp`, `>150 hp`)
+
+head(outboard_summary)
 
 ```
 
-# 3. Create Data_Prep object
-Please use your formatted CSV to create a "data_prep" object.
-For more info on the data_prep function please go HERE
 ```{r}
-data_obj<-IEAnalyzeR::data_prep()
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = rep("Boat sales by engine size", ncol(outboard_summary)-1)
+unit_names = rep("units sold", ncol(outboard_summary)-1)
+extent_names = c("<30 hp", "30-150 hp", ">150 hp")
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(outboard_summary, indicator_names, unit_names, extent_names)
 ```
 
-# 4. Save Formatted csv and data_prep object
-This will save your data to the appropriate folders. 
-Please replace "formatted_csv" with the name of your final formatted data.
-```{r}
-#Save formatted CSV
-write.csv(formatted_csv, file = csv_filename, row.names = F)
+# 3. Save Formatted data as csv
 
-#Save data_prep object
+This will save your data to the appropriate folder.
+```{r}
+write.csv(formatted_data, file = csv_filename, row.names = F)
+```
+
+
+# 4. Create Data_Prep object
+
+Please use your formatted csv to create a "data_prep" object.
+For more info on the data_prep function see the vignette linked above.
+```{r}
+data_obj<-IEAnalyzeR::data_prep(csv_filename, subind = "extent")
+```
+
+# 5. Save Formatted data_prep object
+
+This will save your data to the appropriate folder.
+```{r}
 saveRDS(data_obj, file = object_filename)
 ```
 
-# 5. Preview Plot
-Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
+# 6. Preview Plot
+
+Use the IEAnalyzeR plotting function to preview the data.
+This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
+
 ```{r}
-
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj)
-
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
 ```
 
-# 6. Save plot
+# 7. Save plot
+
 This will save the plot to the correct folder.
 Adjust height & width using (height=, width=, unit="in") if needed.
+
 ```{r}
 ggsave(filename = plot_filename)
 ```
-
