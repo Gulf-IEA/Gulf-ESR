@@ -12,7 +12,7 @@ csv_filename<-paste0("data/formatted/formatted_csvs/", root_name, "_formatted.cs
 object_filename<-paste0("data/formatted/final_objects/", root_name, "_object.rds")
 plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
 
-----------------------
+----------------------------------------------------
 #### 1. Read Data ####
 # Pull data from its source:
 # Manual data: data/unformatted data
@@ -23,39 +23,54 @@ plot_filename<-paste0("figures/plots/", root_name, "_plot.png")
 #   - Filename should use the syntax rootname_descriptivename
 
 
---------------------------------
-#### 2. Data Transformation ####
-# Transform the data to fit the IEA data format.
-# For more info on IEA data format go HERE, or use THIS FUNCTION to view dummy data.
+----------------------------------------------------
+#### 2. Clean data and create time series csv ####
 
+#Transform the data to fit the IEA data format.
+#For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+#Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function.
 
-------------------------------------
-#### 3. Create Data_Prep object ####
-# Please use your formatted CSV to create a "data_prep" object.
-# For more info on the data_prep function please go HERE
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c("")
+unit_names = c("")
+extent_names = c("")
 
-data_obj<-IEAnalyzeR::data_prep()
+formatted_data = IEAnalyzeR::convert_cleaned_data()
+
 
 ----------------------------------------------------
-#### 4. Save Formatted csv and data_prep object ####
-# This will save your data to the appropriate folders.
-# Please replace "formatted_csv" with the name of your final formatted data.
+#### 3. Save Formatted data as csv ####
+ 
+# This will save your data to the appropriate folder.
 
-#Save formatted CSV
-write.csv(formatted_csv, file = csv_filename, row.names = F)
+write.csv(formatted_data, file = csv_filename, row.names = F)
 
-#Save data_prep object
+----------------------------------------------------
+#### 4. Create Data_Prep object ####
+  
+#Please use your formatted csv to create a "data_prep" object.
+#For more info on the data_prep function see the vignette linked above.
+
+data_obj<-IEAnalyzeR::data_prep(csv_filename)
+
+
+----------------------------------------------------
+#### 5. Save Formatted data_prep object ####
+
+#This will save your data to the appropriate folder.
+  
 saveRDS(data_obj, file = object_filename)
 
--------------------------
-#### 5. Preview Plot ####
+
+----------------------------------------------------
+#### 6. Preview Plot ####
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj)
 
-----------------------
-#### 6. Save plot ####
+----------------------------------------------------
+#### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
