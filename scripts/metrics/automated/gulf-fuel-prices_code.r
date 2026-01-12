@@ -1,5 +1,5 @@
 
-# File created on 2026-01-12 by B. Turley
+# File created on 2026-01-12 and draft completed on 2026-01-12 by B.Turley
 
 #### 0. Setup ####
 library(IEAnalyzeR)
@@ -19,7 +19,7 @@ csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_forma
 object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
 plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
-----------------------------------------------------
+#----------------------------------------------------
 #### 1. Read Data ####
 
 ### need personal api key requested from BEA.gov; I keep mine in a file that is gitignored
@@ -104,51 +104,58 @@ setwd(here('data/intermediate'))
 write.csv(fuel_merged, 'gulf_fuel_prices.csv', row.names = F)
 
 
-----------------------------------------------------
+#----------------------------------------------------
 #### 2. Clean data and create time series csv ####
 
 #Transform the data to fit the IEA data format.
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
+### load from previous stopping point
+fuel_prices <- read.csv(here('data/intermediate/gulf_fuel_prices.csv'))
+fuel_prices <- fuel_prices[ ,c(1,3,5)]
+fuel_prices$date <- substr(fuel_prices$date, 1, 7)
+
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
-
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+indicator_names = rep('Fuel Price', 2)
+unit_names = c('Gasoline $/gallon (2025 USD)', 'Diesel $/gallon (2025 USD)')
+extent_names = rep('Gulf-wide', 2)
 
 
-----------------------------------------------------
+fuel_prices_formatted = IEAnalyzeR::convert_cleaned_data(fuel_prices, indicator_names, unit_names, extent_names)
+
+head(fuel_prices_formatted)
+
+#----------------------------------------------------
 #### 3. Save Formatted data as csv ####
  
 # This will save your data to the appropriate folder.
 
-write.csv(formatted_data, file = csv_filename, row.names = F)
+write.csv(fuel_prices_formatted, file = csv_filename, row.names = F)
 
-----------------------------------------------------
+#----------------------------------------------------
 #### 4. Create Data_Prep object ####
   
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
-data_obj<-IEAnalyzeR::data_prep(csv_filename)
+fuel_price_obj <- IEAnalyzeR::data_prep(fuel_prices_formatted)
 
 
-----------------------------------------------------
+#----------------------------------------------------
 #### 5. Save Formatted data_prep object ####
 
 #This will save your data to the appropriate folder.
   
-saveRDS(data_obj, file = object_filename)
+saveRDS(fuel_price_obj, file = object_filename)
 
 
-----------------------------------------------------
+#----------------------------------------------------
 #### 6. Preview Plot ####
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trends = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = fuel_price_obj, trend = T, sep_ylabs = TRUE, ylab_sublabel = c("extent", "unit"))
 
 ----------------------------------------------------
 #### 7. Save plot ####

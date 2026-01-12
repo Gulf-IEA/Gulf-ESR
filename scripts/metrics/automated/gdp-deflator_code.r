@@ -52,7 +52,7 @@ yr_qr <- yr_qr |> matrix(length(yr_qr)/2,2,byrow=T) |> as.data.frame() |>
   setNames(c('year','quarter'))
 gdp_dfq <- cbind(gdp_dfq, yr_qr)
 
-### for interpolation, I will assume that the quarterly value is the mid-point of the quarter (or should it be the last month of the quarter)
+### for interpolation, assume the quarterly value is the mid-point of the quarter
 gdp_dfq$month <- (gdp_dfq$quarter - 1)/4*12+2
 gdp_dfq$yr_mth <- gdp_dfq$year + (gdp_dfq$month - 1)/12
 
