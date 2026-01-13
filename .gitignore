@@ -5,3 +5,5 @@
 *.Rproj
 
 /.quarto/
+
+keys.api
