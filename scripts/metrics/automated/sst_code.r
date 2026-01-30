@@ -101,9 +101,13 @@ system.time(
   }
 )
 
-setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
-# save(dat_eez, dat_gulf, file = 'sst_comb_temp.RData')
-load('sst_comb_temp.RData')
+setwd(here(paste0("data/intermediate")))
+# save(dat_eez, dat_gulf, file = 'sst_comb_temp2.RData')
+load('sst_comb_temp2.RData')
+
+### convert to dates
+dat_gulf$time <- as.Date(dat_gulf$time)
+dat_eez$time <- as.Date(dat_eez$time)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
