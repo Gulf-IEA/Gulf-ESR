@@ -29,6 +29,8 @@ leases <- read.csv(file.path(temp_dir,'LABRawData', "mv_lease_area_block.txt"))
 leases$LEASE_EFF_DATE <- mdy(leases$LEASE_EFF_DATE)
 leases$LEASE_EXPIR_DATE <- mdy(leases$LEASE_EXPIR_DATE)
 
+# save intermediate in case the BOEM data portal goes offline or changes
+saveRDS(leases, file = here(paste0("data/intermediate/", root_name, "_intermediate.rds")))
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
