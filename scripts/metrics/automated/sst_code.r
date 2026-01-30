@@ -20,13 +20,6 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
 #----------------------------------------------------
 #### 1. Read Data ####
-# Pull data from its source:
-# Manual data: data/unformatted data
-# Automated data: Add script for data call (API, package, etc.)
-# Confidential data: Store locally in the confidential data folder
-#   - This folder is excluded using gitignore and will not push to the GitHub repo
-# If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
-#   - Filename should use the syntax rootname_descriptivename
 
 # define years  --------------------------------
 styear <- 1982
@@ -39,10 +32,11 @@ min_lat <- 18
 max_lat <- 31
 
 # load shapefile to subset  --------------------------------
-setwd('C:/Users/brendan.turley/Documents/data/shapefiles/gulf_eez')
+### shapefiles downloaded from marineregions.org (future goal implement mregions2 R package for shapefile)
+setwd(here(paste0("data/intermediate/gulf_eez")))
 eez <- vect('eez.shp') |> makeValid()
 
-setwd('C:/Users/brendan.turley/Documents/data/shapefiles/gulf_iho')
+setwd(here(paste0("data/intermediate/gulf_iho")))
 iho <- vect('iho.shp') |> makeValid()
 
 gulf_eez <- terra::intersect(eez, iho) |> st_as_sf() |> st_transform(crs = st_crs(4326))
