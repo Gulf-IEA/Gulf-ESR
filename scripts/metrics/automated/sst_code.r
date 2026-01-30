@@ -109,6 +109,14 @@ load('sst_comb_temp2.RData')
 dat_gulf$time <- as.Date(dat_gulf$time)
 dat_eez$time <- as.Date(dat_eez$time)
 
+# add yearmonth column --------------------------
+dat_gulf$yrmon <- paste(dat_gulf$time |> year(),
+                        sprintf("%02.f", dat_gulf$time |> month()),
+                        sep = '-')
+dat_eez$yrmon <- paste(dat_eez$time |> year(),
+                       sprintf("%02.f", dat_eez$time |> month()),
+                       sep = '-')
+
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
 
@@ -116,12 +124,28 @@ dat_eez$time <- as.Date(dat_eez$time)
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
+gulf_yrmon <- dat_gulf |>
+  group_by(yrmon) |>
+  summarise(gulf_sst_degC = mean(sst_degC, na.rm = T),
+            gulf_anom_degC = mean(anom_degC, na.rm = T))
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+eez_yrmon <- dat_eez |>
+  group_by(yrmon) |>
+  summarise(eez_sst_degC = mean(sst_degC, na.rm = T),
+            eez_anom_degC = mean(anom_degC, na.rm = T))
+
+sst_merge <- merge(gulf_yrmon, eez_yrmon)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = rep("Sea Surface Temperature", 2)
+unit_names = rep("Anomaly (°C)", 2)
+extent_names = c("Gulf-wide", 'US Gulf EEZ')
+
+formatted_data = select(sst_merge,
+                        yrmon,
+                        gulf_anom_degC,
+                        eez_anom_degC) |>
+  IEAnalyzeR::convert_cleaned_data(indicator_names, unit_names, extent_names)
 
 
 #----------------------------------------------------
@@ -153,7 +177,7 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trends = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
 
 #----------------------------------------------------
 #### 7. Save plot ####
