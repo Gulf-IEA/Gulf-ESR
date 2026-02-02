@@ -161,7 +161,7 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
-data_obj<-IEAnalyzeR::data_prep(csv_filename)
+data_obj <- IEAnalyzeR::data_prep(csv_filename)
 
 
 #----------------------------------------------------
@@ -179,9 +179,131 @@ saveRDS(data_obj, file = object_filename)
 
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
 
+
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
 ggsave(filename = plot_filename)
+
+
+#----------------------------------------------------
+#### 8. making Seasonal plots (sensu NEFSC SOE) ####
+
+### load from previously saved spot
+setwd(here(paste0("data/intermediate")))
+load('sst_comb_temp2.RData')
+
+### convert to dates
+dat_gulf$time <- as.Date(dat_gulf$time)
+dat_eez$time <- as.Date(dat_eez$time)
+
+# add yearmonth column --------------------------
+dat_gulf$yrmon <- paste(dat_gulf$time |> year(),
+                        sprintf("%02.f", dat_gulf$time |> month()),
+                        sep = '-')
+dat_eez$yrmon <- paste(dat_eez$time |> year(),
+                       sprintf("%02.f", dat_eez$time |> month()),
+                       sep = '-')
+
+### add seasons
+dat_gulf$jday <- yday(dat_gulf$time)
+dat_eez$jday <- yday(dat_eez$time)
+
+dat_gulf <- dat_gulf |>
+  mutate(season = case_when(
+    month(time)==12 | month(time)<3 ~ 'win',
+    month(time)>2 & month(time)<6 ~ 'spr',
+    month(time)>5 & month(time)<9 ~ 'sum',
+    month(time)>8 & month(time)<12 ~ 'aut'
+  )) |>
+  arrange(time)
+
+dat_eez <- dat_eez |>
+  mutate(season = case_when(
+    month(time)==12 | month(time)<3 ~ 'win',
+    month(time)>2 & month(time)<6 ~ 'spr',
+    month(time)>5 & month(time)<9 ~ 'sum',
+    month(time)>8 & month(time)<12 ~ 'aut'
+  )) |>
+  arrange(time)
+
+### create season_yr and adjust to make december n-1 part of winter n
+dat_gulf$season_yr <- ifelse(month(dat_gulf$time)==12, year(dat_gulf$time)+1, year(dat_gulf$time))
+dat_eez$season_yr <- ifelse(month(dat_eez$time)==12, year(dat_eez$time)+1, year(dat_eez$time))
+dat_gulf$season_yr[which(dat_gulf$season_yr==2026)] <- NA
+dat_eez$season_yr[which(dat_eez$season_yr==2026)] <- NA
+
+
+### seasonal means
+### anomaly
+gulf_seasonal_sst <- dat_gulf |>
+  group_by(season,
+           season_yr) |>
+  summarise(anom_degC = mean(anom_degC, na.rm = T))
+
+gulf_win <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='win'),
+                      mean, na.rm = T)
+gulf_spr <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='spr'),
+                      mean, na.rm = T)
+gulf_sum <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='sum'),
+                      mean, na.rm = T)
+gulf_aut <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='aut'),
+                      mean, na.rm = T)
+
+eez_win <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='win'),
+                     mean, na.rm = T)
+eez_spr <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='spr'),
+                     mean, na.rm = T)
+eez_sum <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='sum'),
+                     mean, na.rm = T)
+eez_aut <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='aut'),
+                     mean, na.rm = T)
+
+
+par(mfrow = c(2,2))
+plot(gulf_win$season_yr, gulf_win$anom_degC, 
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_win), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(gulf_spr$season_yr, gulf_spr$anom_degC, 
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_spr), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(gulf_sum$season_yr, gulf_sum$anom_degC, 
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_sum), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(gulf_aut$season_yr, gulf_aut$anom_degC,
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_aut), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+
+par(mfrow = c(2,2))
+plot(eez_win$season_yr, eez_win$anom_degC, 
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(eez_spr$season_yr, eez_spr$anom_degC, 
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(eez_sum$season_yr, eez_sum$anom_degC, 
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(eez_aut$season_yr, eez_aut$anom_degC,
+     typ = 'o', pch = 16, ylim = c(-2,2),
+     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
+                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
+     xlab = 'Year', ylab = 'Anomaly (°C)')
+
+
