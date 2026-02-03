@@ -6,7 +6,7 @@ execute:
   warning: false
 ---
 
-File created on 2026-01-08
+File created on 2026-01-08 by C. Gervasi
 
 # 0. Setup
 Add any packages that are needed for analysis in this code chunk. 
@@ -152,9 +152,10 @@ Once data are formatted with time (annual or monthly) as column 1 and metric val
 
 # Define the mapping of HP ranges to Categories
 category_map <- list(
-  "<30 hp"    = c("Less than 4 hp", "4–9.9 hp", "10–29.9 hp"),
-  "30-150 hp" = c("30–49.9 hp", "50–74.9 hp", "75–99.9 hp", "100–149.9 hp"),
-  ">150 hp"   = c("150–199.9 hp", "200–249.9 hp", "250–299.9 hp", "300 hp and greater")
+  "Inshore"    = c("Less than 4 hp", "4–9.9 hp", "10–29.9 hp", "30–49.9 hp"),
+  "Nearshore" = c("50–74.9 hp", "75–99.9 hp", "100–149.9 hp"),
+  "Near-offshore"   = c("150–199.9 hp", "200–249.9 hp", "250–299.9 hp"),
+  "Far-offshore" = c("300 hp and greater")
 )
 
 # Process the list into 4-column table
@@ -163,9 +164,10 @@ outboard_summary <- hp_data_list %>%
   imap_dfr(~ .x %>% mutate(segment = .y)) %>%
   # Create the new category labels
   mutate(category = case_when(
-    segment %in% category_map[["<30 hp"]]    ~ "<30 hp",
-    segment %in% category_map[["30-150 hp"]] ~ "30-150 hp",
-    segment %in% category_map[[">150 hp"]]   ~ ">150 hp"
+    segment %in% category_map[["Inshore"]]    ~ "Inshore",
+    segment %in% category_map[["Nearshore"]] ~ "Nearshore",
+    segment %in% category_map[["Near-offshore"]]   ~ "Near-offshore",
+    segment %in% category_map[["Far-offshore"]]   ~ "Far-offshore"
   )) %>%
   # Row-wise sum of the 5 states, then group-wise sum by category
   mutate(five_state_total = Texas + Louisiana + Mississippi + Alabama + Florida) %>%
@@ -174,7 +176,7 @@ outboard_summary <- hp_data_list %>%
   # Pivot to wide format to match your requested column structure
   pivot_wider(names_from = category, values_from = total_sales) %>%
   # Ensure columns are in the specific order you requested
-  select(year, `<30 hp`, `30-150 hp`, `>150 hp`)
+  select(year, `Inshore`, `Nearshore`, `Near-offshore`, `Far-offshore`)
 
 head(outboard_summary)
 
@@ -183,8 +185,8 @@ head(outboard_summary)
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Outboard Engine Sales Trends", ncol(outboard_summary)-1)
-unit_names = rep("units sold", ncol(outboard_summary)-1)
-extent_names = c("<30 hp", "30-150 hp", ">150 hp")
+unit_names = c("<50 hp", "50-150 hp", "150-300 hp", "<300 hp")
+extent_names = c("Inshore", "Nearshore", "Near-offshore", "Far-offshore")
 
 formatted_data = IEAnalyzeR::convert_cleaned_data(outboard_summary, indicator_names, unit_names, extent_names)
 ```
@@ -219,7 +221,7 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, ylab_sublabel = c("extent", "unit"), sep_ylabs = T, facet_scales = "fixed")
 ```
 
 # 7. Save plot
