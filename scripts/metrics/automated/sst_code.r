@@ -238,10 +238,10 @@ dat_eez$season_yr[which(dat_eez$season_yr==2026)] <- NA
 
 ### seasonal means
 ### anomaly
-gulf_seasonal_sst <- dat_gulf |>
-  group_by(season,
-           season_yr) |>
-  summarise(anom_degC = mean(anom_degC, na.rm = T))
+# gulf_seasonal_sst <- dat_gulf |>
+#   group_by(season,
+#            season_yr) |>
+#   summarise(anom_degC = mean(anom_degC, na.rm = T))
 
 gulf_win <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='win'),
                       mean, na.rm = T)
