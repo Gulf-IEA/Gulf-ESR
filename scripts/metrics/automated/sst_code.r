@@ -52,7 +52,7 @@ rm(eez, iho); gc()
 #### load saved intermediate files below loop ########
 ######################################################
 
-review_code <- T ### set to F to rerun download code
+review_code <- T ### set to F to rerun download loop
 
 if(review_code == F){
   
