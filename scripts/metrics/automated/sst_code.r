@@ -106,12 +106,12 @@ if(review_code == F){
     }
   )
   
-  setwd(here(paste0("data/intermediate")))
+  setwd(here("data/intermediate"))
   save(dat_eez, dat_gulf, file = 'sst_comb_temp2.RData')
   
 } else {
   
-  setwd(here(paste0("data/intermediate")))
+  setwd(here("data/intermediate"))
   load('sst_comb_temp2.RData')
   
 }
@@ -203,17 +203,16 @@ ggsave(filename = plot_filename)
 #----------------------------------------------------
 #### 8. making Seasonal plots (sensu NEFSC SOE) ####
 
+
+### helper functions
 ax_convert_c2f <- function(vals, side = 4, n = 5, las = 1, ...){ ### ... used to pass other parameters for interior fxns
   tick_val <- pretty(vals*(9/5)+32, n = n, ...)
   axis(side, (tick_val-32)*(5/9), tick_val, las = las, ...)
 }
 
 
-(eez_win$sst_degC+32)*(5/9)
-
-
 ### load from previously saved spot
-setwd(here(paste0("data/intermediate")))
+setwd(here("data/intermediate"))
 load('sst_comb_temp2.RData')
 
 ### convert to dates
@@ -295,3 +294,138 @@ ax_convert_c2f(eez_aut$sst_degC, n = 4)
 dev.off()
 
 
+
+### spatial plots
+
+setwd("C:/Users/brendan.turley/Documents/R_projects/ESR-indicator-scratch/data/intermediate_files")
+anom_2021 <- readRDS('anom_2021')
+anom_2022 <- readRDS('anom_2022')
+anom_2023 <- readRDS('anom_2023')
+anom_2024 <- readRDS('anom_2024')
+anom_2025 <- readRDS('anom_2025')
+
+
+anom_a <- array(NA, dim = c(72,52,5))
+anom_a[,,1] <- apply(anom_2021$anom, c(1,2), mean, na.rm=T)
+anom_a[,,2] <- apply(anom_2022$anom, c(1,2), mean, na.rm=T)
+anom_a[,,3] <- apply(anom_2023$anom, c(1,2), mean, na.rm=T)
+anom_a[,,4] <- apply(anom_2024$anom, c(1,2), mean, na.rm=T)
+anom_a[,,5] <- apply(anom_2025$anom, c(1,2), mean, na.rm=T)
+
+anom_a <- array(NA, dim = c(72,52,1826))
+anom_a[,,1:365] <- anom_2021$anom
+anom_a[,,366:730] <- anom_2022$anom
+anom_a[,,731:1095] <- anom_2023$anom
+anom_a[,,1096:1461] <- anom_2024$anom
+anom_a[,,1462:1826] <- anom_2025$anom
+
+y <- 1:dim(anom_a)[3]
+
+array_lm <- function (x){
+  if(is.na(all(x))){
+    NA
+  } else {
+    coef(lm(x~y))[2]
+  }
+}
+
+yr5_trend <- apply(anom_a, c(1,2), array_lm)
+hist(yr5_trend)
+range(yr5_trend, na.rm = T)
+
+imagePlot(yr5_trend)
+
+a_brks <- seq(-3,3,.1)
+a_cols <- cmocean('balance')(length(a_brks)-1)
+t_brks <- seq(-.342,.342,.02)
+t_cols <- cmocean('balance')(length(t_brks)-1)
+
+par(mfrow=c(2,3))
+imagePlot(-360+lons,lats,anom_a[,,1],breaks = a_brks, col = a_cols)
+imagePlot(-360+lons,lats,anom_a[,,2],breaks = a_brks, col = a_cols)
+imagePlot(-360+lons,lats,anom_a[,,3],breaks = a_brks, col = a_cols)
+imagePlot(-360+lons,lats,anom_a[,,4],breaks = a_brks, col = a_cols)
+imagePlot(-360+lons,lats,anom_a[,,5],breaks = a_brks, col = a_cols)
+imagePlot(-360+lons,lats, yr5_trend, breaks = t_brks, col = t_cols)
+
+
+
+imagePlot(-360+lons,lats,
+          apply(anom_2025$anom, c(1,2), mean, na.rm=T),
+          breaks = a_brks, col = a_cols)
+
+
+t_brks <- seq(-.001,.001, .00005)
+t_cols <- cmocean('balance')(length(t_brks)-1)
+imagePlot(-360+lons,lats, yr5_trend, breaks = t_brks, col = t_cols)
+
+### make seasonal maps
+
+anom_2024$time_df <- data.frame(time = anom_2024$time)
+anom_2025$time_df <- data.frame(time = anom_2025$time)
+
+anom_2024$time_df <- anom_2024$time_df |>
+  mutate(season = case_when(
+    month(time)==12 | month(time)<3 ~ 'win',
+    month(time)>2 & month(time)<6 ~ 'spr',
+    month(time)>5 & month(time)<9 ~ 'sum',
+    month(time)>8 & month(time)<12 ~ 'aut'
+  )) |>
+  arrange(time)
+
+anom_2025$time_df <- anom_2025$time_df |>
+  mutate(season = case_when(
+    month(time)==12 | month(time)<3 ~ 'win',
+    month(time)>2 & month(time)<6 ~ 'spr',
+    month(time)>5 & month(time)<9 ~ 'sum',
+    month(time)>8 & month(time)<12 ~ 'aut'
+  )) |>
+  arrange(time)
+
+win_2025 <- anom_2025$anom[,,which(month(anom_2025$time_df$time)<3)] |>
+  abind(anom_2024$anom[,,which(month(anom_2024$time_df$time)>11)], along = 3) |>
+  apply(c(1,2), mean, na.rm = T)
+spr_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='spr')] |>
+  apply(c(1,2), mean, na.rm = T)
+sum_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='sum')] |>
+  apply(c(1,2), mean, na.rm = T)
+aut_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='aut')] |>
+  apply(c(1,2), mean, na.rm = T)
+
+replace_min_max <- function(dat, min, max){
+  dat[which(dat < min)] <- min
+  dat[which(dat > max)] <- max
+  dat
+}
+
+tmin <- -3.5
+tmax <- 3
+win_2025 <- replace_min_max(win_2025, tmin, tmax)
+spr_2025 <- replace_min_max(spr_2025, tmin, tmax)
+sum_2025 <- replace_min_max(sum_2025, tmin, tmax)
+aut_2025 <- replace_min_max(aut_2025, tmin, tmax)
+
+a_brks <- seq(tmin, tmax, .1)
+a_cols <- cmocean('balance')(length(a_brks)-1)
+
+par(mfrow=c(2,2))
+imagePlot(-360+lons,lats,
+          win_2025, 
+          breaks = a_brks, col = a_cols, asp = 1,
+          xlab = 'Longitude (°W)', ylab = 'Latitude (°N)')
+plot(gulf_eez['geometry'], add = T, fill=NA)
+imagePlot(-360+lons,lats,
+          spr_2025, 
+          breaks = a_brks, col = a_cols, asp = 1,
+          xlab = 'Longitude (°W)', ylab = 'Latitude (°N)')
+plot(gulf_eez['geometry'], add = T, fill=NA)
+imagePlot(-360+lons,lats,
+          sum_2025, 
+          breaks = a_brks, col = a_cols, asp = 1,
+          xlab = 'Longitude (°W)', ylab = 'Latitude (°N)')
+plot(gulf_eez['geometry'], add = T, fill=NA)
+imagePlot(-360+lons,lats,
+          aut_2025, 
+          breaks = a_brks, col = a_cols, asp = 1,
+          xlab = 'Longitude (°W)', ylab = 'Latitude (°N)')
+plot(gulf_eez['geometry'], add = T, fill=NA)
