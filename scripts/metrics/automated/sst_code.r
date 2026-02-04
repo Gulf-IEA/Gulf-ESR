@@ -75,7 +75,7 @@ system.time(
       st_intersection(gulf_iho)
     
     sst_gulf <- sst_iho_sf |>
-      st_drop_geometry() |> # dplyr is slow
+      st_drop_geometry() |>
       group_by(time) |>
       summarize(sst_degC = mean(sst, na.rm = T),
                 anom_degC = mean(anom, na.rm = T))
@@ -85,7 +85,7 @@ system.time(
       st_intersection(gulf_eez)
     
     sst_eez <- sst_eez_sf |>
-      st_drop_geometry() |> # dplyr is slow
+      st_drop_geometry() |>
       group_by(time) |>
       summarize(sst_degC = mean(sst, na.rm = T),
                 anom_degC = mean(anom, na.rm = T))
@@ -191,34 +191,29 @@ ggsave(filename = plot_filename)
 #----------------------------------------------------
 #### 8. making Seasonal plots (sensu NEFSC SOE) ####
 
+ax_convert_c2f <- function(vals, side = 4, n = 5, las = 1, ...){ ### ... used to pass other parameters for interior fxns
+  tick_val <- pretty(vals*(9/5)+32, n = n, ...)
+  axis(side, (tick_val-32)*(5/9), tick_val, las = las, ...)
+}
+
+
+(eez_win$sst_degC+32)*(5/9)
+
+
 ### load from previously saved spot
 setwd(here(paste0("data/intermediate")))
 load('sst_comb_temp2.RData')
 
 ### convert to dates
-dat_gulf$time <- as.Date(dat_gulf$time)
 dat_eez$time <- as.Date(dat_eez$time)
 
 # add yearmonth column --------------------------
-dat_gulf$yrmon <- paste(dat_gulf$time |> year(),
-                        sprintf("%02.f", dat_gulf$time |> month()),
-                        sep = '-')
 dat_eez$yrmon <- paste(dat_eez$time |> year(),
                        sprintf("%02.f", dat_eez$time |> month()),
                        sep = '-')
 
 ### add seasons
-dat_gulf$jday <- yday(dat_gulf$time)
 dat_eez$jday <- yday(dat_eez$time)
-
-dat_gulf <- dat_gulf |>
-  mutate(season = case_when(
-    month(time)==12 | month(time)<3 ~ 'win',
-    month(time)>2 & month(time)<6 ~ 'spr',
-    month(time)>5 & month(time)<9 ~ 'sum',
-    month(time)>8 & month(time)<12 ~ 'aut'
-  )) |>
-  arrange(time)
 
 dat_eez <- dat_eez |>
   mutate(season = case_when(
@@ -230,80 +225,61 @@ dat_eez <- dat_eez |>
   arrange(time)
 
 ### create season_yr and adjust to make december n-1 part of winter n
-dat_gulf$season_yr <- ifelse(month(dat_gulf$time)==12, year(dat_gulf$time)+1, year(dat_gulf$time))
 dat_eez$season_yr <- ifelse(month(dat_eez$time)==12, year(dat_eez$time)+1, year(dat_eez$time))
-dat_gulf$season_yr[which(dat_gulf$season_yr==2026)] <- NA
 dat_eez$season_yr[which(dat_eez$season_yr==2026)] <- NA
 
 
 ### seasonal means
-### anomaly
-# gulf_seasonal_sst <- dat_gulf |>
-#   group_by(season,
-#            season_yr) |>
-#   summarise(anom_degC = mean(anom_degC, na.rm = T))
-
-gulf_win <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='win'),
-                      mean, na.rm = T)
-gulf_spr <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='spr'),
-                      mean, na.rm = T)
-gulf_sum <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='sum'),
-                      mean, na.rm = T)
-gulf_aut <- aggregate(anom_degC ~ season_yr, data = subset(dat_gulf, season=='aut'),
-                      mean, na.rm = T)
-
-eez_win <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='win'),
+eez_win <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='win'),
                      mean, na.rm = T)
-eez_spr <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='spr'),
+eez_spr <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='spr'),
                      mean, na.rm = T)
-eez_sum <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='sum'),
+eez_sum <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='sum'),
                      mean, na.rm = T)
-eez_aut <- aggregate(anom_degC ~ season_yr, data = subset(dat_eez, season=='aut'),
+eez_aut <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='aut'),
                      mean, na.rm = T)
 
+png(here(paste0('figures/plots/sst-seasonal-plot.png')), width = 8, height = 6, units = 'in', res = 300)
+par(mfrow = c(2,2), mar = c(3,5,2,3))
+plot(eez_win$season_yr, eez_win$sst_degC, 
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_win$sst_degC), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'SST', main = 'Winter - DJF')
+mtext('(°C)', side = 3, adj = -.15)
+mtext('(°F)', side = 3, adj = 1.15)
+ax_convert_c2f(eez_win$sst_degC, n = 4)
 
-par(mfrow = c(2,2))
-plot(gulf_win$season_yr, gulf_win$anom_degC, 
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_win), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
-plot(gulf_spr$season_yr, gulf_spr$anom_degC, 
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_spr), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
-plot(gulf_sum$season_yr, gulf_sum$anom_degC, 
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_sum), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
-plot(gulf_aut$season_yr, gulf_aut$anom_degC,
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = gulf_aut), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(eez_spr$season_yr, eez_spr$sst_degC, 
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_spr$sst_degC), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'SST', main = 'Spring - MAM')
+mtext('(°C)', side = 3, adj = -.15)
+mtext('(°F)', side = 3, adj = 1.15)
+ax_convert_c2f(eez_spr$sst_degC, n = 4)
 
-par(mfrow = c(2,2))
-plot(eez_win$season_yr, eez_win$anom_degC, 
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
-plot(eez_spr$season_yr, eez_spr$anom_degC, 
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
-plot(eez_sum$season_yr, eez_sum$anom_degC, 
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
-plot(eez_aut$season_yr, eez_aut$anom_degC,
-     typ = 'o', pch = 16, ylim = c(-2,2),
-     panel.first = list(abline(lm(anom_degC ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
-                        grid(),abline(h = 0, col = 'gray', lwd = 2)),
-     xlab = 'Year', ylab = 'Anomaly (°C)')
+plot(eez_sum$season_yr, eez_sum$sst_degC, 
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_sum$sst_degC), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'SST', main = 'Summer - JJA')
+mtext('(°C)', side = 3, adj = -.15)
+mtext('(°F)', side = 3, adj = 1.15)
+ax_convert_c2f(eez_sum$sst_degC, n = 4)
+
+plot(eez_aut$season_yr, eez_aut$sst_degC,
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_aut$sst_degC), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'SST', main = 'Fall - SON')
+mtext('(°C)', side = 3, adj = -.15)
+mtext('(°F)', side = 3, adj = 1.15)
+ax_convert_c2f(eez_aut$sst_degC, n = 4)
+dev.off()
 
 
