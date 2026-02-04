@@ -44,12 +44,6 @@ gulf_iho <- iho |> st_as_sf() |> st_transform(crs = st_crs(4326))
 
 rm(eez, iho); gc()
 
-# get ERDDAP info  --------------------------------
-sst <- info('ncdcOisst21Agg_LonPM180') # this may work better
-
-# empty data  -------------------------------------------------
-dat_gulf <- c()
-dat_eez <- c()
 
 # download by year to avoid timeout errors --------------------
 
@@ -58,52 +52,70 @@ dat_eez <- c()
 #### load saved intermediate files below loop ########
 ######################################################
 
-setwd(here(paste0("data/intermediate")))
-system.time(
-  for (yr in styear:enyear) { 
-    
-    cat('\n', yr, '\n')
-    
-    sst_grab <- griddap(sst, fields = c('anom','sst'), 
-                        time = c(paste0(yr,'-01-01'), paste0(yr,'-12-31')),
-                        longitude = c(min_lon, max_lon), 
-                        latitude = c(min_lat, max_lat), 
-                        fmt = 'csv')
-    
-    ### whole Gulf / IHO
-    sst_iho_sf <- st_as_sf(sst_grab, coords = c("longitude", "latitude"), crs = 4326) |>
-      st_intersection(gulf_iho)
-    
-    sst_gulf <- sst_iho_sf |>
-      st_drop_geometry() |>
-      group_by(time) |>
-      summarize(sst_degC = mean(sst, na.rm = T),
-                anom_degC = mean(anom, na.rm = T))
-    
-    ### US EEZ
-    sst_eez_sf <- st_as_sf(sst_grab, coords = c("longitude", "latitude"), crs = 4326) |>
-      st_intersection(gulf_eez)
-    
-    sst_eez <- sst_eez_sf |>
-      st_drop_geometry() |>
-      group_by(time) |>
-      summarize(sst_degC = mean(sst, na.rm = T),
-                anom_degC = mean(anom, na.rm = T))
-    
-    if (yr == styear) { 
-      dat_gulf <- sst_gulf
-      dat_eez <- sst_eez
-    } 
-    else {
-      dat_gulf <- rbind(dat_gulf, sst_gulf)
-      dat_eez <- rbind(dat_eez, sst_eez)
-    }
-  }
-)
+review_code <- T ### set to F to rerun download code
 
-setwd(here(paste0("data/intermediate")))
-# save(dat_eez, dat_gulf, file = 'sst_comb_temp2.RData')
-load('sst_comb_temp2.RData')
+if(review_code == F){
+  
+  # get ERDDAP info  --------------------------------
+  sst <- info('ncdcOisst21Agg_LonPM180') # this may work better
+  
+  # empty data  -------------------------------------------------
+  dat_gulf <- c()
+  dat_eez <- c()
+  
+  setwd(here(paste0("data/intermediate")))
+  system.time(
+    for (yr in styear:enyear) { 
+      
+      cat('\n', yr, '\n')
+      
+      sst_grab <- griddap(sst, fields = c('anom','sst'), 
+                          time = c(paste0(yr,'-01-01'), paste0(yr,'-12-31')),
+                          longitude = c(min_lon, max_lon), 
+                          latitude = c(min_lat, max_lat), 
+                          fmt = 'csv')
+      
+      ### whole Gulf / IHO
+      sst_iho_sf <- st_as_sf(sst_grab, coords = c("longitude", "latitude"), crs = 4326) |>
+        st_intersection(gulf_iho)
+      
+      sst_gulf <- sst_iho_sf |>
+        st_drop_geometry() |>
+        group_by(time) |>
+        summarize(sst_degC = mean(sst, na.rm = T),
+                  anom_degC = mean(anom, na.rm = T))
+      
+      ### US EEZ
+      sst_eez_sf <- st_as_sf(sst_grab, coords = c("longitude", "latitude"), crs = 4326) |>
+        st_intersection(gulf_eez)
+      
+      sst_eez <- sst_eez_sf |>
+        st_drop_geometry() |>
+        group_by(time) |>
+        summarize(sst_degC = mean(sst, na.rm = T),
+                  anom_degC = mean(anom, na.rm = T))
+      
+      if (yr == styear) { 
+        dat_gulf <- sst_gulf
+        dat_eez <- sst_eez
+      } 
+      else {
+        dat_gulf <- rbind(dat_gulf, sst_gulf)
+        dat_eez <- rbind(dat_eez, sst_eez)
+      }
+    }
+  )
+  
+  setwd(here(paste0("data/intermediate")))
+  save(dat_eez, dat_gulf, file = 'sst_comb_temp2.RData')
+  
+} else {
+  
+  setwd(here(paste0("data/intermediate")))
+  load('sst_comb_temp2.RData')
+  
+}
+
 
 ### convert to dates
 dat_gulf$time <- as.Date(dat_gulf$time)
