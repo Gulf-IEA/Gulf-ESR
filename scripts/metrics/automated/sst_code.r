@@ -42,8 +42,12 @@ eez <- vect('eez.shp') |> makeValid()
 setwd(here(paste0("data/intermediate/gulf_iho")))
 iho <- vect('iho.shp') |> makeValid()
 
-gulf_eez <- terra::intersect(eez, iho) |> st_as_sf() |> st_transform(crs = st_crs(4326))
-gulf_iho <- iho |> st_as_sf() |> st_transform(crs = st_crs(4326))
+gulf_eez <- terra::intersect(eez, iho) |>
+  st_as_sf() |> 
+  st_transform(crs = st_crs(4326))
+gulf_iho <- iho |> 
+  st_as_sf() |> 
+  st_transform(crs = st_crs(4326))
 
 rm(eez, iho); gc()
 
@@ -220,7 +224,9 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = T,
+                        sep_ylabs = T,
+                        ylab_sublabel = c('extent','unit'))
 
 
 #----------------------------------------------------
