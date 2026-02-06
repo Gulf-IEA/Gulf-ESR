@@ -183,12 +183,46 @@ head(outboard_summary)
 ```
 
 ```{r}
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = rep("Outboard Engine Sales Trends", ncol(outboard_summary)-1)
-unit_names = c("<50 hp", "50-150 hp", "150-300 hp", "<300 hp")
-extent_names = c("Inshore", "Nearshore", "Near-offshore", "Far-offshore")
+#Other version of the indicator just far offshore by state
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(outboard_summary, indicator_names, unit_names, extent_names)
+# Define the mapping of HP ranges to Categories
+category_map <- list(
+  "Far-offshore" = c("300 hp and greater")
+)
+
+# Process the list into 4-column table
+outboard_summary <- hp_data_list %>%
+  # Convert list of dataframes into one long dataframe
+  imap_dfr(~ .x %>% mutate(segment = .y)) %>%
+  # Create the new category labels
+  mutate(category = case_when(
+    segment %in% category_map[["Far-offshore"]]   ~ "Far-offshore"
+  )) %>%
+  filter(category == "Far-offshore") 
+
+  
+total_sales <- outboard_summary %>% 
+  group_by(year, category) %>%
+  summarise(FL = sum(Florida, na.rm = TRUE), AL = sum(Alabama, na.rm = TRUE), MS = sum(Mississippi, na.rm = TRUE), LA = sum(Louisiana, na.rm = TRUE), TX = sum(Texas, na.rm = TRUE), .groups = "drop") %>%
+  mutate(across(where(is.numeric), na_if, 0)) %>% 
+  filter(year > 2012) %>% 
+  subset(select = -category)
+
+head(total_sales)
+```
+
+
+```{r}
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+# indicator_names = rep("Outboard Engine Sales Trends", ncol(outboard_summary)-1)
+# unit_names = c("<50 hp", "50-150 hp", "150-300 hp", "<300 hp")
+# extent_names = c("Inshore", "Nearshore", "Near-offshore", "Far-offshore")
+
+indicator_names = rep("Far Offshore Capable Outboard Engine Sales", ncol(total_sales)-1)
+unit_names = rep(">300 hp units sold", ncol(total_sales)-1)
+extent_names = c("Florida", "Alabama", "Mississippi", "Louisiana", "Texas")
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(total_sales, indicator_names, unit_names, extent_names)
 ```
 
 # 3. Save Formatted data as csv
@@ -221,7 +255,7 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, ylab_sublabel = c("extent", "unit"), sep_ylabs = T, facet_scales = "fixed")
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, xbreaks_by = 2, ncol = 1)
 ```
 
 # 7. Save plot
