@@ -10,6 +10,9 @@ library(ggplot2)
 library(rerddap)
 library(sf)
 library(terra)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(scales)
 
 # File Naming Setup.
 root_name <- "sst"
@@ -44,6 +47,33 @@ gulf_iho <- iho |> st_as_sf() |> st_transform(crs = st_crs(4326))
 
 rm(eez, iho); gc()
 
+plot_regions <- T ### set to F to skip plots
+
+if(plot_regions==T){
+  
+  ocean <- ne_download(type = 'ocean', 
+                       category = 'physical',
+                       scale = 10, 
+                       returnclass = 'sv')
+  
+  par(mfrow=c(1,2))
+  plot(ocean, 
+       ylim = c(min_lat, max_lat), 
+       xlim = c(min_lon, max_lon), 
+       col = 'gray', 
+       main = 'Gulf-wide')
+  plot(st_geometry(gulf_iho), 
+       add = T, 
+       col = alpha(2,.5))
+  plot(ocean, 
+       ylim = c(min_lat, max_lat), 
+       xlim = c(min_lon, max_lon), 
+       col = 'gray',
+       main = 'US Gulf EEZ')
+  plot(st_geometry(gulf_eez), 
+       add = T, 
+       col = alpha(4,.5))
+}
 
 # download by year to avoid timeout errors --------------------
 
@@ -113,6 +143,7 @@ if(review_code == F){
   
   setwd(here("data/intermediate"))
   load('sst_comb_temp2.RData')
+  ### load dat_gulf & dat_eez downloaded sst data
   
 }
 
