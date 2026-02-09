@@ -15,6 +15,7 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(scales)
 library(ncdf4)
+library(cmocean)
 
 # File Naming Setup.
 root_name <- "sst"
@@ -62,7 +63,7 @@ if(plot_regions==T){
                        scale = 10, 
                        returnclass = 'sv')
   
-  png(here('figures/plots/sst-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
+  # png(here('figures/plots/sst-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
   par(mfrow=c(2,1))
   # par(mfrow=c(1,2))
   plot(ocean, 
@@ -81,7 +82,7 @@ if(plot_regions==T){
   plot(st_geometry(gulf_eez), 
        add = T, 
        col = alpha(4,.5))
-  dev.off()
+  # dev.off()
 }
 
 # download by year to avoid timeout errors --------------------
@@ -322,7 +323,7 @@ eez_sum <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='sum')
 eez_aut <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='aut'),
                      mean, na.rm = T)
 
-png(here('figures/plots/sst-seasonal-plot.png'), width = 8, height = 6, units = 'in', res = 300)
+png(here('figures/plots/sst-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
 par(mfrow = c(2,2), mar = c(3,5,2,3),
     oma = c(0,0,3,0))
 
@@ -331,9 +332,9 @@ plot(eez_win$season_yr, eez_win$sst_degC,
      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_win$sst_degC), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'SST', main = 'Winter - DJF')
-mtext('(°C)', side = 3, adj = -.15)
-mtext('(°F)', side = 3, adj = 1.15)
+     xlab = '', ylab = 'SST', main = 'Winter - DJF',asp=10)
+mtext('(°C)', side = 3, adj = -.1, line = .5)
+mtext('(°F)', side = 3, adj = 1.1, line = .5)
 ax_convert_c2f(eez_win$sst_degC, n = 4)
 
 plot(eez_spr$season_yr, eez_spr$sst_degC, 
@@ -341,9 +342,9 @@ plot(eez_spr$season_yr, eez_spr$sst_degC,
      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_spr$sst_degC), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'SST', main = 'Spring - MAM')
-mtext('(°C)', side = 3, adj = -.15)
-mtext('(°F)', side = 3, adj = 1.15)
+     xlab = '', ylab = 'SST', main = 'Spring - MAM',asp=10)
+mtext('(°C)', side = 3, adj = -.1, line = .5)
+mtext('(°F)', side = 3, adj = 1.1, line = .5)
 ax_convert_c2f(eez_spr$sst_degC, n = 4)
 
 plot(eez_sum$season_yr, eez_sum$sst_degC, 
@@ -351,9 +352,9 @@ plot(eez_sum$season_yr, eez_sum$sst_degC,
      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_sum$sst_degC), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'SST', main = 'Summer - JJA')
-mtext('(°C)', side = 3, adj = -.15)
-mtext('(°F)', side = 3, adj = 1.15)
+     xlab = '', ylab = 'SST', main = 'Summer - JJA',asp=10)
+mtext('(°C)', side = 3, adj = -.1, line = .5)
+mtext('(°F)', side = 3, adj = 1.1, line = .5)
 ax_convert_c2f(eez_sum$sst_degC, n = 4)
 
 plot(eez_aut$season_yr, eez_aut$sst_degC,
@@ -361,12 +362,12 @@ plot(eez_aut$season_yr, eez_aut$sst_degC,
      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_aut$sst_degC), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'SST', main = 'Fall - SON')
-mtext('(°C)', side = 3, adj = -.15)
-mtext('(°F)', side = 3, adj = 1.15)
+     xlab = '', ylab = 'SST', main = 'Fall - SON',asp=10)
+mtext('(°C)', side = 3, adj = -.1, line = .5)
+mtext('(°F)', side = 3, adj = 1.1, line = .5)
 ax_convert_c2f(eez_aut$sst_degC, n = 4)
 
-mtext('US EEZ Sea Surface Temperatures', side = 3, outer = TRUE, cex = 1.25, font = 2)
+mtext('2025 US EEZ Sea Surface Temperatures', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
 dev.off()
 
 
@@ -546,7 +547,7 @@ anom_2025$time_df <- anom_2025$time_df |>
   arrange(time)
 
 win_2025 <- anom_2025$anom[,,which(month(anom_2025$time_df$time)<3)] |>
-  abind(anom_2024$anom[,,which(month(anom_2024$time_df$time)>11)], along = 3) |>
+  abind(anom_2024$anom[,,which(month(anom_2024$time_df$time)==12)], along = 3) |>
   apply(c(1,2), mean, na.rm = T)
 spr_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='spr')] |>
   apply(c(1,2), mean, na.rm = T)
