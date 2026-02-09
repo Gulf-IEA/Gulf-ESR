@@ -62,7 +62,9 @@ if(plot_regions==T){
                        scale = 10, 
                        returnclass = 'sv')
   
-  par(mfrow=c(1,2))
+  png(here('figures/plots/sst-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
+  par(mfrow=c(2,1))
+  # par(mfrow=c(1,2))
   plot(ocean, 
        ylim = c(min_lat, max_lat), 
        xlim = c(min_lon, max_lon), 
@@ -79,6 +81,7 @@ if(plot_regions==T){
   plot(st_geometry(gulf_eez), 
        add = T, 
        col = alpha(4,.5))
+  dev.off()
 }
 
 # download by year to avoid timeout errors --------------------
