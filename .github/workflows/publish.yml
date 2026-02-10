@@ -34,6 +34,7 @@ jobs:
 
       - name: Install Specific R Packages
         run: |
+          options(repos = c(CRAN = "https://cloud.r-project.org"))
           install.packages(c("remotes", "knitr", "rmarkdown", "here", "magick", "caption","quarto"))
           remotes::install_github("Gulf-IEA/IEAnalyzeR")
         shell: Rscript {0}
