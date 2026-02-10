@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      R_PROFILE_USER: "" # KEY: Prevents renv from auto-starting via .Rprofile (IGNORES RPROFILE COULD BE ISSUE LATER)
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -32,7 +34,7 @@ jobs:
 
       - name: Install Specific R Packages
         run: |
-          install.packages(c("remotes", "knitr", "rmarkdown", "here", "magick", "opensans","caption","quarto"))
+          install.packages(c("remotes", "knitr", "rmarkdown", "here", "magick", "caption","quarto"))
           remotes::install_github("Gulf-IEA/IEAnalyzeR")
         shell: Rscript {0}
         env:
