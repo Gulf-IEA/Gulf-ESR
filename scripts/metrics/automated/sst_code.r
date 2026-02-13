@@ -1,5 +1,5 @@
 
-# File created on 2026-01-30 by B. Turley
+# File created on 2026-01-30 by B. Turley; draft finished 2026-02-13
 
 #### 0. Setup ####
 library(abind)
@@ -54,7 +54,7 @@ gulf_iho <- iho |>
 
 rm(eez, iho); gc()
 
-plot_regions <- T ### set to F to skip plots
+plot_regions <- F ### set to F to skip plots
 
 if(plot_regions==T){
   
@@ -115,15 +115,15 @@ if(review_code == F){
                           latitude = c(min_lat, max_lat), 
                           fmt = 'csv')
       
-      ### whole Gulf / IHO
-      sst_iho_sf <- st_as_sf(sst_grab, coords = c("longitude", "latitude"), crs = 4326) |>
-        st_intersection(gulf_iho)
-      
-      sst_gulf <- sst_iho_sf |>
-        st_drop_geometry() |>
-        group_by(time) |>
-        summarize(sst_degC = mean(sst, na.rm = T),
-                  anom_degC = mean(anom, na.rm = T))
+      ### whole Gulf / IHO; decided to only use US EEZ subset
+      # sst_iho_sf <- st_as_sf(sst_grab, coords = c("longitude", "latitude"), crs = 4326) |>
+      #   st_intersection(gulf_iho)
+      # 
+      # sst_gulf <- sst_iho_sf |>
+      #   st_drop_geometry() |>
+      #   group_by(time) |>
+      #   summarize(sst_degC = mean(sst, na.rm = T),
+      #             anom_degC = mean(anom, na.rm = T))
       
       ### US EEZ
       sst_eez_sf <- st_as_sf(sst_grab, coords = c("longitude", "latitude"), crs = 4326) |>
@@ -136,11 +136,11 @@ if(review_code == F){
                   anom_degC = mean(anom, na.rm = T))
       
       if (yr == styear) { 
-        dat_gulf <- sst_gulf
+        # dat_gulf <- sst_gulf
         dat_eez <- sst_eez
       } 
       else {
-        dat_gulf <- rbind(dat_gulf, sst_gulf)
+        # dat_gulf <- rbind(dat_gulf, sst_gulf)
         dat_eez <- rbind(dat_eez, sst_eez)
       }
     }
@@ -159,13 +159,13 @@ if(review_code == F){
 
 
 ### convert to dates
-dat_gulf$time <- as.Date(dat_gulf$time)
+# dat_gulf$time <- as.Date(dat_gulf$time)
 dat_eez$time <- as.Date(dat_eez$time)
 
 # add yearmonth column --------------------------
-dat_gulf$yrmon <- paste(dat_gulf$time |> year(),
-                        sprintf("%02.f", dat_gulf$time |> month()),
-                        sep = '-')
+# dat_gulf$yrmon <- paste(dat_gulf$time |> year(),
+#                         sprintf("%02.f", dat_gulf$time |> month()),
+#                         sep = '-')
 dat_eez$yrmon <- paste(dat_eez$time |> year(),
                        sprintf("%02.f", dat_eez$time |> month()),
                        sep = '-')
@@ -177,26 +177,31 @@ dat_eez$yrmon <- paste(dat_eez$time |> year(),
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
-gulf_yrmon <- dat_gulf |>
-  group_by(yrmon) |>
-  summarise(gulf_sst_degC = mean(sst_degC, na.rm = T),
-            gulf_anom_degC = mean(anom_degC, na.rm = T))
+# gulf_yrmon <- dat_gulf |>
+#   group_by(yrmon) |>
+#   summarise(gulf_sst_degC = mean(sst_degC, na.rm = T),
+#             gulf_anom_degC = mean(anom_degC, na.rm = T))
 
 eez_yrmon <- dat_eez |>
   group_by(yrmon) |>
   summarise(eez_sst_degC = mean(sst_degC, na.rm = T),
             eez_anom_degC = mean(anom_degC, na.rm = T))
 
-sst_merge <- merge(gulf_yrmon, eez_yrmon)
+# sst_merge <- merge(gulf_yrmon, eez_yrmon)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = rep("Sea Surface Temperature", 2)
-unit_names = rep("Anomaly (°C)", 2)
-extent_names = c("Gulf-wide", 'US Gulf EEZ')
 
-formatted_data = select(sst_merge,
+# indicator_names = rep("Sea Surface Temperature", 2)
+# unit_names = rep("Anomaly (°C)", 2)
+# extent_names = c("Gulf-wide", 'US Gulf EEZ')
+
+indicator_names = "Sea Surface Temperature"
+unit_names = "Anomaly (°C)"
+extent_names = 'US Gulf EEZ'
+
+formatted_data = select(eez_yrmon, #sst_merge,
                         yrmon,
-                        gulf_anom_degC,
+                        # gulf_anom_degC,
                         eez_anom_degC) |>
   IEAnalyzeR::convert_cleaned_data(indicator_names, unit_names, extent_names)
 
@@ -232,7 +237,9 @@ saveRDS(data_obj, file = object_filename)
 
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = T,
                         sep_ylabs = T,
-                        ylab_sublabel = c('extent','unit'))
+                        ylab_sublabel = c('extent','unit'),
+                        fig.width = 9,
+                        lwd = .5)
 
 
 #----------------------------------------------------
@@ -249,13 +256,13 @@ ggsave(filename = plot_filename)
 
 ### helper functions
 
-### this adds a fahrenheit axis on the right of the plot by converting the celsius default
+### this adds a fahrenheit axis on the right of the plot by converting the celcius default
 ax_convert_c2f <- function(vals, side = 4, n = 5, las = 1, ...){ ### ... used to pass other parameters for interior fxns
   tick_val <- pretty(vals*(9/5)+32, n = n, ...)
   axis(side, (tick_val-32)*(5/9), tick_val, las = las, ...)
 }
 
-### perform spatial trend analyses
+### perform spatial trend analyses on a matirx or an array
 array_lm <- function (x){
   if(is.na(all(x))){
     NA
