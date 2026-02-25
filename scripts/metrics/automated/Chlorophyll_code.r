@@ -115,6 +115,7 @@ review_code <- T ### set to F to rerun download loop
 
 # get ERDDAP info  --------------------------------
 # pmlEsaCCI60OceanColorMonthly returns error code 404
+# pmlEsaCCI50OceanColorMonthly
 chl <- info('pmlEsaCCI50OceanColorMonthly') # this may work better
 
 # empty data  -------------------------------------------------
