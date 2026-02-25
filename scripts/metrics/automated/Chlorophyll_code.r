@@ -3,9 +3,20 @@
 
 #### 0. Setup ####
 # Add any packages that are needed for analysis here.
+library(abind)
+library(dplyr)
+library(lubridate)
 library(IEAnalyzeR)
 library(here)
 library(ggplot2)
+library(rerddap)
+library(sf)
+library(terra)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(scales)
+library(ncdf4)
+library(cmocean)
 
 # File Naming Setup.
 # !! Auto generated-Do Not Change !!
@@ -25,6 +36,143 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 # If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
 #   - Filename should use the syntax rootname_descriptivename
 
+# ERDDAP file: pmlEsaCCI60OceanColorMonthly
+# https://coastwatch.pfeg.noaa.gov/erddap/info/pmlEsaCCI60OceanColorMonthly/index.html
+
+#----------------------------------------------------
+#### 1. Read Data ####
+
+# define years  --------------------------------
+styear <- 1998
+enyear <- 2025
+
+# define spatial domain  --------------------------------
+min_lon <- -98
+max_lon <- -80
+min_lat <- 18
+max_lat <- 31
+
+# load shapefile to subset  --------------------------------
+### shapefiles downloaded from marineregions.org (future goal implement mregions2 R package for shapefile)
+setwd(here("data/intermediate/gulf_eez"))
+setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_eez")
+eez <- vect('eez.shp') |> makeValid()
+
+setwd(here("data/intermediate/gulf_iho"))
+setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_iho")
+iho <- vect('iho.shp') |> makeValid()
+
+gulf_eez <- terra::intersect(eez, iho) |>
+  st_as_sf() |> 
+  st_transform(crs = st_crs(4326))
+gulf_iho <- iho |> 
+  st_as_sf() |> 
+  st_transform(crs = st_crs(4326))
+
+rm(eez, iho); gc()
+
+plot_regions <- F ### set to F to skip plots
+
+if(plot_regions==T){
+  
+  ocean <- ne_download(type = 'ocean', 
+                       category = 'physical',
+                       scale = 10, 
+                       returnclass = 'sv')
+  
+  # png(here('figures/plots/chl-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
+  par(mfrow=c(2,1))
+  # par(mfrow=c(1,2))
+  plot(ocean, 
+       ylim = c(min_lat, max_lat), 
+       xlim = c(min_lon, max_lon), 
+       col = 'gray', 
+       main = 'Gulf-wide')
+  plot(st_geometry(gulf_iho), 
+       add = T, 
+       col = alpha(2,.5))
+  plot(ocean, 
+       ylim = c(min_lat, max_lat), 
+       xlim = c(min_lon, max_lon), 
+       col = 'gray',
+       main = 'US Gulf EEZ')
+  plot(st_geometry(gulf_eez), 
+       add = T, 
+       col = alpha(4,.5))
+  # dev.off()
+}
+
+# download by year to avoid timeout errors --------------------
+
+######################################################
+#### don't run while reviewing code; takes awhile ####
+#### load saved intermediate files below loop ########
+######################################################
+
+review_code <- T ### set to F to rerun download loop
+
+# if(review_code == F){
+
+# get ERDDAP info  --------------------------------
+# pmlEsaCCI60OceanColorMonthly returns error code 404
+chl <- info('pmlEsaCCI50OceanColorMonthly') # this may work better
+
+# empty data  -------------------------------------------------
+# dat_gulf <- c()
+dat_eez <- c()
+
+setwd(here("data/intermediate"))
+system.time(
+  for (yr in styear:enyear) { 
+    
+    cat('\n', yr, '\n')
+    
+    chl_grab <- griddap(chl, fields = 'chlor_a', 
+                        time = c(paste0(yr,'-01-01'), paste0(yr,'-12-31')),
+                        longitude = c(min_lon, max_lon), 
+                        latitude = c(min_lat, max_lat), 
+                        fmt = 'csv')
+    
+    ### whole Gulf / IHO; decided to only use US EEZ subset
+    # chl_iho_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
+    #   st_intersection(gulf_iho)
+    # 
+    # chl_gulf <- chl_iho_sf |>
+    #   st_drop_geometry() |>
+    #   group_by(time) |>
+    #   summarize(chl_degC = mean(chl, na.rm = T),
+    #             anom_degC = mean(anom, na.rm = T))
+    
+    ### US EEZ
+    chl_eez_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
+      st_intersection(gulf_eez)
+    
+    chl_eez <- chl_eez_sf |>
+      st_drop_geometry() |>
+      group_by(time) |>
+      summarize(chl_mgm3 = mean(chl, na.rm = T))
+    
+    if (yr == styear) { 
+      # dat_gulf <- chl_gulf
+      dat_eez <- chl_eez
+    } 
+    else {
+      # dat_gulf <- rbind(dat_gulf, chl_gulf)
+      dat_eez <- rbind(dat_eez, chl_eez)
+    }
+  }
+)
+
+setwd(here("data/intermediate"))
+# save(dat_eez, dat_gulf, file = 'chl_comb_temp2.RData')
+
+# } else {
+
+# setwd(here("data/intermediate"))
+# load('chl_comb_temp2.RData')
+### load dat_gulf & dat_eez downloaded chl data
+
+# }
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
@@ -43,14 +191,14 @@ formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, un
 
 #----------------------------------------------------
 #### 3. Save Formatted data as csv ####
- 
+
 # This will save your data to the appropriate folder.
 
 write.csv(formatted_data, file = csv_filename, row.names = F)
 
 #----------------------------------------------------
 #### 4. Create Data_Prep object ####
-  
+
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
@@ -61,7 +209,7 @@ data_obj<-IEAnalyzeR::data_prep(csv_filename)
 #### 5. Save Formatted data_prep object ####
 
 #This will save your data to the appropriate folder.
-  
+
 saveRDS(data_obj, file = object_filename)
 
 
