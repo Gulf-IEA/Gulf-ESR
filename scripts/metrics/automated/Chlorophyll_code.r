@@ -43,7 +43,7 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 #### 1. Read Data ####
 
 # define years  --------------------------------
-styear <- 1998
+styear <- 1998 # 1997 is partial year
 enyear <- 2025
 
 # define spatial domain  --------------------------------
@@ -134,16 +134,6 @@ system.time(
                         latitude = c(min_lat, max_lat), 
                         fmt = 'csv')
     
-    ### whole Gulf / IHO; decided to only use US EEZ subset
-    # chl_iho_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
-    #   st_intersection(gulf_iho)
-    # 
-    # chl_gulf <- chl_iho_sf |>
-    #   st_drop_geometry() |>
-    #   group_by(time) |>
-    #   summarize(chl_degC = mean(chl, na.rm = T),
-    #             anom_degC = mean(anom, na.rm = T))
-    
     ### US EEZ
     chl_eez_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
       st_intersection(gulf_eez)
@@ -154,11 +144,9 @@ system.time(
       summarize(chl_mgm3 = mean(chl, na.rm = T))
     
     if (yr == styear) { 
-      # dat_gulf <- chl_gulf
       dat_eez <- chl_eez
     } 
     else {
-      # dat_gulf <- rbind(dat_gulf, chl_gulf)
       dat_eez <- rbind(dat_eez, chl_eez)
     }
   }
