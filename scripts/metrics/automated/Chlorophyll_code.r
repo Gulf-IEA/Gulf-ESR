@@ -71,36 +71,36 @@ gulf_iho <- iho |>
 
 rm(eez, iho); gc()
 
-plot_regions <- F ### set to F to skip plots
-
-if(plot_regions==T){
-  
-  ocean <- ne_download(type = 'ocean', 
-                       category = 'physical',
-                       scale = 10, 
-                       returnclass = 'sv')
-  
-  # png(here('figures/plots/chl-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
-  par(mfrow=c(2,1))
-  # par(mfrow=c(1,2))
-  plot(ocean, 
-       ylim = c(min_lat, max_lat), 
-       xlim = c(min_lon, max_lon), 
-       col = 'gray', 
-       main = 'Gulf-wide')
-  plot(st_geometry(gulf_iho), 
-       add = T, 
-       col = alpha(2,.5))
-  plot(ocean, 
-       ylim = c(min_lat, max_lat), 
-       xlim = c(min_lon, max_lon), 
-       col = 'gray',
-       main = 'US Gulf EEZ')
-  plot(st_geometry(gulf_eez), 
-       add = T, 
-       col = alpha(4,.5))
-  # dev.off()
-}
+# plot_regions <- F ### set to F to skip plots
+# 
+# if(plot_regions==T){
+#   
+#   ocean <- ne_download(type = 'ocean', 
+#                        category = 'physical',
+#                        scale = 10, 
+#                        returnclass = 'sv')
+#   
+#   # png(here('figures/plots/chl-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
+#   par(mfrow=c(2,1))
+#   # par(mfrow=c(1,2))
+#   plot(ocean, 
+#        ylim = c(min_lat, max_lat), 
+#        xlim = c(min_lon, max_lon), 
+#        col = 'gray', 
+#        main = 'Gulf-wide')
+#   plot(st_geometry(gulf_iho), 
+#        add = T, 
+#        col = alpha(2,.5))
+#   plot(ocean, 
+#        ylim = c(min_lat, max_lat), 
+#        xlim = c(min_lon, max_lon), 
+#        col = 'gray',
+#        main = 'US Gulf EEZ')
+#   plot(st_geometry(gulf_eez), 
+#        add = T, 
+#        col = alpha(4,.5))
+#   # dev.off()
+# }
 
 # download by year to avoid timeout errors --------------------
 
@@ -162,6 +162,85 @@ setwd(here("data/intermediate"))
 ### load dat_gulf & dat_eez downloaded chl data
 
 # }
+
+
+### alternative download from Plymouth Marine Lab (from the horse's mouth)
+# https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v6.0-1km-MONTHLY
+# https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v6.0-MONTHLY
+# 'https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/1997/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-199709-fv6.0.nc'
+dat <- nc_open('https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/1997/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-199709-fv6.0.nc',
+               readunlim = F, return_on_error = T, suppress_dimvals = T)
+lon <- ncvar_get(dat, 'lon')
+lat <- ncvar_get(dat, 'lat')
+chl_fill <- ncatt_get(dat, 'chlor_a', "_FillValue")
+nc_close(dat)
+rm(dat)
+
+ilon <- which(lon>min_lon & lon<max_lon)
+ilat <- which(lat>min_lat & lat<max_lat)
+
+yr_mon <- rbind(data.frame(year = rep(1997,4),
+                           month = sprintf('%02d', 9:12)),
+                expand.grid(year = 1998:2025, 
+                            month = sprintf('%02d', 1:12))) |>
+  arrange(year, month)
+
+
+### chunk downloads for sanity
+dat_eez <- array(NA, c(length(ilon), length(ilat), dim(yr_mon)[1]))
+time_dat <- rep(NA, dim(yr_mon)[1])
+
+pb <- txtProgressBar(min = 0, max = length(time_dat), style = 3)
+for(i in 1:dim(yr_mon)[1]){
+  
+  nc_url <- paste0('https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/',
+                   yr_mon$year[i],
+                   '/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-',
+                   yr_mon$year[i], yr_mon$month[i],
+                   '-fv6.0.nc')
+  
+  dat <- nc_open(nc_url, readunlim = F, return_on_error = T, suppress_dimvals = T)
+  
+  while(dat$error==T){
+    Sys.sleep(5) 
+    dat <- nc_open(nc_url, readunlim = F, return_on_error = T, suppress_dimvals = T)
+  }
+  
+  chl_pull <- try(ncvar_get(dat, 'chlor_a', start = c(ilon[1], ilat[1], 1),
+                            count = c(length(ilon), length(ilat), 1)))
+  time_pull <- try(ncvar_get(dat, 'time'))
+  
+  while(any(class(chl_pull) == 'try-error')){
+    Sys.sleep(5) 
+    chl_pull <- try(ncvar_get(dat, 'chlor_a', start = c(ilon[1], ilat[1], 1),
+                              count = c(length(ilon), length(ilat), 1)))
+    time_pull <- try(ncvar_get(dat, 'time'))
+  }
+  
+  dat_eez[,,i] <- chl_pull
+  time_dat[i] <- time_pull
+  
+  setwd(here("data/intermediate"))
+  save(dat_eez, time_dat, file = 'chl_comb_temp.RData')
+  
+  nc_close(dat)
+  rm(chl_pull, time_pull, dat)
+  setTxtProgressBar(pb, i)
+}
+
+dat_eez[which(dat_eez==chl_fill$value)] <- NA
+dat_eez2 <- dat_eez
+
+time_dat
+as.Date(time_dat, origin = '1970-01-01')
+
+data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
+
+apply(dat_eez, 3, function(x)all(is.na(x)))
+
+image(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
+
+hist(apply(dat_eez, c(1,2), mean, na.rm = T))
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
