@@ -228,7 +228,7 @@ for(i in 1:dim(yr_mon)[1]){
   setTxtProgressBar(pb, i)
 }
 
-dat_eez[which(dat_eez==chl_fill$value)] <- NA
+dat_eez[dat_eez==chl_fill$value] <- NA
 dat_eez2 <- dat_eez
 
 time_dat
@@ -240,7 +240,7 @@ apply(dat_eez, 3, function(x)all(is.na(x)))
 
 image(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
 
-hist(apply(dat_eez, c(1,2), mean, na.rm = T))
+hist(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
