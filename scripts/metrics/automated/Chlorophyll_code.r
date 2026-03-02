@@ -228,19 +228,27 @@ for(i in 1:dim(yr_mon)[1]){
   setTxtProgressBar(pb, i)
 }
 
+setwd("C:/Users/brendan.turley/Documents/data")
+load('chl_comb_temp.RData')
+
+# sanity check are there data in each yr_month
+apply(dat_eez, 3, function(x)all(is.na(x)))
+
 dat_eez[dat_eez==chl_fill$value] <- NA
-dat_eez2 <- dat_eez
+# dat_eez2 <- dat_eez
 
 time_dat
 as.Date(time_dat, origin = '1970-01-01')
 
 data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
 
-apply(dat_eez, 3, function(x)all(is.na(x)))
+
 
 image(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
 
 hist(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
+
+
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
