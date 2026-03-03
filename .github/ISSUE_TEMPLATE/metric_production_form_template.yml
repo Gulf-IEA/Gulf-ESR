@@ -53,6 +53,7 @@ body:
       description: To what category does this metric and indicator belong?
       multiple: false
       options:
+        - Choose Category
         - Bycatch/Reduce Waste
         - Ecosystem Protection
         - Food Production
