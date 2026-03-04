@@ -116,7 +116,9 @@ review_code <- T ### set to F to rerun download loop
 # get ERDDAP info  --------------------------------
 # pmlEsaCCI60OceanColorMonthly returns error code 404
 # pmlEsaCCI50OceanColorMonthly
-chl <- info('pmlEsaCCI50OceanColorMonthly') # this may work better
+chl <- info('pmlEsaCCI50OceanColorMonthly', url = 'https://coastwatch.pfeg.noaa.gov/erddap') # this may work better
+### alternatively there is AQUA/MODIS
+# erdMH1chlamday_R2022NRT or erdMH1chlamday
 
 # define years  --------------------------------
 styear <- 1998 # 1997 is partial year
