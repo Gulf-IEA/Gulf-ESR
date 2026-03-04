@@ -256,6 +256,7 @@ time_dat
 time_dat <- as.Date(time_dat, origin = '1970-01-01')
 
 ### log data prior ro global summary statistics then unlog per Product User Guide for v6.0 Dataset page 18
+# https://climate.esa.int/documents/3154/D4.2_-_OC-CCI_Product_User_Guide_PUG_v6.5b_for_website.pdf
 dat_eez_log <- apply(log10(dat_eez), 3, mean , na.rm = T)
 dat_eez_log <- log10(dat_eez) |> apply(3, mean , na.rm = T)
 dat_eez_mean <- apply(dat_eez, 3, mean , na.rm = T)
