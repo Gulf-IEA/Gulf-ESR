@@ -118,9 +118,16 @@ review_code <- T ### set to F to rerun download loop
 # pmlEsaCCI50OceanColorMonthly
 chl <- info('pmlEsaCCI50OceanColorMonthly') # this may work better
 
+# define years  --------------------------------
+styear <- 1998 # 1997 is partial year
+enyear <- 2021 # only goes to Dec 2021
+
 # empty data  -------------------------------------------------
 # dat_gulf <- c()
 dat_eez <- c()
+
+### only retain the geometry
+gulf_eez <- gulf_eez$geometry
 
 setwd(here("data/intermediate"))
 system.time(
@@ -129,7 +136,7 @@ system.time(
     cat('\n', yr, '\n')
     
     chl_grab <- griddap(chl, fields = 'chlor_a', 
-                        time = c(paste0(yr,'-01-01'), paste0(yr,'-12-31')),
+                        time = c(paste0(yr,'-01-01'), paste0(yr,'-12-01')),
                         longitude = c(min_lon, max_lon), 
                         latitude = c(min_lat, max_lat), 
                         fmt = 'csv')
@@ -138,10 +145,11 @@ system.time(
     chl_eez_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
       st_intersection(gulf_eez)
     
+    
     chl_eez <- chl_eez_sf |>
       st_drop_geometry() |>
       group_by(time) |>
-      summarize(chl_mgm3 = mean(chl, na.rm = T))
+      summarize(chl_mgm3 = mean(chlor_a, na.rm = T))
     
     if (yr == styear) { 
       dat_eez <- chl_eez
@@ -153,7 +161,7 @@ system.time(
 )
 
 setwd(here("data/intermediate"))
-# save(dat_eez, dat_gulf, file = 'chl_comb_temp2.RData')
+save(dat_eez, file = 'chl_erddap_temp.RData')
 
 # } else {
 
@@ -221,7 +229,7 @@ for(i in 1:dim(yr_mon)[1]){
   time_dat[i] <- time_pull
   
   setwd(here("data/intermediate"))
-  save(dat_eez, time_dat, file = 'chl_comb_temp.RData')
+  save(dat_eez, time_dat, file = 'chl_comb_temp2.RData')
   
   nc_close(dat)
   rm(chl_pull, time_pull, dat)
@@ -231,14 +239,33 @@ for(i in 1:dim(yr_mon)[1]){
 setwd("C:/Users/brendan.turley/Documents/data")
 load('chl_comb_temp.RData')
 
+setwd(here("data/intermediate"))
+load('chl_comb_temp2.RData')
+
+
 # sanity check are there data in each yr_month
 apply(dat_eez, 3, function(x)all(is.na(x)))
+
+n_na <- apply(dat_eez, 3, function(x)sum(is.na(x)))
+
 
 dat_eez[dat_eez==chl_fill$value] <- NA
 # dat_eez2 <- dat_eez
 
 time_dat
-as.Date(time_dat, origin = '1970-01-01')
+time_dat <- as.Date(time_dat, origin = '1970-01-01')
+
+### log data prior ro global summary statistics then unlog per Product User Guide for v6.0 Dataset page 18
+dat_eez_log <- apply(log10(dat_eez), 3, mean , na.rm = T)
+dat_eez_log <- log10(dat_eez) |> apply(3, mean , na.rm = T)
+dat_eez_mean <- apply(dat_eez, 3, mean , na.rm = T)
+
+par(mfrow = c(2,1))
+plot(time_dat, 10^dat_eez_log, typ = 'l')
+plot(time_dat, dat_eez_log, typ = 'l')
+plot(time_dat, dat_eez_mean, typ = 'l')
+plot(time_dat, n_na, typ = 'l')
+
 
 data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
 
@@ -248,7 +275,35 @@ image(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
 
 hist(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
 
+test <- aperm(dat_eez, c(2,1,3))
 
+
+chl_stack <- rast(aperm(dat_eez, c(2,1,3)),
+                  ext = c(lon[ilon[1]], lon[ilon[length(ilon)]], 
+                          lat[ilat[length(ilat)]], lat[ilat[1]]), 
+                  # crs = 'EPSG:32662') # or pc_crs
+                  # crs = pc_crs)
+                  crs = 'EPSG:4326')
+
+if (crs(chl_stack) != crs(gulf_eez)) {
+  chl_stack <- project(chl_stack, crs(gulf_eez))
+}
+
+# 1. Crop the raster stack to the shapefile's extent
+cropped_stack <- crop(chl_stack, gulf_eez)
+
+# 2. Mask the cropped stack to the shapefile's exact boundaries
+# This operation sets all cells outside the polygon to NA
+# The cropped_stack is used here to make the masking faster, as it operates on a smaller area
+subset_stack <- mask(cropped_stack, gulf_eez)
+
+# View the result
+plot(subset_stack)
+plot(gulf_eez, add = TRUE, border = "red", lwd = 2) # Overlay the shapefile to visualize the subset
+
+chl_mean <- global(subset_stack, mean, na.rm = T)
+
+plot(time_dat, chl_mean$mean, typ = 'l', lwd = 2)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
