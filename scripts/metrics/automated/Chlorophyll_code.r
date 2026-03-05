@@ -119,6 +119,8 @@ review_code <- T ### set to F to rerun download loop
 chl <- info('pmlEsaCCI50OceanColorMonthly', url = 'https://coastwatch.pfeg.noaa.gov/erddap') # this may work better
 ### alternatively there is AQUA/MODIS
 # erdMH1chlamday_R2022NRT or erdMH1chlamday
+chl <- info('erdMH1chlamday_R2022NRT', url = 'https://coastwatch.pfeg.noaa.gov/erddap')
+
 
 # define years  --------------------------------
 styear <- 1998 # 1997 is partial year
@@ -126,7 +128,7 @@ enyear <- 2021 # only goes to Dec 2021
 
 # empty data  -------------------------------------------------
 # dat_gulf <- c()
-dat_eez <- c()
+cci_erddap_eez <- c()
 
 ### only retain the geometry
 gulf_eez <- gulf_eez$geometry
@@ -154,24 +156,125 @@ system.time(
       summarize(chl_mgm3 = mean(chlor_a, na.rm = T))
     
     if (yr == styear) { 
-      dat_eez <- chl_eez
+      cci_erddap_eez <- chl_eez
     } 
     else {
-      dat_eez <- rbind(dat_eez, chl_eez)
+      cci_erddap_eez <- rbind(cci_erddap_eez, chl_eez)
     }
   }
 )
 
 setwd(here("data/intermediate"))
-save(dat_eez, file = 'chl_erddap_temp.RData')
+save(cci_erddap_eez, file = 'chl_erddap_temp.RData')
+
+
+### alternatively there is AQUA/MODIS
+# erdMH1chlamday_R2022NRT or erdMH1chlamday_R2022SQ
+chl <- info('erdMH1chlamday_R2022SQ', url = 'https://coastwatch.pfeg.noaa.gov/erddap')
+
+# define years  --------------------------------
+styear <- 2003
+styear <- 2024
+enyear <- 2025
+
+# empty data  -------------------------------------------------
+# dat_gulf <- c()
+modis_erddap_eez2 <- c()
+
+### only retain the geometry
+gulf_eez <- gulf_eez$geometry
+st_crs(gulf_eez)
+
+setwd(here("data/intermediate"))
+system.time(
+  for (yr in styear:enyear) { 
+    
+    cat('\n', yr, '\n')
+    
+    if(yr<2024){
+      variable <- 'chlor_a'
+    }
+    if(yr>=2024){
+      chl <- info('erdMH1chlamday_R2022NRT', url = 'https://coastwatch.pfeg.noaa.gov/erddap')
+      variable <- 'chlorophyll'
+    }
+    
+    chl_grab <- griddap(chl, fields = variable, 
+                        time = c(paste0(yr,'-01-16T00:00:00Z'), paste0(yr,'-12-16T00:00:00Z')),
+                        longitude = c(min_lon, max_lon), 
+                        latitude = c(min_lat, max_lat), 
+                        fmt = 'csv')
+    
+    if(names(chl_grab)[4]=='chlor_a'){
+      names(chl_grab)[4] <- 'chlorophyll'
+    }
+    
+    ### log for geometric mean
+    chl_grab$log10_chlor <- log10(chl_grab$chlorophyll + .0001)
+    
+    ### US EEZ
+    chl_eez_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
+      st_intersection(gulf_eez)
+    
+    
+    chl_eez <- chl_eez_sf |>
+      st_drop_geometry() |>
+      group_by(time) |>
+      summarize(chl_mgm3 = mean(chlorophyll, na.rm = T),
+                chl_mgm3_geo = 10^mean(log10_chlor, na.rm = T))
+    
+    if (yr == styear) { 
+      modis_erddap_eez2 <- chl_eez
+    } 
+    else {
+      modis_erddap_eez2 <- rbind(modis_erddap_eez2, chl_eez)
+    }
+  }
+)
+
+
+setwd(here("data/intermediate"))
+save(modis_erddap_eez, file = 'chl_modis_temp.RData')
+save(modis_erddap_eez2, file = 'chl_modis_temp2.RData')
+
+load('chl_modis_temp.RData')
+load('chl_modis_temp2.RData')
+
+modis_eez <- rbind(modis_erddap_eez[1:252,],
+                   modis_erddap_eez2,
+                   c('2024-12-16T00:00:00Z', NA, NA)) |>
+  type.convert() |>
+  arrange(time)
+
+setwd(here("data/intermediate"))
+save(modis_eez, file = 'chl_modis_comb_temp.RData')
+
+
+time <- ymd_hms(modis_eez$time)
+table(year(time),month(time))
 
 # } else {
 
 # setwd(here("data/intermediate"))
-# load('chl_comb_temp2.RData')
+# load('chl_modis_temp.RData')
 ### load dat_gulf & dat_eez downloaded chl data
 
 # }
+
+plot(modis_eez$time|>as.Date(),modis_eez$chl_mgm3,
+     typ='l',lwd = 2, col = 2, ylim = c(0, 2.5))
+points(modis_eez$time|>as.Date(),modis_eez$chl_mgm3_geo,
+       typ='l',lwd = 2, col = 3)
+
+dat_eez2 <- modis_eez$chl_mgm3_geo
+dat_sq <- matrix(dat_eez2, 12, 23) 
+dat_anom <- (dat_sq - apply(dat_sq, 1, mean, na.rm = T))/apply(dat_sq, 1, sd, na.rm = T) |> as.vector()
+dat_anom <- (dat_sq - apply(dat_sq, 1, mean, na.rm = T)) |> as.vector()
+time <- as.Date(modis_eez$time)
+
+plot(time, dat_anom, typ = 'l', lwd = 2, col = 3)
+abline(h = c(-1,0,1), lty = 5)
+abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
 
 
 ### alternative download from Plymouth Marine Lab (from the horse's mouth)
@@ -256,12 +359,13 @@ dat_eez[dat_eez==chl_fill$value] <- NA
 
 time_dat
 time_dat <- as.Date(time_dat, origin = '1970-01-01')
+data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
 
 ### log data prior ro global summary statistics then unlog per Product User Guide for v6.0 Dataset page 18
 # https://climate.esa.int/documents/3154/D4.2_-_OC-CCI_Product_User_Guide_PUG_v6.5b_for_website.pdf
-dat_eez_log <- apply(log10(dat_eez), 3, mean , na.rm = T)
+# dat_eez_log <- apply(log10(dat_eez), 3, mean , na.rm = T)
 dat_eez_log <- log10(dat_eez) |> apply(3, mean , na.rm = T)
-dat_eez_mean <- apply(dat_eez, 3, mean , na.rm = T)
+dat_eez_mean <- apply(dat_eez, 3, mean , na.rm = T) # median is more stable and equivalent between methods
 
 par(mfrow = c(2,1))
 plot(time_dat, 10^dat_eez_log, typ = 'l')
@@ -269,10 +373,12 @@ plot(time_dat, dat_eez_log, typ = 'l')
 plot(time_dat, dat_eez_mean, typ = 'l')
 plot(time_dat, n_na, typ = 'l')
 
+dat_sq <- matrix(10^dat_eez_log[5:340], 12, 28) 
+dat_anom <- (dat_sq - apply(dat_sq, 1, mean))/apply(dat_sq, 1, sd) |> as.vector()
 
-data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
-
-
+plot(time_dat[5:340], dat_anom, typ = 'l', lwd = 2, col = 3)
+abline(h = 0, lty = 5)
+abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
 
 image(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
 
