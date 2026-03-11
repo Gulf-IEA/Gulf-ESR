@@ -1,5 +1,5 @@
 
-# File created on 2026-03-10 by B. Turley
+# File created on 2026-03-10 by B. Turley; finalized 2025-03-11
 
 #### 0. Setup ####
 library(IEAnalyzeR)
@@ -26,6 +26,9 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 #   - This folder is excluded using gitignore and will not push to the GitHub repo
 # If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
 #   - Filename should use the syntax rootname_descriptivename
+
+
+# these data come from a curated database created by SEFSC https://github.com/SEFSC/SEFSC-ODM-Management-History
 
 ### for ACLs
 #### Load data ####
@@ -88,6 +91,9 @@ setwd(here('data/intermediate/'))
 write.csv(acl_slice, 'acl_tac_quota.csv', row.names = F)
 
 
+### code was borrowed from a SEFSC repo (https://github.com/SEFSC/SEFSC-ODM-MH-GulfReefFish) using the Management History database used for the ACLs
+### the repo holds code for the analysis used in a Tech Doc "Synthesis of Management Histories for Gulf of America Reef Fishes through 2024"
+# https://doi.org/10.25923/h0jt-xe51
 
 ### for open and close dates
 #### Load data ####
@@ -227,6 +233,11 @@ if(review_code==F){
   load('spp_open_close_output.RData')
   
 }
+
+##############################################################################
+### the outputs are for use in other indicators and no plots were intended ###
+##############################################################################
+
 
 
 # #----------------------------------------------------
