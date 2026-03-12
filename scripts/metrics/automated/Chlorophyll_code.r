@@ -420,8 +420,29 @@ plot(subset_stack)
 plot(gulf_eez, add = TRUE, border = "red", lwd = 2) # Overlay the shapefile to visualize the subset
 
 chl_mean <- global(subset_stack, mean, na.rm = T)
+chl_mean_geo <- global(log10(subset_stack), mean, na.rm = T)
 
 plot(time_dat, chl_mean$mean, typ = 'l', lwd = 2)
+plot(time_dat, 10^(chl_mean_geo$mean), typ = 'l', lwd = 2)
+
+
+dat_sq <- matrix(10^(chl_mean_geo$mean[5:340]), 12, 28) 
+dat_anom_cci2 <- (dat_sq - apply(dat_sq, 1, mean))/apply(dat_sq, 1, sd) |> as.vector()
+
+plot(time_dat[5:340], dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
+abline(h = 0, lty = 5)
+abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
+
+plot(dat_anom_cci, dat_anom_cci2, asp = 1)
+abline(a = 0, b = 1, lty = 2, col = 2, lwd = 2)
+
+plot(dat_anom_cci[,6:28], dat_anom_modis, asp = 1)
+abline(a = 0, b = 1, lty = 2, col = 2, lwd = 2)
+
+plot(time_dat[5:340], dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
+abline(h = 0, lty = 5)
+abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
+points(time, dat_anom_modis, typ = 'l', lwd = 2, col = 4)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
