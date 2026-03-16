@@ -8,6 +8,7 @@ library(ggplot2)
 library(readxl)
 library(units)
 
+setwd(here())
 # File Naming Setup.
 root_name <- "hypoxia_extent"
 
@@ -28,7 +29,6 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
 ### original POC was David Scheurer - NOAA Federal <david.scheurer@noaa.gov> recommended by Kevin Craig
 ### data was received 2025-03-06 via email from rebecca.atkins@noaa.gov in an excel file; saved as csv in unformatted data folder
-
 dat <- readxl::read_xlsx('data/unformatted/Historical_Hypoxia_Extent_Data_2025.xlsx')
 dat$`NOAA Figure` <- as.numeric(dat$`NOAA Figure`)
 dat <- dat[, c('Year','NOAA Figure')] |> 
@@ -53,7 +53,7 @@ extent_names = c("Louisiana-Texas Shelf")
 
 formatted_data = IEAnalyzeR::convert_cleaned_data(dat[ , c('year','hypoxia_extent_km2')],
                                                   indicator_names, unit_names, extent_names)
-
+is_na <- which(is.na(formatted_data$`Hypoxia Extent`))
 
 #----------------------------------------------------
 #### 3. Save Formatted data as csv ####
@@ -84,7 +84,14 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T, pt_size = 2, fig.width = 10)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T, pt_size = 2, fig.width = 10) +
+  geom_vline(xintercept = as.numeric(formatted_data$indicator[is_na]),
+             color = 4, lwd = 1.5) +
+  annotate("text", label="No data",
+           x = as.numeric(formatted_data$indicator[is_na])-.5,
+           y = mean(as.numeric(formatted_data$`Hypoxia Extent`), na.rm=T),
+           angle = 90, size=4,
+           color = 4, fontface="bold")
 
 #----------------------------------------------------
 #### 7. Save plot ####
