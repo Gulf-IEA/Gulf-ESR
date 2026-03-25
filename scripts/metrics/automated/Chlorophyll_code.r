@@ -67,36 +67,36 @@ gulf_iho <- iho |>
 
 rm(eez, iho); gc()
 
-# plot_regions <- F ### set to F to skip plots
-# 
-# if(plot_regions==T){
-#   
-#   ocean <- ne_download(type = 'ocean', 
-#                        category = 'physical',
-#                        scale = 10, 
-#                        returnclass = 'sv')
-#   
-#   # png(here('figures/plots/chl-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
-#   par(mfrow=c(2,1))
-#   # par(mfrow=c(1,2))
-#   plot(ocean, 
-#        ylim = c(min_lat, max_lat), 
-#        xlim = c(min_lon, max_lon), 
-#        col = 'gray', 
-#        main = 'Gulf-wide')
-#   plot(st_geometry(gulf_iho), 
-#        add = T, 
-#        col = alpha(2,.5))
-#   plot(ocean, 
-#        ylim = c(min_lat, max_lat), 
-#        xlim = c(min_lon, max_lon), 
-#        col = 'gray',
-#        main = 'US Gulf EEZ')
-#   plot(st_geometry(gulf_eez), 
-#        add = T, 
-#        col = alpha(4,.5))
-#   # dev.off()
-# }
+plot_regions <- F ### set to F to skip plots
+
+if(plot_regions==T){
+  
+  ocean <- ne_download(type = 'ocean', 
+                       category = 'physical',
+                       scale = 10, 
+                       returnclass = 'sv')
+  
+  # png(here('figures/plots/chl-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
+  par(mfrow=c(2,1))
+  # par(mfrow=c(1,2))
+  plot(ocean, 
+       ylim = c(min_lat, max_lat), 
+       xlim = c(min_lon, max_lon), 
+       col = 'gray', 
+       main = 'Gulf-wide')
+  plot(st_geometry(gulf_iho), 
+       add = T, 
+       col = alpha(2,.5))
+  plot(ocean, 
+       ylim = c(min_lat, max_lat), 
+       xlim = c(min_lon, max_lon), 
+       col = 'gray',
+       main = 'US Gulf EEZ')
+  plot(st_geometry(gulf_eez), 
+       add = T, 
+       col = alpha(4,.5))
+  # dev.off()
+}
 
 # download by year to avoid timeout errors --------------------
 
@@ -265,6 +265,7 @@ table(year(time),month(time))
 
 # }
 
+
 plot(modis_eez$time|>as.Date(),modis_eez$chl_mgm3,
      typ='l',lwd = 2, col = 2, ylim = c(0, 2.5))
 points(modis_eez$time|>as.Date(),modis_eez$chl_mgm3_geo,
@@ -272,7 +273,7 @@ points(modis_eez$time|>as.Date(),modis_eez$chl_mgm3_geo,
 
 dat_eez2 <- modis_eez$chl_mgm3_geo
 dat_sq <- matrix(dat_eez2, 12, 23) 
-dat_anom_modis <- (dat_sq - apply(dat_sq, 1, mean, na.rm = T))/apply(dat_sq, 1, sd, na.rm = T) |> as.vector()
+dat_anom_modis <- ((dat_sq - apply(dat_sq, 1, mean, na.rm = T))/apply(dat_sq, 1, sd, na.rm = T)) |> as.vector()
 dat_anom_modis2 <- (dat_sq - apply(dat_sq, 1, mean, na.rm = T)) |> as.vector()
 time <- as.Date(modis_eez$time)
 
@@ -283,6 +284,8 @@ abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
 plot(time, dat_anom_modis2, typ = 'l', lwd = 2, col = 3)
 abline(h = c(-1,0,1), lty = 5)
 abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
+
+
 
 
 ### alternative download from Plymouth Marine Lab (from the horse's mouth)
@@ -349,6 +352,9 @@ for(i in 1:dim(yr_mon)[1]){
   setTxtProgressBar(pb, i)
 }
 
+dat_eez[dat_eez==chl_fill$value] <- NA
+dat_eez2 <- dat_eez
+
 setwd("C:/Users/brendan.turley/Documents/data")
 load('chl_comb_temp.RData')
 
@@ -363,12 +369,12 @@ apply(dat_eez, 3, function(x)all(is.na(x)))
 n_na <- apply(dat_eez, 3, function(x)sum(is.na(x)))
 
 
-dat_eez[dat_eez==chl_fill$value] <- NA
+# dat_eez[dat_eez==chl_fill$value] <- NA
 # dat_eez2 <- dat_eez
 
 time_dat
 time_dat <- as.Date(time_dat, origin = '1970-01-01')
-data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
+# data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
 
 ### log data prior ro global summary statistics then unlog per Product User Guide for v6.0 Dataset page 18
 # https://climate.esa.int/documents/3154/D4.2_-_OC-CCI_Product_User_Guide_PUG_v6.5b_for_website.pdf
@@ -383,15 +389,38 @@ plot(time_dat, dat_eez_mean, typ = 'l')
 plot(time_dat, n_na, typ = 'l')
 
 dat_sq <- matrix(10^dat_eez_log[5:340], 12, 28) 
-dat_anom_cci <- (dat_sq - apply(dat_sq, 1, mean))/apply(dat_sq, 1, sd) |> as.vector()
+dat_anom_cci <- ((dat_sq - apply(dat_sq, 1, mean))/apply(dat_sq, 1, sd)) |> as.vector()
+time_dat2 <- time_dat[5:340]
 
-plot(time_dat[5:340], dat_anom_cci, typ = 'l', lwd = 2, col = 3)
+
+plot(time_dat2, dat_anom_cci, typ = 'l', lwd = 2, col = 3)
 abline(h = 0, lty = 5)
 abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
+
+plot(time, dat_anom_modis, typ = 'l', lwd = 2, col = 3)
+abline(h = c(-1,0,1), lty = 5)
+abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
+
+
+plot(time_dat2, dat_anom_cci, typ = 'l', lwd = 2, col = 3)
+points(time, dat_anom_modis, typ = 'l', lwd = 2, col = 4)
+abline(h = 0, lty = 5)
+abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
+legend('topleft', c('ESA-CCI', 'MODIS'), lty = 1, lwd = 2, col = c(3,4))
+
+time2 <- time-15
+cci_com <- dat_anom_cci[which(time_dat2==time2[1]):length(time_dat2)]
+time_com <- time_dat[which(time_dat2==time2[1]):length(time_dat2)]
+
+plot(cci_com, dat_anom_modis, asp = 1,
+     panel.first = abline(0,1, lty = 5))
+cor.test(cci_com, dat_anom_modis,
+         method = c("pear"), exact = T)
 
 image(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
 
 hist(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
+
 
 test <- aperm(dat_eez, c(2,1,3))
 
@@ -429,7 +458,7 @@ plot(time_dat, 10^(chl_mean_geo$mean), typ = 'l', lwd = 2)
 dat_sq <- matrix(10^(chl_mean_geo$mean[5:340]), 12, 28) 
 dat_anom_cci2 <- (dat_sq - apply(dat_sq, 1, mean))/apply(dat_sq, 1, sd) |> as.vector()
 
-plot(time_dat[5:340], dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
+plot(time_dat2, dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
 abline(h = 0, lty = 5)
 abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
 
@@ -439,10 +468,11 @@ abline(a = 0, b = 1, lty = 2, col = 2, lwd = 2)
 plot(dat_anom_cci[,6:28], dat_anom_modis, asp = 1)
 abline(a = 0, b = 1, lty = 2, col = 2, lwd = 2)
 
-plot(time_dat[5:340], dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
+plot(time_dat2, dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
 abline(h = 0, lty = 5)
 abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
 points(time, dat_anom_modis, typ = 'l', lwd = 2, col = 4)
+
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
