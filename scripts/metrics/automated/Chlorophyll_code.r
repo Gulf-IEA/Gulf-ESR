@@ -265,25 +265,25 @@ table(year(time),month(time))
 
 # }
 
-
-plot(modis_eez$time|>as.Date(),modis_eez$chl_mgm3,
-     typ='l',lwd = 2, col = 2, ylim = c(0, 2.5))
-points(modis_eez$time|>as.Date(),modis_eez$chl_mgm3_geo,
-       typ='l',lwd = 2, col = 3)
+### comparisons geometric mean versus regular mean
+# plot(modis_eez$time|>as.Date(),modis_eez$chl_mgm3,
+#      typ='l',lwd = 2, col = 2, ylim = c(0, 2.5))
+# points(modis_eez$time|>as.Date(),modis_eez$chl_mgm3_geo,
+#        typ='l',lwd = 2, col = 3)
 
 dat_eez2 <- modis_eez$chl_mgm3_geo
 dat_sq <- matrix(dat_eez2, 12, 23) 
 dat_anom_modis <- ((dat_sq - apply(dat_sq, 1, mean, na.rm = T))/apply(dat_sq, 1, sd, na.rm = T)) |> as.vector()
-dat_anom_modis2 <- (dat_sq - apply(dat_sq, 1, mean, na.rm = T)) |> as.vector()
+# dat_anom_modis2 <- (dat_sq - apply(dat_sq, 1, mean, na.rm = T)) |> as.vector()
 time <- as.Date(modis_eez$time)
 
 plot(time, dat_anom_modis, typ = 'l', lwd = 2, col = 3)
 abline(h = c(-1,0,1), lty = 5)
 abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
 
-plot(time, dat_anom_modis2, typ = 'l', lwd = 2, col = 3)
-abline(h = c(-1,0,1), lty = 5)
-abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
+# plot(time, dat_anom_modis2, typ = 'l', lwd = 2, col = 3)
+# abline(h = c(-1,0,1), lty = 5)
+# abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
 
 
 
