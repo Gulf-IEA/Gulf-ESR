@@ -19,7 +19,6 @@ library(ncdf4)
 library(cmocean)
 
 # File Naming Setup.
-# !! Auto generated-Do Not Change !!
 root_name <- "Chlorophyll"
 
 csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv"))
@@ -28,19 +27,16 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
 #----------------------------------------------------
 #### 1. Read Data ####
-# Pull data from its source:
-# Manual data: data/unformatted data
-# Automated data: Add script for data call (API, package, etc.)
-# Confidential data: Store locally in the confidential data folder
-#   - This folder is excluded using gitignore and will not push to the GitHub repo
-# If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
-#   - Filename should use the syntax rootname_descriptivename
+
+### The ESA CCI V6 (https://www.oceancolour.org/) was chosen over MODIS for several reasons:
+# 1. AQUA/MODIS is nearing the end of its fuel and it is expected to deorbit soon (see status https://aqua.nasa.gov/announcements/aqua-status)
+# 2. The ESA CCI blended chlorophyll compares well to AQUA/MODIS data; see separate code for comparisons; correlation is 0.85 between standardized monthly anomalies
+# 3. One of the goals of this ESR (Gulf 2025) is to set the framework for annual updates; thus using a stable data source is preferable
+
 
 # ERDDAP file: pmlEsaCCI60OceanColorMonthly
 # https://coastwatch.pfeg.noaa.gov/erddap/info/pmlEsaCCI60OceanColorMonthly/index.html
 
-#----------------------------------------------------
-#### 1. Read Data ####
 
 # define spatial domain  --------------------------------
 min_lon <- -98
@@ -51,11 +47,11 @@ max_lat <- 31
 # load shapefile to subset  --------------------------------
 ### shapefiles downloaded from marineregions.org (future goal implement mregions2 R package for shapefile)
 setwd(here("data/intermediate/gulf_eez"))
-setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_eez")
+setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_eez") ### remove when final pull request issued
 eez <- vect('eez.shp') |> makeValid()
 
 setwd(here("data/intermediate/gulf_iho"))
-setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_iho")
+setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_iho") ### remove when final pull request issued
 iho <- vect('iho.shp') |> makeValid()
 
 gulf_eez <- terra::intersect(eez, iho) |>
@@ -67,36 +63,6 @@ gulf_iho <- iho |>
 
 rm(eez, iho); gc()
 
-plot_regions <- F ### set to F to skip plots
-
-if(plot_regions==T){
-  
-  ocean <- ne_download(type = 'ocean', 
-                       category = 'physical',
-                       scale = 10, 
-                       returnclass = 'sv')
-  
-  # png(here('figures/plots/chl-spatial.png'), width = 4, height = 6, units = 'in', res = 300)
-  par(mfrow=c(2,1))
-  # par(mfrow=c(1,2))
-  plot(ocean, 
-       ylim = c(min_lat, max_lat), 
-       xlim = c(min_lon, max_lon), 
-       col = 'gray', 
-       main = 'Gulf-wide')
-  plot(st_geometry(gulf_iho), 
-       add = T, 
-       col = alpha(2,.5))
-  plot(ocean, 
-       ylim = c(min_lat, max_lat), 
-       xlim = c(min_lon, max_lon), 
-       col = 'gray',
-       main = 'US Gulf EEZ')
-  plot(st_geometry(gulf_eez), 
-       add = T, 
-       col = alpha(4,.5))
-  # dev.off()
-}
 
 # download by year to avoid timeout errors --------------------
 
@@ -107,371 +73,84 @@ if(plot_regions==T){
 
 review_code <- T ### set to F to rerun download loop
 
-# if(review_code == F){
-
-# get ERDDAP info  --------------------------------
-# pmlEsaCCI50OceanColorMonthly
-chl <- info('pmlEsaCCI60OceanColorMonthly', url = 'https://coastwatch.pfeg.noaa.gov/erddap')
-
-
-# define years  --------------------------------
-styear <- 1997 # 1997 is partial year
-enyear <- 2025 # only goes to Dec 2021
-
-# empty data  -------------------------------------------------
-# dat_gulf <- c()
-cci_erddap_eez <- c()
-
-### only retain the geometry
-gulf_eez <- gulf_eez$geometry
-
-setwd(here("data/intermediate"))
-system.time(
-  for (yr in styear:enyear) {
-    
-    cat('\n', yr, '\n')
-    
-    if(yr == 1997){
-      begin_date <- '1997-09-01'
-    } else {
-      begin_date <- paste0(yr,'-01-01')
-    }
-    
-    chl_grab <- griddap(chl, fields = 'chlor_a',
-                        time = c(begin_date, paste0(yr,'-12-01')),
-                        longitude = c(min_lon, max_lon),
-                        latitude = c(min_lat, max_lat),
-                        fmt = 'csv')
-    
-    ### log for geometric mean
-    chl_grab$log10_chlor <- log10(chl_grab$chlor_a + .0001)
-    
-    ### US EEZ
-    chl_eez_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
-      st_intersection(gulf_eez)
-    
-    
-    chl_eez <- chl_eez_sf |>
-      st_drop_geometry() |>
-      group_by(time) |>
-      summarize(chl_mgm3 = mean(chlor_a, na.rm = T),
-                chl_mgm3_geo = 10^mean(log10_chlor, na.rm = T))
-    
-    if (yr == styear) {
-      cci_erddap_eez <- chl_eez
-    }
-    else {
-      cci_erddap_eez <- rbind(cci_erddap_eez, chl_eez)
-    }
-  }
-)
-
-setwd(here("data/intermediate"))
-save(cci_erddap_eez, file = 'chl_erddap_temp.RData')
-
-
-### alternatively there is AQUA/MODIS
-# erdMH1chlamday_R2022NRT or erdMH1chlamday_R2022SQ
-chl <- info('erdMH1chlamday_R2022SQ', url = 'https://coastwatch.pfeg.noaa.gov/erddap')
-
-# define years  --------------------------------
-styear <- 2003
-enyear <- 2025
-
-# empty data  -------------------------------------------------
-# dat_gulf <- c()
-modis_erddap_eez2 <- c()
-
-### only retain the geometry
-gulf_eez <- gulf_eez$geometry
-st_crs(gulf_eez)
-
-setwd(here("data/intermediate"))
-system.time(
-  for (yr in styear:enyear) { 
-    
-    cat('\n', yr, '\n')
-    
-    if(yr<2024){
-      variable <- 'chlor_a'
-    }
-    if(yr>=2024){
-      chl <- info('erdMH1chlamday_R2022NRT', url = 'https://coastwatch.pfeg.noaa.gov/erddap')
-      variable <- 'chlorophyll'
-    }
-    
-    chl_grab <- griddap(chl, fields = variable, 
-                        time = c(paste0(yr,'-01-16T00:00:00Z'), paste0(yr,'-12-16T00:00:00Z')),
-                        longitude = c(min_lon, max_lon), 
-                        latitude = c(min_lat, max_lat), 
-                        fmt = 'csv')
-    
-    if(names(chl_grab)[4]=='chlor_a'){
-      names(chl_grab)[4] <- 'chlorophyll'
-    }
-    
-    ### log for geometric mean
-    chl_grab$log10_chlor <- log10(chl_grab$chlorophyll + .0001)
-    
-    ### US EEZ
-    chl_eez_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
-      st_intersection(gulf_eez)
-    
-    
-    chl_eez <- chl_eez_sf |>
-      st_drop_geometry() |>
-      group_by(time) |>
-      summarize(chl_mgm3 = mean(chlorophyll, na.rm = T),
-                chl_mgm3_geo = 10^mean(log10_chlor, na.rm = T))
-    
-    if (yr == styear) { 
-      modis_erddap_eez2 <- chl_eez
-    } 
-    else {
-      modis_erddap_eez2 <- rbind(modis_erddap_eez2, chl_eez)
-    }
-  }
-)
-
-
-setwd(here("data/intermediate"))
-save(modis_erddap_eez, file = 'chl_modis_temp.RData')
-save(modis_erddap_eez2, file = 'chl_modis_temp2.RData')
-
-load('chl_modis_temp.RData')
-load('chl_modis_temp2.RData')
-
-modis_eez <- rbind(modis_erddap_eez[1:252,],
-                   modis_erddap_eez2,
-                   c('2024-12-16T00:00:00Z', NA, NA)) |>
-  type.convert() |>
-  arrange(time)
-
-setwd(here("data/intermediate"))
-save(modis_eez, file = 'chl_modis_comb_temp.RData')
-
-setwd("C:/Users/brendan.turley/Documents/data/ESR_tmp")
-load('chl_modis_comb_temp.RData')
-
-
-time <- ymd_hms(modis_eez$time)
-table(year(time),month(time))
-
-# } else {
-
-# setwd(here("data/intermediate"))
-# load('chl_modis_temp.RData')
-### load dat_gulf & dat_eez downloaded chl data
-
-# }
-
-### comparisons geometric mean versus regular mean
-# plot(modis_eez$time|>as.Date(),modis_eez$chl_mgm3,
-#      typ='l',lwd = 2, col = 2, ylim = c(0, 2.5))
-# points(modis_eez$time|>as.Date(),modis_eez$chl_mgm3_geo,
-#        typ='l',lwd = 2, col = 3)
-
-dat_eez2 <- modis_eez$chl_mgm3_geo
-dat_sq <- matrix(dat_eez2, 12, 23) 
-dat_anom_modis <- ((dat_sq - apply(dat_sq, 1, mean, na.rm = T))/apply(dat_sq, 1, sd, na.rm = T)) |> as.vector()
-# dat_anom_modis2 <- (dat_sq - apply(dat_sq, 1, mean, na.rm = T)) |> as.vector()
-time <- as.Date(modis_eez$time)
-
-plot(time, dat_anom_modis, typ = 'l', lwd = 2, col = 3)
-abline(h = c(-1,0,1), lty = 5)
-abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
-
-# plot(time, dat_anom_modis2, typ = 'l', lwd = 2, col = 3)
-# abline(h = c(-1,0,1), lty = 5)
-# abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
-
-
-
-
-### alternative download from Plymouth Marine Lab (from the horse's mouth)
-# https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v6.0-1km-MONTHLY
-# https://www.oceancolour.org/thredds/dodsC/CCI_ALL-v6.0-MONTHLY
-# 'https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/1997/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-199709-fv6.0.nc'
-dat <- nc_open('https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/1997/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-199709-fv6.0.nc',
-               readunlim = F, return_on_error = T, suppress_dimvals = T)
-lon <- ncvar_get(dat, 'lon')
-lat <- ncvar_get(dat, 'lat')
-chl_fill <- ncatt_get(dat, 'chlor_a', "_FillValue")
-nc_close(dat)
-rm(dat)
-
-ilon <- which(lon>min_lon & lon<max_lon)
-ilat <- which(lat>min_lat & lat<max_lat)
-
-yr_mon <- rbind(data.frame(year = rep(1997,4),
-                           month = sprintf('%02d', 9:12)),
-                expand.grid(year = 1998:2025, 
-                            month = sprintf('%02d', 1:12))) |>
-  arrange(year, month)
-
-
-### chunk downloads for sanity
-dat_eez <- array(NA, c(length(ilon), length(ilat), dim(yr_mon)[1]))
-time_dat <- rep(NA, dim(yr_mon)[1])
-
-pb <- txtProgressBar(min = 0, max = length(time_dat), style = 3)
-for(i in 1:dim(yr_mon)[1]){
+if(review_code == F){
   
-  nc_url <- paste0('https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/',
-                   yr_mon$year[i],
-                   '/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-',
-                   yr_mon$year[i], yr_mon$month[i],
-                   '-fv6.0.nc')
+  # get ERDDAP info  --------------------------------
+  # pmlEsaCCI50OceanColorMonthly
+  chl <- info('pmlEsaCCI60OceanColorMonthly', url = 'https://coastwatch.pfeg.noaa.gov/erddap')
   
-  dat <- nc_open(nc_url, readunlim = F, return_on_error = T, suppress_dimvals = T)
   
-  while(dat$error==T){
-    Sys.sleep(5) 
-    dat <- nc_open(nc_url, readunlim = F, return_on_error = T, suppress_dimvals = T)
-  }
+  # define years  --------------------------------
+  styear <- 1997 # 1997 is partial year
+  enyear <- 2025 # only goes to Dec 2021
   
-  chl_pull <- try(ncvar_get(dat, 'chlor_a', start = c(ilon[1], ilat[1], 1),
-                            count = c(length(ilon), length(ilat), 1)))
-  time_pull <- try(ncvar_get(dat, 'time'))
+  # empty data  -------------------------------------------------
+  cci_erddap_eez <- c()
   
-  while(any(class(chl_pull) == 'try-error')){
-    Sys.sleep(5) 
-    chl_pull <- try(ncvar_get(dat, 'chlor_a', start = c(ilon[1], ilat[1], 1),
-                              count = c(length(ilon), length(ilat), 1)))
-    time_pull <- try(ncvar_get(dat, 'time'))
-  }
-  
-  dat_eez[,,i] <- chl_pull
-  time_dat[i] <- time_pull
+  ### only retain the geometry
+  gulf_eez <- gulf_eez$geometry
   
   setwd(here("data/intermediate"))
-  save(dat_eez, time_dat, file = 'chl_comb_temp2.RData')
+  system.time(
+    for (yr in styear:enyear) {
+      
+      cat('\n', yr, '\n')
+      
+      if(yr == 1997){
+        begin_date <- '1997-09-04T00:00:00Z'
+      } else {
+        begin_date <- paste0(yr,'-01-01T00:00:00Z')
+      }
+      
+      chl_grab <- griddap(chl, fields = 'chlor_a',
+                          time = c(begin_date, paste0(yr,'-12-01T00:00:00Z')),
+                          longitude = c(min_lon, max_lon),
+                          latitude = c(min_lat, max_lat),
+                          fmt = 'csv')
+      
+      ### log for geometric mean
+      chl_grab$log10_chlor <- log10(chl_grab$chlor_a + .0001)
+      
+      ### US EEZ
+      chl_eez_sf <- st_as_sf(chl_grab, coords = c("longitude", "latitude"), crs = 4326) |>
+        st_intersection(gulf_eez)
+      
+      
+      chl_eez <- chl_eez_sf |>
+        st_drop_geometry() |>
+        group_by(time) |>
+        summarize(chl_mgm3 = mean(chlor_a, na.rm = T),
+                  chl_mgm3_geo = 10^mean(log10_chlor, na.rm = T))
+      
+      if (yr == styear) {
+        cci_erddap_eez <- chl_eez
+      }
+      else {
+        cci_erddap_eez <- rbind(cci_erddap_eez, chl_eez)
+      }
+    }
+  )
   
-  nc_close(dat)
-  rm(chl_pull, time_pull, dat)
-  setTxtProgressBar(pb, i)
+  setwd(here("data/intermediate"))
+  save(cci_erddap_eez, file = 'chl_cci_temp.RData')
+
+} else {
+  
+  setwd(here("data/intermediate"))
+  load('chl_cci_temp.RData')
+  
 }
 
-dat_eez[dat_eez==chl_fill$value] <- NA
-dat_eez2 <- dat_eez
+dat_eez2 <- c(rep(NA,8), cci_erddap_eez$chl_mgm3_geo)
+dat_sq <- matrix(dat_eez2, 12, 29) 
+dat_anom_cci <- ((dat_sq - apply(dat_sq, 1, mean, na.rm = T))/apply(dat_sq, 1, sd, na.rm = T)) |> as.vector()
+time1 <- c(seq(as.Date('1997-01-01'), as.Date('1997-08-01'), by = 'month'),
+           as.Date(cci_erddap_eez$time))
 
-setwd("C:/Users/brendan.turley/Documents/data")
-load('chl_comb_temp.RData')
-
-setwd(here("data/intermediate"))
-setwd("C:/Users/brendan.turley/Documents/data/ESR_tmp")
-load('chl_comb_temp2.RData')
-
-
-# sanity check are there data in each yr_month
-apply(dat_eez, 3, function(x)all(is.na(x)))
-
-n_na <- apply(dat_eez, 3, function(x)sum(is.na(x)))
-
-
-# dat_eez[dat_eez==chl_fill$value] <- NA
-# dat_eez2 <- dat_eez
-
-time_dat
-time_dat <- as.Date(time_dat, origin = '1970-01-01')
-# data.frame(yr_mon, date = as.Date(time_dat, origin = '1970-01-01'))
-
-### log data prior ro global summary statistics then unlog per Product User Guide for v6.0 Dataset page 18
-# https://climate.esa.int/documents/3154/D4.2_-_OC-CCI_Product_User_Guide_PUG_v6.5b_for_website.pdf
-# dat_eez_log <- apply(log10(dat_eez), 3, mean , na.rm = T)
-dat_eez_log <- log10(dat_eez) |> apply(3, mean , na.rm = T)
-dat_eez_mean <- apply(dat_eez, 3, mean , na.rm = T) # median is more stable and equivalent between methods
-
-par(mfrow = c(2,1))
-plot(time_dat, 10^dat_eez_log, typ = 'l')
-plot(time_dat, dat_eez_log, typ = 'l')
-plot(time_dat, dat_eez_mean, typ = 'l')
-plot(time_dat, n_na, typ = 'l')
-
-dat_sq <- matrix(10^dat_eez_log[5:340], 12, 28) 
-dat_anom_cci <- ((dat_sq - apply(dat_sq, 1, mean))/apply(dat_sq, 1, sd)) |> as.vector()
-time_dat2 <- time_dat[5:340]
-
-
-plot(time_dat2, dat_anom_cci, typ = 'l', lwd = 2, col = 3)
-abline(h = 0, lty = 5)
-abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
-
-plot(time, dat_anom_modis, typ = 'l', lwd = 2, col = 3)
+### sanity check
+plot(time1, dat_anom_cci, typ = 'l', lwd = 2, col = 3)
 abline(h = c(-1,0,1), lty = 5)
-abline(v = seq(ymd('1998-01-01'),ymd('2025-12-01'),by = 'year'), lty = 3)
-
-
-plot(time_dat2, dat_anom_cci, typ = 'l', lwd = 2, col = 3)
-points(time, dat_anom_modis, typ = 'l', lwd = 2, col = 4)
-abline(h = 0, lty = 5)
-abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
-legend('topleft', c('ESA-CCI', 'MODIS'), lty = 1, lwd = 2, col = c(3,4))
-
-time2 <- time-15
-cci_com <- dat_anom_cci[which(time_dat2==time2[1]):length(time_dat2)]
-time_com <- time_dat[which(time_dat2==time2[1]):length(time_dat2)]
-
-plot(cci_com, dat_anom_modis, asp = 1,
-     panel.first = abline(0,1, lty = 5))
-cor.test(cci_com, dat_anom_modis,
-         method = c("pear"), exact = T)
-
-image(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
-
-hist(log10(apply(dat_eez, c(1,2), mean, na.rm = T)))
-
-
-test <- aperm(dat_eez, c(2,1,3))
-
-
-chl_stack <- rast(aperm(dat_eez, c(2,1,3)),
-                  ext = c(lon[ilon[1]], lon[ilon[length(ilon)]], 
-                          lat[ilat[length(ilat)]], lat[ilat[1]]), 
-                  # crs = 'EPSG:32662') # or pc_crs
-                  # crs = pc_crs)
-                  crs = 'EPSG:4326')
-
-if (crs(chl_stack) != crs(gulf_eez)) {
-  chl_stack <- project(chl_stack, crs(gulf_eez))
-}
-
-# 1. Crop the raster stack to the shapefile's extent
-cropped_stack <- crop(chl_stack, gulf_eez)
-
-# 2. Mask the cropped stack to the shapefile's exact boundaries
-# This operation sets all cells outside the polygon to NA
-# The cropped_stack is used here to make the masking faster, as it operates on a smaller area
-subset_stack <- mask(cropped_stack, gulf_eez)
-
-# View the result
-plot(subset_stack)
-plot(gulf_eez, add = TRUE, border = "red", lwd = 2) # Overlay the shapefile to visualize the subset
-
-chl_mean <- global(subset_stack, mean, na.rm = T)
-chl_mean_geo <- global(log10(subset_stack), mean, na.rm = T)
-
-plot(time_dat, chl_mean$mean, typ = 'l', lwd = 2)
-plot(time_dat, 10^(chl_mean_geo$mean), typ = 'l', lwd = 2)
-
-
-dat_sq <- matrix(10^(chl_mean_geo$mean[5:340]), 12, 28) 
-dat_anom_cci2 <- (dat_sq - apply(dat_sq, 1, mean))/apply(dat_sq, 1, sd) |> as.vector()
-
-plot(time_dat2, dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
-abline(h = 0, lty = 5)
-abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
-
-plot(dat_anom_cci, dat_anom_cci2, asp = 1)
-abline(a = 0, b = 1, lty = 2, col = 2, lwd = 2)
-
-plot(dat_anom_cci[,6:28], dat_anom_modis, asp = 1)
-abline(a = 0, b = 1, lty = 2, col = 2, lwd = 2)
-
-plot(time_dat2, dat_anom_cci2, typ = 'l', lwd = 2, col = 3)
-abline(h = 0, lty = 5)
-abline(v = seq(as.Date('1998-01-01'),as.Date('2025-12-01'),by = 'year'), lty = 2)
-points(time, dat_anom_modis, typ = 'l', lwd = 2, col = 4)
+abline(v = seq(ymd('1997-01-01'),ymd('2026-01-01'),by = 'year'), lty = 3, col = 'gray')
 
 
 #----------------------------------------------------
@@ -481,12 +160,19 @@ points(time, dat_anom_modis, typ = 'l', lwd = 2, col = 4)
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
+yrmon <- paste(time1 |> year(),
+               sprintf("%02.f", time1 |> month()),
+               sep = '-')
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c('Chlorophyll')
+unit_names = c('Standardized Monthly Anomaly')
+extent_names = c("US Gulf EEZ")
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yrmon[9:length(yrmon)], 
+                                                        dat_anom_cci[9:length(dat_anom_cci)]), # NAs added for anomaly calc; then remmoved here
+                                                  indicator_names, unit_names, extent_names)
 
 
 #----------------------------------------------------
@@ -502,7 +188,7 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
-data_obj<-IEAnalyzeR::data_prep(csv_filename)
+data_obj <- IEAnalyzeR::data_prep(csv_filename)
 
 
 #----------------------------------------------------
@@ -518,7 +204,7 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trends = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
 
 #----------------------------------------------------
 #### 7. Save plot ####
@@ -526,3 +212,283 @@ IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trends = TRUE)
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
 ggsave(filename = plot_filename)
+
+
+#----------------------------------------------------
+#### 8. making Seasonal plots (sensu NEFSC SOE) ####
+
+
+### helper functions
+
+### perform spatial trend analyses on a matirx or an array
+array_lm <- function (x){
+  if(is.na(all(x))){
+    NA
+  } else {
+    y <- 1:length(x)
+    coef(lm(x~y))[2]
+  }
+}
+
+### replace min/max for spatial plots; superfluous using terra
+replace_min_max <- function(dat, min, max){
+  dat[which(dat < min)] <- min
+  dat[which(dat > max)] <- max
+  dat
+}
+
+### load from previously saved spot
+setwd(here("data/intermediate"))
+load('chl_cci_temp.RData')
+
+
+### convert to dates
+cci_erddap_eez$time <- as.Date(cci_erddap_eez$time)
+
+# add yearmonth column --------------------------
+cci_erddap_eez$yrmon <- paste(cci_erddap_eez$time |> year(),
+                       sprintf("%02.f", cci_erddap_eez$time |> month()),
+                       sep = '-')
+
+### add seasons
+cci_erddap_eez$jday <- yday(cci_erddap_eez$time)
+
+cci_erddap_eez <- cci_erddap_eez |>
+  mutate(season = case_when(
+    month(time)==12 | month(time)<3 ~ 'win',
+    month(time)>2 & month(time)<6 ~ 'spr',
+    month(time)>5 & month(time)<9 ~ 'sum',
+    month(time)>8 & month(time)<12 ~ 'aut'
+  )) |>
+  arrange(time)
+
+### create season_yr and adjust to make december n-1 part of winter n
+cci_erddap_eez$season_yr <- ifelse(month(cci_erddap_eez$time)==12, 
+                            year(cci_erddap_eez$time)+1, 
+                            year(cci_erddap_eez$time))
+cci_erddap_eez$season_yr[which(cci_erddap_eez$season_yr==2026)] <- NA
+
+### alternative to redefine seasons as jfm, amj, jas, ond
+# dat_eez <- dat_eez |>
+#   mutate(season = case_when(
+#     month(time)<4 ~ 'win',
+#     month(time)>3 & month(time)<7 ~ 'spr',
+#     month(time)>4 & month(time)<10 ~ 'sum',
+#     month(time)>9 ~ 'aut'
+#   )) |>
+#   arrange(time)
+# dat_eez$season_yr <- year(dat_eez$time)
+
+### seasonal means
+eez_win <- aggregate(chl_mgm3_geo ~ season_yr, data = subset(cci_erddap_eez, season=='win'),
+                     # mean, na.rm = T)
+                     function(x) 10^mean(log10(x + .0001),na.rm=T))
+eez_spr <- aggregate(chl_mgm3_geo ~ season_yr, data = subset(cci_erddap_eez, season=='spr'),
+                     # mean, na.rm = T)
+                     function(x) 10^mean(log10(x + .0001),na.rm=T))
+eez_sum <- aggregate(chl_mgm3_geo ~ season_yr, data = subset(cci_erddap_eez, season=='sum'),
+                     # mean, na.rm = T)
+                     function(x) 10^mean(log10(x + .0001),na.rm=T))
+eez_aut <- aggregate(chl_mgm3_geo ~ season_yr, data = subset(cci_erddap_eez, season=='aut'),
+                     # mean, na.rm = T)
+                     function(x) 10^mean(log10(x + .0001),na.rm=T))
+
+png(here('figures/plots/sst-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+par(mfrow = c(2,2), mar = c(3,5,2,3),
+    oma = c(0,0,3,0))
+
+plot(eez_win$season_yr, eez_win$chl_mgm3_geo, 
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_win$chl_mgm3_geo), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'Chlor', main = 'Winter - DJF')
+
+plot(eez_spr$season_yr, eez_spr$chl_mgm3_geo, 
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_spr$chl_mgm3_geo), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'Chlor', main = 'Spring - MAM')
+
+plot(eez_sum$season_yr, eez_sum$chl_mgm3_geo, 
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_sum$chl_mgm3_geo), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'Chlor', main = 'Summer - JJA')
+
+plot(eez_aut$season_yr, eez_aut$chl_mgm3_geo,
+     typ = 'o', pch = 16, las = 1,
+     panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
+                        abline(h = mean(eez_aut$chl_mgm3_geo), col = 'gray', lwd = 2),
+                        grid()),
+     xlab = '', ylab = 'Chlor', main = 'Fall - SON')
+
+mtext('US Gulf EEZ Chorophyll Seasonality', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+dev.off()
+
+
+
+
+### spatial plots
+
+
+### alternative download from Plymouth Marine Lab (from the horse's mouth); https://www.oceancolour.org/
+### this using the OPeNDAP entry point
+
+# define spatial domain  --------------------------------
+min_lon <- -98
+max_lon <- -80
+min_lat <- 18
+max_lat <- 31
+
+review_code <- T ### set to F to rerun download loop
+
+if(review_code == F){
+  
+  dat <- nc_open('https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/1997/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-199709-fv6.0.nc',
+                 readunlim = F, return_on_error = T, suppress_dimvals = T)
+  lon <- ncvar_get(dat, 'lon')
+  lat <- ncvar_get(dat, 'lat')
+  chl_fill <- ncatt_get(dat, 'chlor_a', "_FillValue")
+  nc_close(dat)
+  rm(dat)
+  
+  ### get lon/lat indices for download
+  ilon <- which(lon>min_lon & lon<max_lon)
+  ilat <- which(lat>min_lat & lat<max_lat)
+  
+  ### create year-month datatframe to paste into OPeNDAP request
+  yr_mon <- expand.grid(year = 2021:2025, 
+                        month = sprintf('%02d', 1:12)) |>
+    arrange(year, month)
+  
+  ### chunk downloads for sanity
+  dat_eez <- array(NA, c(length(ilon), length(ilat), dim(yr_mon)[1]))
+  time_dat <- rep(NA, dim(yr_mon)[1])
+  
+  pb <- txtProgressBar(min = 0, max = length(time_dat), style = 3)
+  for(i in 1:dim(yr_mon)[1]){
+    
+    nc_url <- paste0('https://www.oceancolour.org/thredds/dodsC/cci/v6.0-release/geographic/monthly/chlor_a/',
+                     yr_mon$year[i],
+                     '/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-',
+                     yr_mon$year[i], yr_mon$month[i],
+                     '-fv6.0.nc')
+    
+    dat <- nc_open(nc_url, readunlim = F, return_on_error = T, suppress_dimvals = T)
+    
+    while(dat$error==T){ ### sometimes the server times out; this seems to work
+      Sys.sleep(5) 
+      dat <- nc_open(nc_url, readunlim = F, return_on_error = T, suppress_dimvals = T)
+    }
+    
+    chl_pull <- try(ncvar_get(dat, 'chlor_a', start = c(ilon[1], ilat[1], 1),
+                              count = c(length(ilon), length(ilat), 1)))
+    time_pull <- try(ncvar_get(dat, 'time'))
+    
+    while(any(class(chl_pull) == 'try-error')){ ### sometimes the server times out; this seems to work
+      Sys.sleep(5) 
+      chl_pull <- try(ncvar_get(dat, 'chlor_a', start = c(ilon[1], ilat[1], 1),
+                                count = c(length(ilon), length(ilat), 1)))
+      time_pull <- try(ncvar_get(dat, 'time'))
+    }
+    
+    dat_eez[,,i] <- chl_pull
+    time_dat[i] <- time_pull
+    
+    setwd(here("data/intermediate"))
+    save(dat_eez, time_dat, file = 'chl_spatial.RData')
+    
+    nc_close(dat)
+    rm(chl_pull, time_pull, dat)
+    setTxtProgressBar(pb, i)
+  }
+
+  
+} else {
+  
+  setwd(here("data/intermediate"))
+  load('chl_spatial.RData')
+  
+}
+
+# setwd(here("data/intermediate"))
+# load('chl_comb_temp2.RData')
+# 
+# time_dat <- as.Date(time_dat, origin = '1970-01-01')
+# ind <- which(year(time_dat)>2020)
+# 
+# time_dat <- time_dat[ind]
+# dat_eez <- dat_eez[,,ind]
+# 
+# setwd(here("data/intermediate"))
+# save(dat_eez, time_dat, file = 'chl_spatial.RData')
+
+
+chl_l <- list(chl = dat_eez,
+               time = time_dat)
+chl_l$yrmon <- paste0(year(chl_l$time),
+                            sprintf("%02d",month(chl_l$time)))
+### mean monthly anomalies for spatial trend to match aggregation from timeseries plots
+chl_a <- array(NA, dim = c(432,312,60))
+for(i in unique(chl_l$yrmon)){
+  chl_a[,,which(i==unique(chl_l$yrmon))] <- chl_l$chl[,,which(chl_l$yrmon==i)] |>
+    apply(c(1,2), function(x) 10^mean(log10(x + .0001), na.rm=T))
+    # apply(c(1,2), function(x) mean(log10(x + .0001), na.rm=T))
+}
+
+yr5_trend <- apply(chl_a, c(1,2), array_lm)
+hist(yr5_trend)
+range(yr5_trend, na.rm = T)
+imagePlot(yr5_trend)
+
+ann_25 <- apply(chl_l$chl[,,which(year(chl_l$time)>2024)],
+                c(1,2), function(x) 10^mean(log10(x + .0001), na.rm=T))
+hist(ann_25)
+range(log10(ann_25), na.rm = T)
+imagePlot(log10(ann_25))
+
+
+### colors and breaks for plotting
+# t_brks <- seq(-.01,.01,.0005)
+t_brks <- seq(-.36,.36,.02)
+t_cols <- cmocean('delta')(length(t_brks)-1)
+a_brks <- seq(-2,2,.1)
+a_cols <- cmocean('speed')(length(a_brks)-1)
+
+
+### shapefile for plotting
+world <- ne_download(scale = 10, type = "countries", 
+                     returnclass = 'sv') |>
+  crop(ext(min_lon,max_lon,min_lat,max_lat))
+
+### put into raster
+fyt_rast <- rast(t(yr5_trend[,ncol(yr5_trend):1]))
+fyt_rast <- rast(t(yr5_trend))
+ext(fyt_rast) <- c(min_lon,max_lon,min_lat,max_lat)
+crs(fyt_rast) <- "EPSG:4326"
+
+ann_25_rast <- rast(t(log10(ann_25)))
+ext(ann_25_rast) <- c(min_lon,max_lon,min_lat,max_lat)
+crs(ann_25_rast) <- "EPSG:4326"
+
+
+png(here('figures/plots/sst-spatial-plot.png'), width = 4, height = 6, units = 'in', res = 300)
+par(mfrow=c(2,1))
+plot(fyt_rast,
+     col = t_cols, range = c(-.01,.01),
+     # col = t_cols, range = c(-.36,.36),
+     plg = list(tick = 'out', format='g'),
+     main = '2021-2025 SST Trend (°C/month)')
+plot(world, add= T, col = 'gray')
+plot(gulf_eez['geometry'], add = T)
+
+plot(ann_25_rast, 
+     col = a_cols, range = c(-2,2),
+     plg = list(tick = 'out', format='g'),
+     main = '2025 SST anomaly (°C)')
+plot(world, add= T, col = 'gray')
+plot(gulf_eez['geometry'], add = T)
+dev.off()
