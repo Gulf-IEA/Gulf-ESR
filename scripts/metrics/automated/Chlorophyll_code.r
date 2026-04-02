@@ -17,6 +17,7 @@ library(rnaturalearthdata)
 library(scales)
 library(ncdf4)
 library(cmocean)
+library(fields)
 
 # File Naming Setup.
 root_name <- "Chlorophyll"
@@ -133,7 +134,7 @@ if(review_code == F){
   
   setwd(here("data/intermediate"))
   save(cci_erddap_eez, file = 'chl_cci_temp.RData')
-
+  
 } else {
   
   setwd(here("data/intermediate"))
@@ -166,7 +167,7 @@ yrmon <- paste(time1 |> year(),
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c('Chlorophyll')
+indicator_names = c('Chlorophyll a')
 unit_names = c('Standardized Monthly Anomaly')
 extent_names = c("US Gulf EEZ")
 
@@ -247,8 +248,8 @@ cci_erddap_eez$time <- as.Date(cci_erddap_eez$time)
 
 # add yearmonth column --------------------------
 cci_erddap_eez$yrmon <- paste(cci_erddap_eez$time |> year(),
-                       sprintf("%02.f", cci_erddap_eez$time |> month()),
-                       sep = '-')
+                              sprintf("%02.f", cci_erddap_eez$time |> month()),
+                              sep = '-')
 
 ### add seasons
 cci_erddap_eez$jday <- yday(cci_erddap_eez$time)
@@ -264,8 +265,8 @@ cci_erddap_eez <- cci_erddap_eez |>
 
 ### create season_yr and adjust to make december n-1 part of winter n
 cci_erddap_eez$season_yr <- ifelse(month(cci_erddap_eez$time)==12, 
-                            year(cci_erddap_eez$time)+1, 
-                            year(cci_erddap_eez$time))
+                                   year(cci_erddap_eez$time)+1, 
+                                   year(cci_erddap_eez$time))
 cci_erddap_eez$season_yr[which(cci_erddap_eez$season_yr==2026)] <- NA
 
 ### alternative to redefine seasons as jfm, amj, jas, ond
@@ -293,7 +294,7 @@ eez_aut <- aggregate(chl_mgm3_geo ~ season_yr, data = subset(cci_erddap_eez, sea
                      # mean, na.rm = T)
                      function(x) 10^mean(log10(x + .0001),na.rm=T))
 
-png(here('figures/plots/sst-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+png(here('figures/plots/chl-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
 par(mfrow = c(2,2), mar = c(3,5,2,3),
     oma = c(0,0,3,0))
 
@@ -302,30 +303,30 @@ plot(eez_win$season_yr, eez_win$chl_mgm3_geo,
      panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_win$chl_mgm3_geo), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'Chlor', main = 'Winter - DJF')
+     xlab = '', ylab = expression(paste('Chlorophyll ', alpha, ' (mg m',-3,')')), main = 'Winter - DJF')
 
 plot(eez_spr$season_yr, eez_spr$chl_mgm3_geo, 
      typ = 'o', pch = 16, las = 1,
      panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_spr$chl_mgm3_geo), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'Chlor', main = 'Spring - MAM')
+     xlab = '', ylab = expression(paste('Chlorophyll ', alpha, ' (mg m',-3,')')), main = 'Spring - MAM')
 
 plot(eez_sum$season_yr, eez_sum$chl_mgm3_geo, 
      typ = 'o', pch = 16, las = 1,
      panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_sum$chl_mgm3_geo), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'Chlor', main = 'Summer - JJA')
+     xlab = '', ylab = expression(paste('Chlorophyll ', alpha, ' (mg m',-3,')')), main = 'Summer - JJA')
 
 plot(eez_aut$season_yr, eez_aut$chl_mgm3_geo,
      typ = 'o', pch = 16, las = 1,
      panel.first = list(abline(lm(chl_mgm3_geo ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
                         abline(h = mean(eez_aut$chl_mgm3_geo), col = 'gray', lwd = 2),
                         grid()),
-     xlab = '', ylab = 'Chlor', main = 'Fall - SON')
+     xlab = '', ylab = expression(paste('Chlorophyll ', alpha, ' (mg m',-3,')')), main = 'Fall - SON')
 
-mtext('US Gulf EEZ Chorophyll Seasonality', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+mtext(expression(paste('US Gulf EEZ Chorophyll ',alpha , ' Seasonality')), side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
 dev.off()
 
 
@@ -405,7 +406,7 @@ if(review_code == F){
     rm(chl_pull, time_pull, dat)
     setTxtProgressBar(pb, i)
   }
-
+  
   
 } else {
   
@@ -428,34 +429,35 @@ if(review_code == F){
 
 
 chl_l <- list(chl = dat_eez,
-               time = time_dat)
+              time = time_dat)
 chl_l$yrmon <- paste0(year(chl_l$time),
-                            sprintf("%02d",month(chl_l$time)))
+                      sprintf("%02d",month(chl_l$time)))
 ### mean monthly anomalies for spatial trend to match aggregation from timeseries plots
 chl_a <- array(NA, dim = c(432,312,60))
 for(i in unique(chl_l$yrmon)){
   chl_a[,,which(i==unique(chl_l$yrmon))] <- chl_l$chl[,,which(chl_l$yrmon==i)] |>
     apply(c(1,2), function(x) 10^mean(log10(x + .0001), na.rm=T))
-    # apply(c(1,2), function(x) mean(log10(x + .0001), na.rm=T))
+  # apply(c(1,2), function(x) mean(log10(x + .0001), na.rm=T))
 }
 
 yr5_trend <- apply(chl_a, c(1,2), array_lm)
 hist(yr5_trend)
 range(yr5_trend, na.rm = T)
+quantile(yr5_trend, na.rm = T)
 imagePlot(yr5_trend)
 
 ann_25 <- apply(chl_l$chl[,,which(year(chl_l$time)>2024)],
                 c(1,2), function(x) 10^mean(log10(x + .0001), na.rm=T))
-hist(ann_25)
+hist(log10(ann_25))
 range(log10(ann_25), na.rm = T)
+quantile(log10(ann_25), na.rm = T)
 imagePlot(log10(ann_25))
 
 
 ### colors and breaks for plotting
-# t_brks <- seq(-.01,.01,.0005)
-t_brks <- seq(-.36,.36,.02)
+t_brks <- seq(-.01,.01,.0005)
 t_cols <- cmocean('delta')(length(t_brks)-1)
-a_brks <- seq(-2,2,.1)
+a_brks <- seq(-1.2,1.2,.05)
 a_cols <- cmocean('speed')(length(a_brks)-1)
 
 
@@ -475,20 +477,24 @@ ext(ann_25_rast) <- c(min_lon,max_lon,min_lat,max_lat)
 crs(ann_25_rast) <- "EPSG:4326"
 
 
-png(here('figures/plots/sst-spatial-plot.png'), width = 4, height = 6, units = 'in', res = 300)
+png(here('figures/plots/chl-spatial-plot.png'), width = 4, height = 6, units = 'in', res = 300)
 par(mfrow=c(2,1))
 plot(fyt_rast,
      col = t_cols, range = c(-.01,.01),
      # col = t_cols, range = c(-.36,.36),
      plg = list(tick = 'out', format='g'),
-     main = '2021-2025 SST Trend (°C/month)')
+     main = expression(paste('2021-2025 Chl-',alpha,' Trend (mg ',m^-3,' ',month^-1,')')),
+     cex.main = 1)
 plot(world, add= T, col = 'gray')
 plot(gulf_eez['geometry'], add = T)
 
 plot(ann_25_rast, 
-     col = a_cols, range = c(-2,2),
-     plg = list(tick = 'out', format='g'),
-     main = '2025 SST anomaly (°C)')
+     col = a_cols, range = c(-1.2,1.2),
+     plg = list(tick = 'out', format='g',
+                at = c(-1,0,1),
+                labels = c(0.1, 1, 10)),
+     main = expression(paste('2025 Mean Chl-',alpha,' log(mg ',m^-3,')')),
+     cex.main = 1)
 plot(world, add= T, col = 'gray')
 plot(gulf_eez['geometry'], add = T)
 dev.off()
