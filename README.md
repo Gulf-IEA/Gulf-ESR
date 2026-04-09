@@ -1,5 +1,5 @@
-# ESR Report Template 
-This is a template repository for creating Ecosystem Status Reports in the Gulf region.
+### [Ecosystem Status Report Best Practices](https://gulf-iea.github.io/ESR-Best-Practices/)
+Please refer to this manual when developing and updating the Gulf ESR
 
 ## Folder structure
 * data 
