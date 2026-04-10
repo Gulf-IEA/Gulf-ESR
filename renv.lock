@@ -61,16 +61,16 @@
     "IEAnalyzeR": {
       "Package": "IEAnalyzeR",
       "Version": "0.1.0",
-      "Source": "GitHub",
+      "Source": "Git",
       "Type": "Package",
       "Title": "Standardized Functions for the Gulf-IEA Ecosystem Status Reports",
-      "Authors@R": "c(person(given = \"Carissa\", family = \"Gervasi\", role = c(\"aut\", \"cre\"), email = \"carissa.gervasi@noaa.gov\", comment = c(ORCID = \"0000-0001-8049-7069\")), person(given = \"Brittany\", family = \"Troast\", email = \"brittany.troast@noaa.gov\", role = c(\"aut\")), person(given = \"Brendan\", family = \"Turley\", email = \"brendan.turley@noaa.gov\", role = c(\"aut\")), person(given = \"Willem\", family = \"Klajbor\", email = \"willem.klajbor@noaa.gov\", role = c(\"aut\")))",
+      "Authors@R": "c(person(given = \"Brittany\", family = \"Troast\", email = \"brittany.troast@noaa.gov\", role = c(\"aut\", \"cre\")), person(given = \"Carissa\", family = \"Gervasi\", role = c(\"aut\"), email = \"carissa.gervasi@noaa.gov\", comment = c(ORCID = \"0000-0001-8049-7069\")), person(given = \"Brendan\", family = \"Turley\", email = \"brendan.turley@noaa.gov\", role = c(\"aut\")), person(given = \"Willem\", family = \"Klajbor\", email = \"willem.klajbor@noaa.gov\", role = c(\"aut\")))",
       "Maintainer": "The package maintainer <yourself@somewhere.net>",
       "Description": "This package contains standardized functions used to create and plot indicator data for NOAA IEA Ecosystem Status Reports. It was specifically created for the Gulf of Mexico IEA.",
       "License": "What license is it under?",
       "Encoding": "UTF-8",
       "LazyData": "true",
-      "RoxygenNote": "7.3.2",
+      "RoxygenNote": "7.3.3",
       "Imports": [
         "ggplot2",
         "dplyr",
@@ -83,13 +83,19 @@
         "readr",
         "tidyr"
       ],
-      "Author": "Carissa Gervasi [aut, cre] (<https://orcid.org/0000-0001-8049-7069>), Brittany Troast [aut], Brendan Turley [aut], Willem Klajbor [aut]",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "IEAnalyzeR",
-      "RemoteUsername": "Gulf-IEA",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "bacd63f1edacd4460ef9e4634e1f479dca4fe924"
+      "Depends": [
+        "R (>= 3.5)"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown"
+      ],
+      "VignetteBuilder": "knitr",
+      "RemoteType": "xgit",
+      "RemoteUrl": "https://github.com/Gulf-IEA/IEAnalyzeR",
+      "RemoteSha": "6286a908985f6278f5eedc3c72d537de5b3cff7d",
+      "NeedsCompilation": "no",
+      "Author": "Brittany Troast [aut, cre], Carissa Gervasi [aut] (<https://orcid.org/0000-0001-8049-7069>), Brendan Turley [aut], Willem Klajbor [aut]"
     },
     "ISOcodes": {
       "Package": "ISOcodes",
@@ -257,8 +263,7 @@
       "Description": "Provides color schemes for maps (and other graphics) designed by Cynthia Brewer as described at http://colorbrewer2.org.",
       "License": "Apache License 2.0",
       "NeedsCompilation": "no",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
+      "Repository": "CRAN"
     },
     "RSQLite": {
       "Package": "RSQLite",
@@ -674,8 +679,7 @@
       "NeedsCompilation": "yes",
       "Author": "Steve Dutky [aut] (S original; then (after MM's port) revised and modified), Martin Maechler [cre, aut] (Initial R port; tweaks, <https://orcid.org/0000-0002-8685-9910>)",
       "Maintainer": "Martin Maechler <maechler@stat.math.ethz.ch>",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
+      "Repository": "CRAN"
     },
     "blob": {
       "Package": "blob",
@@ -2138,8 +2142,7 @@
       "NeedsCompilation": "yes",
       "Author": "David Meyer [aut, cre] (ORCID: <https://orcid.org/0000-0002-5196-3048>), Evgenia Dimitriadou [aut, cph], Kurt Hornik [aut] (ORCID: <https://orcid.org/0000-0003-4198-9911>), Andreas Weingessel [aut], Friedrich Leisch [aut], Chih-Chung Chang [ctb, cph] (libsvm C++-code), Chih-Chen Lin [ctb, cph] (libsvm C++-code)",
       "Maintainer": "David Meyer <David.Meyer@R-project.org>",
-      "Repository": "CRAN",
-      "Encoding": "UTF-8"
+      "Repository": "CRAN"
     },
     "ellipsis": {
       "Package": "ellipsis",
@@ -4291,8 +4294,7 @@
         "stats",
         "graphics"
       ],
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
+      "Repository": "CRAN"
     },
     "later": {
       "Package": "later",
@@ -5638,8 +5640,7 @@
       "SystemRequirements": "libpng",
       "URL": "http://www.rforge.net/png/",
       "NeedsCompilation": "yes",
-      "Repository": "CRAN",
-      "Encoding": "UTF-8"
+      "Repository": "CRAN"
     },
     "praise": {
       "Package": "praise",
@@ -5862,8 +5863,7 @@
       "NeedsCompilation": "yes",
       "Author": "David Meyer [aut, cre] (ORCID: <https://orcid.org/0000-0002-5196-3048>), Christian Buchta [aut]",
       "Maintainer": "David Meyer <David.Meyer@R-project.org>",
-      "Repository": "CRAN",
-      "Encoding": "UTF-8"
+      "Repository": "CRAN"
     },
     "ps": {
       "Package": "ps",
@@ -8144,20 +8144,20 @@
     },
     "tidyr": {
       "Package": "tidyr",
-      "Version": "1.3.1",
+      "Version": "1.3.2",
       "Source": "Repository",
       "Title": "Tidy Messy Data",
       "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = c(\"aut\", \"cre\")), person(\"Davis\", \"Vaughan\", , \"davis@posit.co\", role = \"aut\"), person(\"Maximilian\", \"Girlich\", role = \"aut\"), person(\"Kevin\", \"Ushey\", , \"kevin@posit.co\", role = \"ctb\"), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
-      "Description": "Tools to help to create tidy data, where each column is a variable, each row is an observation, and each cell contains a single value.  'tidyr' contains tools for changing the shape (pivoting) and hierarchy (nesting and 'unnesting') of a dataset, turning deeply nested lists into rectangular data frames ('rectangling'), and extracting values out of string columns. It also includes tools for working with missing values (both implicit and explicit).",
+      "Description": "Tools to help to create tidy data, where each column is a variable, each row is an observation, and each cell contains a single value. 'tidyr' contains tools for changing the shape (pivoting) and hierarchy (nesting and 'unnesting') of a dataset, turning deeply nested lists into rectangular data frames ('rectangling'), and extracting values out of string columns. It also includes tools for working with missing values (both implicit and explicit).",
       "License": "MIT + file LICENSE",
       "URL": "https://tidyr.tidyverse.org, https://github.com/tidyverse/tidyr",
       "BugReports": "https://github.com/tidyverse/tidyr/issues",
       "Depends": [
-        "R (>= 3.6)"
+        "R (>= 4.1.0)"
       ],
       "Imports": [
         "cli (>= 3.4.1)",
-        "dplyr (>= 1.0.10)",
+        "dplyr (>= 1.1.0)",
         "glue",
         "lifecycle (>= 1.0.3)",
         "magrittr",
@@ -8165,7 +8165,7 @@
         "rlang (>= 1.1.1)",
         "stringr (>= 1.5.0)",
         "tibble (>= 2.1.1)",
-        "tidyselect (>= 1.2.0)",
+        "tidyselect (>= 1.2.1)",
         "utils",
         "vctrs (>= 0.5.2)"
       ],
@@ -8182,15 +8182,16 @@
         "cpp11 (>= 0.4.0)"
       ],
       "VignetteBuilder": "knitr",
+      "Config/build/compilation-database": "true",
       "Config/Needs/website": "tidyverse/tidytemplate",
       "Config/testthat/edition": "3",
       "Encoding": "UTF-8",
       "LazyData": "true",
-      "RoxygenNote": "7.3.0",
+      "RoxygenNote": "7.3.3",
       "NeedsCompilation": "yes",
       "Author": "Hadley Wickham [aut, cre], Davis Vaughan [aut], Maximilian Girlich [aut], Kevin Ushey [ctb], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
-      "Repository": "RSPM"
+      "Repository": "CRAN"
     },
     "tidyselect": {
       "Package": "tidyselect",
