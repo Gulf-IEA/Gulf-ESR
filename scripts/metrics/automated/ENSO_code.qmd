@@ -70,6 +70,9 @@ enso<-enso %>% pivot_longer(cols = -year)
 enso$year<-paste(enso$name, enso$year, sep = "-")
 
 enso$name<-NULL
+
+#Remove leading and trailing NAs
+enso<-enso[!is.na(enso$value),]
 ```
 
 
