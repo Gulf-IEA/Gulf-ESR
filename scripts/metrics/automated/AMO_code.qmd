@@ -49,7 +49,7 @@ Notes from code of NCAR calculation:
 ; To isolate the actual AMO the background global annual
 ; sst means or anomalies are removed.
 ```{r}
-#Roni data hosted online in text form
+#AMO data hosted online in text form
 url<-"https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.amo.dat"
 
 #Read in data using the online file
