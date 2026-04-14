@@ -33,32 +33,33 @@ body:
     id: shortname
     attributes:
       label: Short Code Name
-      description: What is the abbreviation or short name for this metric?
+      description: What is the abbreviation or short name for this metric? To be used in synthesis figures when full name is too large.
       placeholder: ex. SST for Sea Surface Temperature
     validations:
       required: false
       
-  - type: dropdown
+  - type: input
     id: parent_indicator
     attributes:
       label: Parent Indicator
-      description: What Indicator will this metric contribute to?
-      multiple: false
-      options:
-        - Test1
-        - Test2
+      description: Optional. Use this if there are multiple metrics that fall under one broader indicator. 
     validations:
-      required: true
+      required: false
       
   - type: dropdown
     id: category
     attributes:
       label: Indicator Category
-      description: To what Category do this metric and indicator belong?
+      description: To what category does this metric and indicator belong?
       multiple: false
       options:
-        - Test3
-        - Test4
+        - Choose Category
+        - Bycatch/Reduce Waste
+        - Ecosystem Protection
+        - Food Production
+        - Governance
+        - Risk
+        - Socio-economic Health
     validations:
       required: true
       
@@ -74,13 +75,13 @@ body:
   - type: dropdown
     id: effort_level
     attributes:
-      label: Level of Effort Required to Update Metric
+      label: Data type associated with Level of Effort Required to Update Metric
       description: How intensive is the update process for these data?
       multiple: false
       options:
-        - High Effort 
-        - Medium Effort
-        - Low Effort (automated)
+        - Automated
+        - Non-automated
+        - Confidential
     validations:
       required: true
 

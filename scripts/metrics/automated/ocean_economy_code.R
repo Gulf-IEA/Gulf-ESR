@@ -1,14 +1,13 @@
-# File created on FILE CREATION DATE
+# File created on 2026-03-27 by W. Klajbor; drafted 2026-03-27
 
 #### 0. Setup ####
-# Add any packages that are needed for analysis here.
 library(IEAnalyzeR)
-library(here)
 library(ggplot2)
+library(here)
+library(readr)
 
 # File Naming Setup.
-# !! Auto generated-Do Not Change !!
-root_name <- "WILL CHANGE WHEN CREATED"
+root_name <- "ocean-economy"
 
 csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv"))
 object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
@@ -16,14 +15,10 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
 #----------------------------------------------------
 #### 1. Read Data ####
-# Pull data from its source:
-# Manual data: data/unformatted data
-# Automated data: Add script for data call (API, package, etc.)
-# Confidential data: Store locally in the confidential data folder
-#   - This folder is excluded using gitignore and will not push to the GitHub repo
-# If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
-#   - Filename should use the syntax rootname_descriptivename
 
+### data provided via email by OCM ENOW Team - will be API'd by next update
+ocean_economy <- read_csv("data/formatted/formatted_csvs/Ocean_Economy.csv")
+View(ocean_economy)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
@@ -32,35 +27,29 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
-
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
-
+### NA as data are pre formatted
 
 #----------------------------------------------------
 #### 3. Save Formatted data as csv ####
- 
+
 # This will save your data to the appropriate folder.
 
-write.csv(formatted_data, file = csv_filename, row.names = F)
+### NA as data are pre formatted
 
 #----------------------------------------------------
 #### 4. Create Data_Prep object ####
-  
+
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
-data_obj <- IEAnalyzeR::data_prep(csv_filename)
+data_obj<-IEAnalyzeR::data_prep(csv_filename)
 
 
 #----------------------------------------------------
 #### 5. Save Formatted data_prep object ####
 
 #This will save your data to the appropriate folder.
-  
+
 saveRDS(data_obj, file = object_filename)
 
 
@@ -69,7 +58,7 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, fig.width = 10)
 
 #----------------------------------------------------
 #### 7. Save plot ####
