@@ -441,6 +441,7 @@ for(i in unique(chl_l$yrmon)){
 }
 
 yr5_trend <- apply(chl_a, c(1,2), array_lm)
+yr5_trend <- replace_min_max(yr5_trend, -.015, .015)
 hist(yr5_trend)
 range(yr5_trend, na.rm = T)
 quantile(yr5_trend, na.rm = T)
@@ -467,7 +468,7 @@ world <- ne_download(scale = 10, type = "countries",
   crop(ext(min_lon,max_lon,min_lat,max_lat))
 
 ### put into raster
-fyt_rast <- rast(t(yr5_trend[,ncol(yr5_trend):1]))
+# fyt_rast <- rast(t(yr5_trend[,ncol(yr5_trend):1]))
 fyt_rast <- rast(t(yr5_trend))
 ext(fyt_rast) <- c(min_lon,max_lon,min_lat,max_lat)
 crs(fyt_rast) <- "EPSG:4326"
@@ -480,7 +481,7 @@ crs(ann_25_rast) <- "EPSG:4326"
 png(here('figures/plots/chl-spatial-plot.png'), width = 4, height = 6, units = 'in', res = 300)
 par(mfrow=c(2,1))
 plot(fyt_rast,
-     col = t_cols, range = c(-.01,.01),
+     col = t_cols, range = c(-.015,.015),
      # col = t_cols, range = c(-.36,.36),
      plg = list(tick = 'out', format='g'),
      main = expression(paste('2021-2025 Chl-',alpha,' Trend (mg ',m^-3,' ',month^-1,')')),
