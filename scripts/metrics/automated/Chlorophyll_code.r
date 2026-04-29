@@ -48,11 +48,11 @@ max_lat <- 31
 # load shapefile to subset  --------------------------------
 ### shapefiles downloaded from marineregions.org (future goal implement mregions2 R package for shapefile)
 setwd(here("data/intermediate/gulf_eez"))
-setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_eez") ### remove when final pull request issued
+# setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_eez") ### remove when final pull request issued
 eez <- vect('eez.shp') |> makeValid()
 
 setwd(here("data/intermediate/gulf_iho"))
-setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_iho") ### remove when final pull request issued
+# setwd("C:/Users/brendan.turley/Documents/data/shapefiles/gulf_iho") ### remove when final pull request issued
 iho <- vect('iho.shp') |> makeValid()
 
 gulf_eez <- terra::intersect(eez, iho) |>
@@ -205,14 +205,14 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, lwd = .5)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, lwd = .5, fig.width = 8)
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename, width = 7, height = 4, units = 'in')
 
 
 #----------------------------------------------------
