@@ -124,7 +124,7 @@ points(all_struc$year, all_struc$nplt, col = 3)
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c('ONG rigs','artificial reefs','Total artificial Structures')
+indicator_names = c('ONG rigs','Artificial reefs','Total Artificial Structures')
 unit_names = rep('Number of structures',3)
 extent_names =rep('Gulf-wide',3)
 
