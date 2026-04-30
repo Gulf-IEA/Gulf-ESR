@@ -123,7 +123,7 @@ points(all_struc$year, all_struc$nplt, col = 3)
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c('Oil and Gas rigs','Artifical reefs','Total Artifical Structures')
+indicator_names = c('ONG rigs','Artifical reefs','Total Artifical Structures')
 unit_names = rep('Number of structures',3)
 extent_names =rep('Gulf-wide',3)
 
@@ -159,7 +159,8 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, facet_scales = 'fixed')
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, facet_scales = 'fixed',
+                        manual_title = NA)
 
 #----------------------------------------------------
 #### 7. Save plot ####
