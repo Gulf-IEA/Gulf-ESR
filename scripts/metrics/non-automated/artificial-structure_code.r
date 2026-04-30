@@ -13,7 +13,7 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 
 # File Naming Setup.
-root_name <- "artifical-structure"
+root_name <- "artificial-structure"
 
 csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv"))
 object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
@@ -30,7 +30,8 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 #   - Filename should use the syntax rootname_descriptivename
 
 ### SEFSC-PEM structure dataset
-setwd("C:/Users/brendan.turley/Documents/data/PEM_artifical_structures/ARP FY26")
+### data available on shared Gulf-IEA drive under ~/Ecosystem Status Reports/2025 Gulf ESR/02. Data / Resources/Artificial Structures Data (PEM) 
+setwd("C:/Users/brendan.turley/Documents/data/PEM_artificial_structures/ARP FY26")
 
 struc <- read.csv('ARP_update_Nov25.csv')
 struc$year_built <- NA
@@ -123,7 +124,7 @@ points(all_struc$year, all_struc$nplt, col = 3)
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c('ONG rigs','Artifical reefs','Total Artifical Structures')
+indicator_names = c('ONG rigs','artificial reefs','Total artificial Structures')
 unit_names = rep('Number of structures',3)
 extent_names =rep('Gulf-wide',3)
 
@@ -175,20 +176,20 @@ ggsave(filename = plot_filename, height = 8, width = 7, unit="in")
 #----------------------------------------------------
 ### combined plot
 
-png(here('figures/plots/artifical_structure-combined-plot.png'), width = 7, height = 4, units = 'in', res = 300)
+png(here('figures/plots/artificial_structure-combined-plot.png'), width = 7, height = 4, units = 'in', res = 300)
 par(mar = c(4,4,1,1))
 
 plot(formatted_data$indicator[3:nrow(formatted_data)],
-     formatted_data$`Total Artifical Structures`[3:nrow(formatted_data)],
+     formatted_data$`Total artificial Structures`[3:nrow(formatted_data)],
      typ = 'l', lwd = 2, las = 1,
      xlab = 'Year', ylab = 'Number of Structures')
 points(formatted_data$indicator[3:nrow(formatted_data)],
        formatted_data$`Oil and Gas rigs`[3:nrow(formatted_data)],
        typ = 'l', lwd = 2, col = 'orangered')
 points(formatted_data$indicator[3:nrow(formatted_data)],
-       formatted_data$`Artifical reefs`[3:nrow(formatted_data)],
+       formatted_data$`artificial reefs`[3:nrow(formatted_data)],
        typ = 'l', lwd = 2, col = 'purple3')
-legend('topleft', c('Total Structures','ONG Rigs','Artifical Reefs'),
+legend('topleft', c('Total Structures','ONG Rigs','artificial Reefs'),
        lty = 1, lwd = 2, col = c(1, 'orangered','purple3'),
        bty = 'n')
 
@@ -209,7 +210,7 @@ world <- ne_download(scale = 10, type = "countries",
 
 
 
-setwd("C:/Users/brendan.turley/Documents/data/PEM_artifical_structures/ARP FY26")
+setwd("C:/Users/brendan.turley/Documents/data/PEM_artificial_structures/ARP FY26")
 
 struc_shp <- vect('ARPDPP_112525_final.shp')
 struc_rast <- rast(ext(struc_shp), resolution = 0.1, crs=crs(struc_shp))
@@ -234,7 +235,7 @@ plt_rmr <- rasterize(plt_rmv, struc_rast,
                      field = 'yr_rm', function(x) round(median(x,na.rm=T),0))
 
 
-png(here('figures/plots/artifical_structure-spatial-plot.png'),
+png(here('figures/plots/artificial_structure-spatial-plot.png'),
     width = 5, height = 6, units = 'in', res = 300)
 par(mfrow=c(3,1),
     mar = c(2,2,1,4))
@@ -242,7 +243,7 @@ par(mfrow=c(3,1),
 plot(numb, col = rev(map.pal('plasma',100)),
      # range = c(0,100),
      plg = list(tick = 'out'),
-     main = expression(paste('Artifical Structures (number / 10 km'^2,')')),
+     main = expression(paste('artificial Structures (number / 10 km'^2,')')),
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
      box = T, zebra = F)
