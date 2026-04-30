@@ -180,16 +180,16 @@ png(here('figures/plots/artificial_structure-combined-plot.png'), width = 7, hei
 par(mar = c(4,4,1,1))
 
 plot(formatted_data$indicator[3:nrow(formatted_data)],
-     formatted_data$`Total artificial Structures`[3:nrow(formatted_data)],
+     formatted_data$`Total Artificial Structures`[3:nrow(formatted_data)],
      typ = 'l', lwd = 2, las = 1,
      xlab = 'Year', ylab = 'Number of Structures')
 points(formatted_data$indicator[3:nrow(formatted_data)],
-       formatted_data$`Oil and Gas rigs`[3:nrow(formatted_data)],
+       formatted_data$`ONG rigs`[3:nrow(formatted_data)],
        typ = 'l', lwd = 2, col = 'orangered')
 points(formatted_data$indicator[3:nrow(formatted_data)],
-       formatted_data$`artificial reefs`[3:nrow(formatted_data)],
+       formatted_data$`Artificial reefs`[3:nrow(formatted_data)],
        typ = 'l', lwd = 2, col = 'purple3')
-legend('topleft', c('Total Structures','ONG Rigs','artificial Reefs'),
+legend('topleft', c('Total Structures','ONG Rigs','Artificial Reefs'),
        lty = 1, lwd = 2, col = c(1, 'orangered','purple3'),
        bty = 'n')
 
