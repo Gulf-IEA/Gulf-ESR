@@ -243,7 +243,7 @@ par(mfrow=c(3,1),
 plot(numb, col = rev(map.pal('plasma',100)),
      # range = c(0,100),
      plg = list(tick = 'out'),
-     main = expression(paste('artificial Structures (number / 10 km'^2,')')),
+     main = expression(paste('Artificial Structures (number / 10 km'^2,')')),
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
      box = T, zebra = F)
