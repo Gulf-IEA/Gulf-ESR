@@ -1,3 +1,4 @@
+
 # File created on 2026-04-29 by  B. Turley
 
 #### 0. Setup ####
@@ -113,7 +114,7 @@ str_yr <- aggregate(Longitude ~ year_built, data = struc_no, function(x) length(
 str_yr$num_struc[which(is.na(str_yr$num_struc))] <- 0
 str_yr$cummul <- cumsum(str_yr$num_struc)
 
-all_struc <- merge(str_yr, plt_yr, all = T)
+all_struc <- merge(plt_yr, str_yr, all = T)
 all_struc$tot <- all_struc$cummul + all_struc$nplt
 
 plot(all_struc$year, all_struc$tot)
@@ -122,11 +123,11 @@ points(all_struc$year, all_struc$nplt, col = 3)
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
+indicator_names = c('Oil and Gas rigs','Artifical reefs','Total Artifical Structures')
+unit_names = rep('Number of structures',3)
+extent_names =rep('Gulf-wide',3)
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+formatted_data = IEAnalyzeR::convert_cleaned_data(all_struc[,-3], indicator_names, unit_names, extent_names)
 
 
 #----------------------------------------------------
@@ -158,16 +159,39 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, facet_scales = 'fixed')
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename, height = 8, width = 7, unit="in")
 
 
+
+
+#----------------------------------------------------
+### combined plot
+
+png(here('figures/plots/artifical_structure-combined-plot.png'), width = 7, height = 4, units = 'in', res = 300)
+par(mar = c(4,4,1,1))
+
+plot(formatted_data$indicator[3:nrow(formatted_data)],
+     formatted_data$`Total Artifical Structures`[3:nrow(formatted_data)],
+     typ = 'l', lwd = 2, las = 1,
+     xlab = 'Year', ylab = 'Number of Structures')
+points(formatted_data$indicator[3:nrow(formatted_data)],
+       formatted_data$`Oil and Gas rigs`[3:nrow(formatted_data)],
+       typ = 'l', lwd = 2, col = 'orangered')
+points(formatted_data$indicator[3:nrow(formatted_data)],
+       formatted_data$`Artifical reefs`[3:nrow(formatted_data)],
+       typ = 'l', lwd = 2, col = 'purple3')
+legend('topleft', c('Total Structures','ONG Rigs','Artifical Reefs'),
+       lty = 1, lwd = 2, col = c(1, 'orangered','purple3'),
+       bty = 'n')
+
+dev.off()
 
 ### maps
 
@@ -187,23 +211,18 @@ world <- ne_download(scale = 10, type = "countries",
 setwd("C:/Users/brendan.turley/Documents/data/PEM_artifical_structures/ARP FY26")
 
 struc_shp <- vect('ARPDPP_112525_final.shp')
-struc_rast <- rast(ext(struc_shp), resolution = 0.15, crs=crs(struc_shp))
+struc_rast <- rast(ext(struc_shp), resolution = 0.1, crs=crs(struc_shp))
 
 struc_comb <- rbind(struc_no, plat_2025) |>
   vect(geom = c('Longitude','Latitude'), crs = 'EPSG:4326')
 
 numb <- rasterize(struc_comb, struc_rast, fun = 'count')
+# values(numb)[which(values(numb)>100)] <- 100
+# area_numb <- cellSize(numb, unit='km')
+# values(numb) <- values(numb)/values(area_numb)
+
 yr_blt <- rasterize(struc_comb, struc_rast, 
                     field = 'year_built', function(x) round(median(x,na.rm=T),-1))
-
-plot(numb, col = rev(map.pal('plasma',100)),
-     range = c(0,50),
-     ext = c(-98, -80, 24.5, 30.5))
-plot(world, add= T, col = 'gray')
-
-plot(yr_blt, col = map.pal('magma',8),
-     ext = c(-98, -80, 24.5, 30.5))
-plot(world, add= T, col = 'gray')
 
 
 ### removals
@@ -213,7 +232,35 @@ plt_rmv$yr_rm <- year(plt_rmv$REMOVAL_DATE)
 plt_rmr <- rasterize(plt_rmv, struc_rast, 
                      field = 'yr_rm', function(x) round(median(x,na.rm=T),0))
 
-plot(plt_rmr, col = map.pal('magma',11),
-     type='classes',
-     ext = c(-98, -80, 24.5, 30.5))
+
+png(here('figures/plots/artifical_structure-spatial-plot.png'),
+    width = 5, height = 6, units = 'in', res = 300)
+par(mfrow=c(3,1),
+    mar = c(2,2,1,4))
+
+plot(numb, col = rev(map.pal('plasma',100)),
+     # range = c(0,100),
+     plg = list(tick = 'out'),
+     main = expression(paste('Artifical Structures (number / 10 km'^2,')')),
+     ext = c(-98, -80, 24.5, 30.5),
+     mar = c(1,3,1,4),
+     box = T, zebra = F)
 plot(world, add= T, col = 'gray')
+
+plot(yr_blt, col = map.pal('plasma',8),
+     main = 'Mean Decade of Construction',
+     ext = c(-98, -80, 24.5, 30.5),
+     mar = c(1,3,1,4),
+     box = T, zebra = F)
+plot(world, add= T, col = 'gray')
+
+plot(plt_rmr, col = map.pal('plasma',11),
+     main = 'Mean Year of Removal (past decade)',
+     type='classes',
+     ext = c(-98, -80, 24.5, 30.5),
+     mar = c(1,3,1,4),
+     box = T, zebra = F)
+plot(world, add= T, col = 'gray')
+
+dev.off()
+
