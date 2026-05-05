@@ -121,6 +121,28 @@ bs = bstick(clust_out)
 regimes <- cutree(clust_out, k = 2)
 shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
 print(paste("The mathematical regime shift occurred in:", shift_year))
+
+
+
+# West
+matrix_dat <- dat %>%
+  filter(Region == "West") %>%
+  select(YEAR, Species, StdWtYhat) %>%
+  pivot_wider(names_from = Species, values_from = StdWtYhat) %>%
+  drop_na() %>%  # PCA/Clustering requires no missing values
+  arrange(YEAR) %>%
+  column_to_rownames("YEAR")
+  
+# Run Constrained Clustering (CONISS)
+dist_mat <- vegdist(matrix_dat[,-1], method = "euclidean")
+clust_out <- chclust(dist_mat, method = "coniss")
+plot(clust_out, hang = -1, main = "Constrained Cluster (CONISS)")
+bs = bstick(clust_out)
+
+# Cut the tree into exactly 2 groups (as confirmed by Broken Stick plot)
+regimes <- cutree(clust_out, k = 2)
+shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
+print(paste("The mathematical regime shift occurred in:", shift_year))
 ```
 
 
