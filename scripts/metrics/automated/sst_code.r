@@ -374,7 +374,7 @@ mtext('(°C)', side = 3, adj = -.1, line = .5)
 mtext('(°F)', side = 3, adj = 1.1, line = .5)
 ax_convert_c2f(eez_aut$sst_degC, n = 4)
 
-mtext('2025 US EEZ Sea Surface Temperatures', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+mtext('US Gulf EEZ Sea Surface Temperatures', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
 dev.off()
 
 
