@@ -28,8 +28,12 @@ dat <- dget('gm001.rdat')
 yr <- dat$t.series$year
 bp1 <- dat$t.series$B
 bpa <- dat$B.age
+rec <- dat$t.series$recruits
+rec.dev <- dat$t.series$logR.dev
 
 plot(yr[-48], bp1[-48], typ = 'l')
+plot(yr[-48], rec[-48], typ = 'l')
+plot(yr[-48], rec.dev[-48], typ = 'l')
 
 plot(yr[-48], bpa[-48,2],
      typ = 'b', ylim = range(bpa))
@@ -46,11 +50,18 @@ for(i in 3:5){
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("SEDAR97 Menhaden Biomass")
-unit_names = c("1000s metric tons")
-extent_names = c("")
+indicator_names = rep("SEDAR97 Menhaden",2)
+# unit_names = c("Biomass",'Recruitment')
+# extent_names = c('(1000s metric tons)','(Log Deviations)')
+unit_names = c("Biomass (1000s metric tons)",'Recruitment (Log Deviations)')
+extent_names = c('','')
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr[-48],bp1[-48]), indicator_names, unit_names, extent_names)
+indicator_names = c("Biomass (1000s metric tons)",'Recruitment (Log Deviations)')
+unit_names = c("1000s metric tons",'Log Deviations')
+extent_names = rep("SEDAR97 Menhaden",2)
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr[-48],bp1[-48],rec.dev[-48]),
+                                                  indicator_names, unit_names, extent_names)
 
 
 #----------------------------------------------------
@@ -82,11 +93,13 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T,
+                        sep_ylabs = T, manual_title = 'SEDAR97 Menhaden')
+                        # sep_ylabs = T, ylab_sublabel = c('unit','extent')
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename, width = 7, height = 4, unit = 'in')
+ggsave(filename = plot_filename, width = 7, height = 6, unit = 'in')
