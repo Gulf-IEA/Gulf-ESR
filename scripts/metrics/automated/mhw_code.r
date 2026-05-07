@@ -425,7 +425,8 @@ plot(slope_rast,
      col = s_cols, range = c(.24,1.88),
      plg = list(tick = 'out'),
      main = 'Marine Heatwave Trend (events per decade)')
-
+plot(world, add= T, col = 'gray')
+plot(gulf_eez['geometry'], add = T)
 
 
 results <- event_no_yr[, {
