@@ -17,6 +17,7 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 # pak::pak("robwschlegel/heatwave3")
 library(heatwave3)
+library(cmocean)
 
 # File Naming Setup.
 root_name <- "mhw-surface"
@@ -45,6 +46,27 @@ min_lon <- -98
 max_lon <- -80
 min_lat <- 18
 max_lat <- 31
+
+### bathymetry
+# setwd("~/data/bathy")
+# burl <- 'etopo1.nc'
+
+burl <- 'https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc'
+bdat <- nc_open(burl)
+# crs <- 'EPSG:4326'
+
+ln <- ncvar_get(bdat, 'lon')
+ln_i <- which(ln>=min_lon & ln<=max_lon)
+lt <- ncvar_get(bdat, 'lat')
+lt_i <- which(lt>=min_lat & lt<=max_lat)
+
+bathy <- ncvar_get(bdat, 'z', 
+                   start = c(ln_i[1],lt_i[1]),
+                   count = c(length(ln_i), length(lt_i)))
+# bathy <- ncvar_get(bdat, 'Band1', 
+#                    start = c(ln_i[1],lt_i[1]),
+#                    count = c(length(ln_i), length(lt_i)))
+nc_close(bdat)
 
 # load shapefile to subset  --------------------------------
 ### shapefiles downloaded from marineregions.org (future goal implement mregions2 R package for shapefile)
@@ -354,30 +376,22 @@ world <- ne_download(scale = 10, type = "countries",
 
 
 
-### what/where are the cell #
-
+### where are the MHWs?
 cell_ll <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
   setNames(c('cell','lon','lat'))
 
-# event_no <- aggregate(event_no ~ cell, data = mhw_cube, length)
-# hist(event_no$event_no)
-# 
-# gridcell <- cell_ll |>
-#   merge(event_no) |>
-#   merge(lon_lat, all = T)
-# 
-# library(fields)
-# imagePlot(lon, rev(lat),
-#           t(matrix(gridcell$event_no, 29, 69)), asp = T)
-
-
-event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_cube, length) |>
-  setNames(c('cell','year','event_no'))
-event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
+event_no_mean <- aggregate(event_no ~ cell, data = mhw_cube, length) |>
   merge(cell_ll, all = T) |>
   merge(lon_lat, all = T)
+mean_event_no <- matrix(event_no_mean$event_no/length(styear:enyear), 29, 69)
 
-mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
+# event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_cube, length) |>
+#   setNames(c('cell','year','event_no'))
+# event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
+#   merge(cell_ll, all = T) |>
+#   merge(lon_lat, all = T)
+# mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
+
 ### put into raster
 event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
 ext(event_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
@@ -385,20 +399,11 @@ crs(event_rast) <- "EPSG:4326"
 plot(event_rast)
 
 ### colors and breaks for plotting
-e_brks <- seq(2.5,5.5,.1)
+e_brks <- seq(2.4,4.2,.05)
 e_cols <- (cmocean('thermal')(length(e_brks)-1))
 
 
-plot(event_rast,
-     col = e_cols, range = c(2.5,5.5),
-     plg = list(tick = 'out'),
-     main = 'Marine Heatwaves (mean number per year)')
-plot(world, add= T, col = 'gray')
-plot(gulf_eez['geometry'], add = T)
-
-
-
-
+### spatial trend
 setDT(event_no_yr)
 slopes_dt <- event_no_yr[, 
                          .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]), 
@@ -421,27 +426,29 @@ s_brks <- seq(.24,1.88,.05)
 s_cols <- (cmocean('amp')(length(s_brks)-1))
 
 
+
+png(here('figures/plots/mhw-surface-spatial-plot.png'), 
+    width = 6, height = 6, units = 'in', res = 300)
+par(mfrow=c(2,1))
+
+plot(event_rast,
+     col = e_cols, range = c(2.4,4.2),
+     plg = list(tick = 'out'),
+     main = 'Marine Heatwaves (mean number per year)',
+     mar = c(1, 2, 1, 4))
+plot(world, add= T, col = 'gray')
+contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# plot(gulf_eez, add = T)
+
 plot(slope_rast,
      col = s_cols, range = c(.24,1.88),
      plg = list(tick = 'out'),
-     main = 'Marine Heatwave Trend (events per decade)')
+     main = 'Marine Heatwave Trend (events per decade)',
+     mar = c(1, 2, 1, 4))
 plot(world, add= T, col = 'gray')
-plot(gulf_eez['geometry'], add = T)
+contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# plot(gulf_eez, add = T)
+
+dev.off()
 
 
-results <- event_no_yr[, {
-  model <- lm(event_no ~ year, na.action = na.exclude)
-  summary_mod <- summary(model)$coefficients
-  .(slope = summary_mod["year", "Estimate"], 
-    p_val = summary_mod["year", "Pr(>|t|)"])
-}, by = cell]
-
-significant_slopes <- results[p_val < 0.05]
-
-gridcell_sig <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
-  setNames(c('cell','lon','lat')) |>
-  merge(significant_slopes) |>
-  merge(lon_lat, all = T)
-hist(gridcell_sig$slope)
-imagePlot(lon, rev(lat),
-          t(matrix(gridcell_sig$slope, 29, 69)), asp = T)
