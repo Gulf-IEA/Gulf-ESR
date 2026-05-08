@@ -13,6 +13,9 @@ library(terra)
 library(sf)
 library(reticulate)
 library(heatwave3)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(cmocean)
 
 # File Naming Setup.
 # !! Auto generated-Do Not Change !!
@@ -321,4 +324,53 @@ ax_convert_c2f(eez_aut$sbt, n = 4)
 
 mtext('US Gulf EEZ Bottom Temperatures', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
 dev.off()
+
+
+
+### spatial regression
+
+sbt_m <- app(sbt_eez, mean, na.rm = t)
+
+sbt_eez_anom <- sbt_eez - sbt_m
+
+recent_lyrs <- sbt_eez_anom[[time(sbt_eez_anom) > "2020-01-01"]]
+sbt_5yr_t <- regress(recent_lyrs, 1:nlyr(recent_lyrs)) |>
+  clamp(lower=-.03, upper=.03, values=TRUE)
+# plot(sbt_5yr_t[['x']])
+
+sbt_25 <- sbt_eez_anom[[time(sbt_eez_anom) > "2024-12-31"]] |>
+  app(mean, na.rm = t) |>
+  clamp(lower=-1.5, upper=1.5, values=TRUE)
+
+
+### colors and breaks for plotting
+t_brks <- seq(-.03,.03,.001)
+t_cols <- cmocean('balance')(length(t_brks)-1)
+a_brks <- seq(-1.5,1.5,.05)
+a_cols <- cmocean('balance')(length(a_brks)-1)
+
+### shapefile for plotting
+world <- ne_download(scale = 10, type = "countries", 
+                     returnclass = 'sv') |>
+  crop(ext(min_lon,max_lon,min_lat,max_lat))
+
+
+# png(here('figures/plots/sst-spatial-plot.png'), width = 4, height = 6, units = 'in', res = 300)
+par(mfrow=c(2,1))
+plot(sbt_5yr_t[['x']],
+     col = t_cols, range = c(-.03,.03),
+     plg = list(tick = 'out', format='g'),
+     main = '2021-2025 SBT Trend (°C/month)')
+plot(world, add= T, col = 'gray')
+plot(gulf_eez, add = T)
+
+plot(sbt_25, 
+     col = t_cols, range = c(-1.5,1.5),
+     plg = list(tick = 'out', format='g'),
+     main = '2025 SBT anomaly (°C)')
+plot(world, add= T, col = 'gray')
+plot(gulf_eez, add = T)
+# dev.off()
+
+
 
