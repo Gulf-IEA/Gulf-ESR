@@ -274,53 +274,8 @@ eez_sum <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='sum'),
 eez_aut <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='aut'),
                      mean, na.rm = T)
 
-# png(here('figures/plots/sst-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
-par(mfrow = c(2,2), mar = c(3,5,2,3),
-    oma = c(0,0,3,0))
 
-plot(eez_win$season_yr, eez_win$sbt, 
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sbt ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_win$sbt), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SBT', main = 'Winter - DJF')
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_win$sbt, n = 4)
-
-plot(eez_spr$season_yr, eez_spr$sbt, 
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sbt ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_spr$sbt), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SBT', main = 'Spring - MAM')
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_spr$sbt, n = 4)
-
-plot(eez_sum$season_yr, eez_sum$sbt, 
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sbt ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_sum$sbt), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SBT', main = 'Summer - JJA')
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_sum$sbt, n = 4)
-
-plot(eez_aut$season_yr, eez_aut$sbt,
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sbt ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_aut$sbt), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SBT', main = 'Fall - SON')
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_aut$sbt, n = 4)
-
-mtext('US Gulf EEZ Bottom Temperatures', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-dev.off()
-dth = 9, height = 6, units = 'in', res = 300)
+png(here('figures/plots/bottom-temperature-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
 par(mfrow = c(2,2), mar = c(3,5,2,3),
     oma = c(0,0,3,0))
 
