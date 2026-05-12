@@ -135,21 +135,11 @@ sbt_eez_ts$yrmon <- paste(sbt_eez_ts$time |> year(),
                        sprintf("%02.f", sbt_eez_ts$time |> month()),
                        sep = '-')
 
-
-plot(sbt_eez_ts$time, sbt_eez_ts$sbt, typ = 'o', pch = 16,
-     panel.first = grid())
-
-plot(sbt_eez_ts$yr_mon, sbt_eez_ts$anom, typ = 'o', pch = 16,
-  panel.first = list(grid(), abline(h=0,lty=5)))
-
-plot(sbt_eez_ts$yr_mon, sbt_eez_ts$anom, typ = 'h')
-
-
 sbt_ann <- aggregate(cbind(sbt, anom) ~ year(time), data = sbt_eez_ts, mean, na.rm = T) |>
   setNames(c('year','sbt','anom'))
 
-plot(sbt_ann$year, sbt_ann$sbt, typ = 'o', pch = 16)
-plot(sbt_ann$year, sbt_ann$anom, typ = 'o', pch = 16)
+# plot(sbt_ann$year, sbt_ann$sbt, typ = 'o', pch = 16)
+# plot(sbt_ann$year, sbt_ann$anom, typ = 'o', pch = 16)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
@@ -329,11 +319,12 @@ dev.off()
 
 ### spatial regression
 
-sbt_m <- app(sbt_eez, mean, na.rm = t)
+sbt_m <- app(sbt_eez, mean, na.rm = T)
 
 sbt_eez_anom <- sbt_eez - sbt_m
 
 recent_lyrs <- sbt_eez_anom[[time(sbt_eez_anom) > "2020-01-01"]]
+# regress(recent_lyrs, 1:nlyr(recent_lyrs)) |> values() |> hist()
 sbt_5yr_t <- regress(recent_lyrs, 1:nlyr(recent_lyrs)) |>
   clamp(lower=-.03, upper=.03, values=TRUE)
 # plot(sbt_5yr_t[['x']])
@@ -365,12 +356,42 @@ plot(world, add= T, col = 'gray')
 plot(gulf_eez, add = T)
 
 plot(sbt_25, 
-     col = t_cols, range = c(-1.5,1.5),
+     col = a_cols, range = c(-1.5,1.5),
      plg = list(tick = 'out', format='g'),
      main = '2025 SBT anomaly (°C)')
 plot(world, add= T, col = 'gray')
 plot(gulf_eez, add = T)
 # dev.off()
 
+
+### seasonal maps
+
+season_yr <- ifelse(month(time(sbt_eez_anom))==12, 
+                               year(time(sbt_eez_anom))+1, 
+                               year(time(sbt_eez_anom)))
+season_yr[which(season_yr==2026)] <- NA
+
+lyrs_2025_a <- sbt_eez_anom[[time(sbt_eez_anom) > "2024-11-30" & time(sbt_eez_anom) < "2025-11-30"]]
+lyrs_2025 <- sbt_eez[[time(sbt_eez) > "2024-11-30" & time(sbt_eez) < "2025-11-30"]]
+
+# year_index <- year(time(lyrs_2025))
+# month_index <- month(time(lyrs_2025))
+# winter_ind <- which(month_index %in% c(12,1,2))
+# win_yrs <- year_index[winter_ind]
+sbt_2025_a <- tapp(lyrs_2025_a, index = rep(1:4, each = 3), fun = mean, na.rm = T)
+sbt_2025 <- tapp(lyrs_2025, index = rep(1:4, each = 3), fun = mean, na.rm = T)
+
+
+a_brks <- seq(-11,10.5,.5)
+a_cols <- cmocean('balance')(length(a_brks)-1)
+t_brks <- seq(12.5,34,.5)
+t_cols <- cmocean('thermal')(length(t_brks)-1)
+
+plot(sbt_2025_a,
+     col = a_cols, range = c(-11,10.5),
+     plg = list(tick = 'out'))
+plot(sbt_2025,
+     col = t_cols, range = c(12.5,34),
+     plg = list(tick = 'out'))
 
 
