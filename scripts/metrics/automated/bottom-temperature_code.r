@@ -240,34 +240,6 @@ eez_sum <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='sum'),
 eez_aut <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='aut'),
                      mean, na.rm = T)
 
-# png(here('figures/plots/sst-seasonal-plot.png'), wi### add seasons
-sbt_eez_ts$jday <- yday(sbt_eez_ts$time)
-
-sbt_eez_ts <- sbt_eez_ts |>
-  mutate(season = case_when(
-    month(time)==12 | month(time)<3 ~ 'win',
-    month(time)>2 & month(time)<6 ~ 'spr',
-    month(time)>5 & month(time)<9 ~ 'sum',
-    month(time)>8 & month(time)<12 ~ 'aut'
-  )) |>
-  arrange(time)
-
-### create season_yr and adjust to make december n-1 part of winter n
-sbt_eez_ts$season_yr <- ifelse(month(sbt_eez_ts$time)==12, 
-                            year(sbt_eez_ts$time)+1, 
-                            year(sbt_eez_ts$time))
-sbt_eez_ts$season_yr[which(sbt_eez_ts$season_yr==2026)] <- NA
-
-### seasonal means
-eez_win <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='win'),
-                     mean, na.rm = T)
-eez_spr <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='spr'),
-                     mean, na.rm = T)
-eez_sum <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='sum'),
-                     mean, na.rm = T)
-eez_aut <- aggregate(sbt ~ season_yr, data = subset(sbt_eez_ts, season=='aut'),
-                     mean, na.rm = T)
-
 
 png(here('figures/plots/bottom-temperature-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
 par(mfrow = c(2,2), mar = c(3,5,2,3),
