@@ -63,13 +63,10 @@ platforms$REMOVAL_DATE <- mdy(platforms$REMOVAL_DATE)
 
 
 ### platforms that exist in 2025
-plt_2025 <- subset(platforms, year(INSTALL_DATE)==2025 | 
-                     year(INSTALL_DATE)<2025) |>
+plt_2025 <- subset(platforms, year(INSTALL_DATE)<=2025) |>
   subset(year(REMOVAL_DATE)>2025 |
            is.na(REMOVAL_DATE))
 
-### removals 2015-2025
-plt_rm <- subset(platforms, year(REMOVAL_DATE)>=2015)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
@@ -83,8 +80,7 @@ yrs <- seq(min(year(platforms$INSTALL_DATE)),2025)
 plt_yr <- list()
 n <- 1
 for(i in yrs){
-  plt_i <- subset(platforms, year(INSTALL_DATE)==i | 
-                    year(INSTALL_DATE)<i) |>
+  plt_i <- subset(platforms, year(INSTALL_DATE)<=i) |>
     subset(year(REMOVAL_DATE)>i |
              is.na(REMOVAL_DATE)) |> 
     nrow()
@@ -227,37 +223,62 @@ yr_blt <- rasterize(struc_comb, struc_rast,
                     field = 'year_built', function(x) round(median(x,na.rm=T),-1))
 
 
-### removals
-
+### removals 2015-2025
+plt_rm <- subset(platforms, year(REMOVAL_DATE)>=2015)
 plt_rmv <- vect(plt_rm, geom = c('LONGITUDE','LATITUDE'), crs = 'EPSG:4326')
 plt_rmv$yr_rm <- year(plt_rmv$REMOVAL_DATE)
 plt_rmr <- rasterize(plt_rmv, struc_rast, 
                      field = 'yr_rm', function(x) round(median(x,na.rm=T),0))
 
+### percent removed
+plats <- subset(platforms, select = c('LONGITUDE', 'LATITUDE', 'INSTALL_DATE')) |>
+  setNames(c('LONGITUDE', 'LATITUDE', 'year_built'))
+plats$year_built <- year(plats$year_built)
+plats_r <- vect(plats, geom = c('LONGITUDE','LATITUDE'), crs = 'EPSG:4326')
+plat_r <- rasterize(plats_r, struc_rast, 
+                    fun = 'count')
+
+plt_rma <- subset(platforms, !is.na(REMOVAL_DATE))
+plt_rmav <- vect(plt_rma, geom = c('LONGITUDE','LATITUDE'), crs = 'EPSG:4326')
+plt_rmav$yr_rm <- year(plt_rmav$REMOVAL_DATE)
+plt_rmar <- rasterize(plt_rmav, struc_rast, 
+                     fun = 'count')
+plat_rm_per <- plt_rmar / plat_r
+
+
 
 png(here('figures/plots/artificial_structure-spatial-plot.png'),
-    width = 5, height = 6, units = 'in', res = 300)
-par(mfrow=c(3,1),
+    # width = 5, height = 6, units = 'in', res = 300)
+    width = 10, height = 4, units = 'in', res = 300)
+par(mfrow=c(2,2),
     mar = c(2,2,1,4))
 
 plot(numb, col = rev(map.pal('plasma',100)),
      # range = c(0,100),
      plg = list(tick = 'out'),
-     main = expression(paste('Artificial Structures (number / 10 km'^2,')')),
+     main = expression(paste('2025 Artificial Structures (number / 10 km'^2,')')),
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
      box = T, zebra = F)
 plot(world, add= T, col = 'gray')
 
 plot(yr_blt, col = map.pal('plasma',8),
-     main = 'Mean Decade of Construction',
+     main = 'Median Decade of Construction',
+     ext = c(-98, -80, 24.5, 30.5),
+     mar = c(1,3,1,4),
+     box = T, zebra = F)
+plot(world, add= T, col = 'gray')
+
+plot(plat_rm_per, col = map.pal('plasma',20),
+     range = c(0,1), plg = list(tick = 'out'),
+     main = 'Proportion of rigs removed',
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
      box = T, zebra = F)
 plot(world, add= T, col = 'gray')
 
 plot(plt_rmr, col = map.pal('plasma',11),
-     main = 'Mean Year of Removal (past decade)',
+     main = 'Median Year of Removal (past decade)',
      type='classes',
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
@@ -265,4 +286,6 @@ plot(plt_rmr, col = map.pal('plasma',11),
 plot(world, add= T, col = 'gray')
 
 dev.off()
+
+
 
