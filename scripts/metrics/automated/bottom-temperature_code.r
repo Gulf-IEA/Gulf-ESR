@@ -105,6 +105,7 @@ msk <- ifel(deptho2 > 100, NA, 1) ### create a mask for only the continential sh
 setwd('C:/Users/brendan.turley/Documents/data/copernicusmarine/sbt')
 sbt <- rast('cmems_mod_glo_phy_my_0.083deg_P1M-m_bottomT_98.00W-80.00W_18.00N-31.00N_1993-01-01-2025-12-01.nc') |>
   mask(msk)
+sbt <- rast('cmems_mod_glo_phy_my_0.083deg_P1M-m_bottomT_98.00W-80.00W_18.00N-31.00N_1993-01-01-2025-12-01.nc')
 # plot(sbt)
 
 ### US EEZ
