@@ -355,16 +355,16 @@ sbt_2025_a <- tapp(lyrs_2025_a, index = rep(1:4, each = 3), fun = mean, na.rm = 
 sbt_2025 <- tapp(lyrs_2025, index = rep(1:4, each = 3), fun = mean, na.rm = T)
 
 
-a_brks <- seq(-11,10.5,.5)
+a_brks <- seq(-11,11,.5)
 a_cols <- cmocean('balance')(length(a_brks)-1)
-t_brks <- seq(12.5,34,.5)
+t_brks <- seq(3.5,34,.5)
 t_cols <- cmocean('thermal')(length(t_brks)-1)
 
 plot(sbt_2025_a,
-     col = a_cols, range = c(-11,10.5),
+     col = a_cols, range = c(-11,11),
      plg = list(tick = 'out'))
 plot(sbt_2025,
-     col = t_cols, range = c(12.5,34),
+     col = t_cols, range = c(3.5,34),
      plg = list(tick = 'out'))
 
 
