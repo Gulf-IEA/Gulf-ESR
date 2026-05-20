@@ -38,8 +38,8 @@ struc$year_built <- NA
 struc$year_built[which(nchar(struc$Year)==4)] <- as.numeric(struc$Year[which(nchar(struc$Year)==4)])
 struc$year_built[which(nchar(struc$Year)>4)] <- struc$Year[which(nchar(struc$Year)>4)] |> mdy() |> year()
 
-struc_shp <- vect('ARPDPP_112525_final.shp')
-struc_rast <- rast(ext(struc_shp), resolution = 0.1, crs=crs(struc_shp))
+# struc_shp <- vect('ARPDPP_112525_final.shp')
+# struc_rast <- rast(ext(struc_shp), resolution = 0.1, crs=crs(struc_shp))
 
 
 ### BOEM structures
@@ -51,9 +51,7 @@ unzip(temp_file, exdir = temp_dir)
 
 extracted_files <- list.files(temp_dir, full.names = TRUE)
 plat <- read.csv(file.path(temp_dir,'PlatStrucRawData', "mv_platstruc_structures.txt"))
-
 platforms <- plat[which(!is.na(plat$LONGITUDE)), ]
-
 table(platforms$STRUC_TYPE_CODE)
 # "CAIS"  "CT"    "FIXED" "FPSO"  "MOPU"  "MTLP"  "SEMI"  "SPAR"  "TLP"   "WP"
 plt_typ <- c("CAIS","CT","FIXED")
@@ -204,27 +202,22 @@ world <- ne_download(scale = 10, type = "countries",
                      returnclass = 'sv') |>
   crop(ext(min_lon,max_lon,min_lat,max_lat))
 
-
-
 setwd("C:/Users/brendan.turley/Documents/data/PEM_artificial_structures/ARP FY26")
-
 struc_shp <- vect('ARPDPP_112525_final.shp')
 struc_rast <- rast(ext(struc_shp), resolution = 0.1, crs=crs(struc_shp))
 
 struc_comb <- rbind(struc_no, plat_2025) |>
   vect(geom = c('Longitude','Latitude'), crs = 'EPSG:4326')
 
-numb <- rasterize(struc_comb, struc_rast, fun = 'count')
-# values(numb)[which(values(numb)>100)] <- 100
-# area_numb <- cellSize(numb, unit='km')
-# values(numb) <- values(numb)/values(area_numb)
+numb <- rasterize(struc_comb, struc_rast, fun = 'count')  #|>
+  # clamp(upper = 100)
 
 yr_blt <- rasterize(struc_comb, struc_rast, 
                     field = 'year_built', function(x) round(median(x,na.rm=T),-1))
 
 
 ### removals 2015-2025
-plt_rm <- subset(platforms, year(REMOVAL_DATE)>=2015)
+plt_rm <- subset(platforms, year(REMOVAL_DATE)>=2015 & year(REMOVAL_DATE)<=2025)
 plt_rmv <- vect(plt_rm, geom = c('LONGITUDE','LATITUDE'), crs = 'EPSG:4326')
 plt_rmv$yr_rm <- year(plt_rmv$REMOVAL_DATE)
 plt_rmr <- rasterize(plt_rmv, struc_rast, 
@@ -238,7 +231,8 @@ plats_r <- vect(plats, geom = c('LONGITUDE','LATITUDE'), crs = 'EPSG:4326')
 plat_r <- rasterize(plats_r, struc_rast, 
                     fun = 'count')
 
-plt_rma <- subset(platforms, !is.na(REMOVAL_DATE))
+plt_rma <- subset(platforms, !is.na(REMOVAL_DATE)) |> 
+  subset(year(REMOVAL_DATE)<=2025)
 plt_rmav <- vect(plt_rma, geom = c('LONGITUDE','LATITUDE'), crs = 'EPSG:4326')
 plt_rmav$yr_rm <- year(plt_rmav$REMOVAL_DATE)
 plt_rmar <- rasterize(plt_rmav, struc_rast, 
@@ -264,6 +258,7 @@ plot(world, add= T, col = 'gray')
 
 plot(yr_blt, col = map.pal('plasma',8),
      main = 'Median Decade of Construction',
+     font.main = 1,
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
      box = T, zebra = F)
@@ -271,7 +266,8 @@ plot(world, add= T, col = 'gray')
 
 plot(plat_rm_per, col = map.pal('plasma',20),
      range = c(0,1), plg = list(tick = 'out'),
-     main = 'Proportion of rigs removed',
+     main = 'Proportion of rigs removed (1947-2025)',
+     font.main = 1,
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
      box = T, zebra = F)
@@ -279,6 +275,7 @@ plot(world, add= T, col = 'gray')
 
 plot(plt_rmr, col = map.pal('plasma',11),
      main = 'Median Year of Removal (past decade)',
+     font.main = 1,
      type='classes',
      ext = c(-98, -80, 24.5, 30.5),
      mar = c(1,3,1,4),
@@ -288,4 +285,20 @@ plot(world, add= T, col = 'gray')
 dev.off()
 
 
+
+# ### removals; not as informative as last decade
+# plt_rm <- subset(platforms, year(REMOVAL_DATE)>=2015)
+# plt_rm <- subset(platforms, year(REMOVAL_DATE)<2026)
+# plt_rmv <- vect(plt_rm, geom = c('LONGITUDE','LATITUDE'), crs = 'EPSG:4326')
+# plt_rmv$yr_rm <- year(plt_rmv$REMOVAL_DATE)
+# plt_rmr <- rasterize(plt_rmv, struc_rast, 
+#                      field = 'yr_rm', function(x) round(median(x,na.rm=T),0))
+# 
+# plot(plt_rmr, col = map.pal('plasma',11),
+#      main = 'Median Year of Removal (past decade)',
+#      # type='classes',
+#      ext = c(-98, -80, 24.5, 30.5),
+#      mar = c(1,3,1,4),
+#      box = T, zebra = F)
+# plot(world, add= T, col = 'gray')
 
