@@ -202,6 +202,7 @@ world <- ne_download(scale = 10, type = "countries",
                      returnclass = 'sv') |>
   crop(ext(min_lon,max_lon,min_lat,max_lat))
 
+### data available on shared Gulf-IEA drive under ~/Ecosystem Status Reports/2025 Gulf ESR/02. Data / Resources/Artificial Structures Data (PEM) 
 setwd("C:/Users/brendan.turley/Documents/data/PEM_artificial_structures/ARP FY26")
 struc_shp <- vect('ARPDPP_112525_final.shp')
 struc_rast <- rast(ext(struc_shp), resolution = 0.1, crs=crs(struc_shp))
