@@ -177,7 +177,7 @@ if(review_code == F){
   ext(sst_r) <- c(min_lon, max_lon, min_lat, max_lat)
   time(sst_r) <- as.Date(dates)
   ### save intermediate file
-  setwd(here('data/intermediate'))
+  setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   saveRDS(sst_r, 'sst_raster_brick.rds')
   sst_r <- readRDS('sst_raster_brick.rds')
   
@@ -213,7 +213,7 @@ if(review_code == F){
   
   # 2. Run cell-level regression to get intercept and slope
   # regress returns a SpatRaster with 2 layers: (Intercept) and x (slope)
-  trend_model <- regress(sst_r, t_vals)
+  trend_model <- regress(sst_r, t_vals, na.rm = T)
   
   # 3. Calculate the linear trend for each layer
   # trend = intercept + slope * time
@@ -228,7 +228,7 @@ if(review_code == F){
   
   rm(trend_model,intercept,slope,trend_stack)
   ### save intermediate file
-  setwd(here('data/intermediate'))
+  setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   saveRDS(sst_rdt, 'sst_rdetrend_brick.rds')
   sst_rdt <- readRDS('sst_rdetrend_brick.rds')
   
@@ -253,6 +253,7 @@ if(review_code == F){
                          return_type = "df", 
                          clim_period = c("1982-01-01", "2011-12-31"))
   ### save intermediate file
+  setwd(here('data/intermediate'))
   save(mhw_dt_cube, ngrid, cellsize_km, lon_lat,
        file = 'mhw_dt_results.RData')
   gc()
