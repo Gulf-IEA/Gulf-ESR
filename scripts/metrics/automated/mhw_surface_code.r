@@ -514,6 +514,9 @@ dev.off()
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
+setwd(here('data/intermediate'))
+load('mhw_dt_results.RData')
+
 ### annual ----------------
 yr_mhw <- aggregate(cell ~ year(index_start),
                     data = mhw_dt_cube,
@@ -634,7 +637,7 @@ mtext('Proportion of US Gulf EEZ with Marine Heatwaves', side = 3, outer = TRUE,
 dev.off()
 
 
-png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
 par(mfrow = c(2,2), mar = c(3,5,2,1),
     oma = c(0,0,3,0))
 
@@ -657,7 +660,7 @@ for(i in 1:4){
 }
 
 mtext('US Gulf EEZ Marine Heatwave Cummulative Intensity', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-dev.off()
+# dev.off()
 
 
 ### spatial plots
@@ -720,8 +723,8 @@ s_cols <- (cmocean('balance')(length(s_brks)-1))
 
 
 
-png(here('figures/plots/mhw-surface-spatial-plot.png'), 
-    width = 6, height = 6, units = 'in', res = 300)
+# png(here('figures/plots/mhw-surface-spatial-plot.png'), 
+    # width = 6, height = 6, units = 'in', res = 300)
 par(mfrow=c(2,1))
 
 plot(event_rast,
