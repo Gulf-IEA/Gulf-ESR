@@ -259,6 +259,15 @@ body:
       required: false
 
   - type: input
+    id: report_text
+    attributes:
+      label: Text for ESR 
+      description: Please provide one paragraph to accompany the indicator figure in the report. Follow the recipe below. 
+      placeholder: "1 - a sentence describing why the indicator is important, i.e., what it is intended to convey or encompass 2 - a plain language description of how the indicator was derived (e.g., from XYZ data source we took annual averages) 3 - A sentence or two describing trends and any notable anomalies"
+    validations:
+      required: true
+
+  - type: input
     id: iea_poc
     attributes:
       label: IEA Point of Contact
