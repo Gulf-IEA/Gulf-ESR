@@ -258,7 +258,7 @@ body:
     validations:
       required: false
 
-  - type: input
+  - type: textarea
     id: report_text
     attributes:
       label: Text for ESR 
