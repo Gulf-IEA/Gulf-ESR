@@ -16,6 +16,8 @@ File created on 2026-05-28
 Add any packages that are needed for analysis in this code chunk.
 
 ```{r packages}
+devtools::install_git("https://github.com/Gulf-IEA/IEAnalyzeR", branch = "fix-partial_dates_data")
+
 library(IEAnalyzeR)
 library(here)
 library(ggplot2)
@@ -130,7 +132,8 @@ poly_fix <- function(x, y, mean) {
         d2 <- cbind(rx, mean, mean)
         names(d2) <- c("year", "value", "min", "max")
         return(d2)
-    }
+}
+
     df_nm <- paste0(deparse(substitute(df)))
     if (class(df) == "character") {
         df_nm <- sub("^.*/(.*)\\.[^.]*$", "\\1", df)
@@ -167,7 +170,7 @@ poly_fix <- function(x, y, mean) {
             1)/12
         return(partial_years)
     }
-    if (!all(grepl("^[0-9]{4}$", df_dat[, 1]) | is.na(df_dat[,1]))) {
+    if (!all(grepl("^[0-9]{4}(\\.[0-9]+)?$", df_dat[, 1]) | is.na(df_dat[,1]))) {
         df_dat[, 1] <- clean_dates_to_partial_year(df_dat[, 1])
     }
     if (!is.null(anomaly)) {
@@ -212,8 +215,7 @@ poly_fix <- function(x, y, mean) {
         df_dat$value <- as.numeric(df_dat$value)
         df_dat$year <- as.numeric(df_dat$year)
         df_dat <- df_dat[!is.na(df_dat$value), ]
-    }
-    else {
+    } else {
         sub_list <- list()
         for (i in 2:ncol(df_dat)) {
             sub_df <- df_dat[, c(1, i)]
@@ -241,8 +243,7 @@ poly_fix <- function(x, y, mean) {
         ribbon <- rbind(ribbon, poly_o)
         ribbon$mean <- mean
         ribbon <- ribbon[!is.na(ribbon$value), ]
-    }
-    else {
+    } else {
         sub_list <- list()
         subs <- unique(df_dat$id)
         subnm_un <- unique(select(df_dat, subnm, id))
