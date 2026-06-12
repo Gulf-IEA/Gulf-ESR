@@ -157,6 +157,12 @@ for (name in model_names) {
       extent_text = gsub("Bio_Area", "Area ", area_col_names)
       extent_names = c(extent_text)
       
+      if (length(unique(extent_names)) > 1) {
+        name_map <- c("Area 1" = "East", "Area 2" = "West", "Area 3" = "Central")
+        extent_names <- ifelse(extent_names %in% names(name_map), name_map[extent_names], extent_names)
+      }
+      
+      
       final_csv = IEAnalyzeR::convert_cleaned_data(pivoted_biomass, indicator_names, unit_names, extent_names)
       
       file_name = paste0(Species, "_", Assessment, "_", "Biomass_formatted.csv")
