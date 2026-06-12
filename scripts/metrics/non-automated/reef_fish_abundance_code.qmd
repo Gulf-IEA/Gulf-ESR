@@ -22,6 +22,7 @@ library(ggplot2)
 library(tidyverse)
 library(vegan)
 library(rioja)
+library(plotTimeSeries)
 ```
 
 File Naming Setup.
@@ -144,6 +145,27 @@ regimes <- cutree(clust_out, k = 2)
 shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
 print(paste("The mathematical regime shift occurred in:", shift_year))
 ```
+
+
+
+Using Mandy's traffic light plot code
+```{r}
+#create a Species-Region combined column
+dat$Sp_Reg = paste0(dat$Species,".",dat$Region) 
+
+matrix_dat <- as.data.frame(dat %>%
+  select(YEAR, Sp_Reg, StdWtYhat) %>%
+  pivot_wider(names_from = Sp_Reg, values_from = StdWtYhat) %>%
+  filter(YEAR > 2003) %>% 
+  arrange(YEAR))
+
+str(matrix_dat)
+
+par(mar = c(5, 11, 4, 2))
+trafficLightPlot2(matrix_dat, noNAs = 0.50, cexlabs = 0.9, splits = 4, method = "nmds")
+```
+
+
 
 
 ```{r}
