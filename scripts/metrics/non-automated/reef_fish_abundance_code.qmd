@@ -9,7 +9,7 @@ editor:
     wrap: sentence
 ---
 
-File created on 2026-04-29
+File created on 2026-04-29. Data were sent to us by Kate Overly
 
 # 0. Setup
 
@@ -53,102 +53,7 @@ For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gu
 Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
 
-First start with a heatmap to show relative change across all species at the same time.
-```{r}
-head(dat)
-
-# scale data (z-score) for comparison
-plot_dat = dat %>% 
-  group_by(Species, Region) %>% 
-  mutate(scaled_abundance = scale(StdWtYhat)) %>% 
-  ungroup()
-
-# plot heatmap
-ggplot(plot_dat, aes(x = YEAR, y = Species, fill = scaled_abundance)) +
-  geom_tile(color = "white") +
-  scale_fill_distiller(palette = "RdYlBu", 
-                     direction = -1,     
-                     name = "Relative\nAbundance\n(Z-Score)",
-                     na.value = "grey90") +
-  scale_x_continuous(breaks = seq(min(plot_dat$YEAR), max(plot_dat$YEAR), by = 2)) +
-  labs(title = "Reef Fish Relative Abundance", subtitle = "Standardized indices scaled by species to show annual deviations", x = "Year", y = NULL) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_wrap(~Region)
-
-```
-
-Identify points where community composition changed the most using clustering.
-```{r}
-# prepare a matrix (years as rows, species as columns)
-# Gulf region first
-matrix_dat <- dat %>%
-  filter(Region == "Gulf") %>%
-  select(YEAR, Species, StdWtYhat) %>%
-  pivot_wider(names_from = Species, values_from = StdWtYhat) %>%
-  drop_na() %>%  # PCA/Clustering requires no missing values
-  arrange(YEAR) %>%
-  column_to_rownames("YEAR")
-  
-# Run Constrained Clustering (CONISS)
-dist_mat <- vegdist(matrix_dat[,-1], method = "euclidean")
-clust_out <- chclust(dist_mat, method = "coniss")
-plot(clust_out, hang = -1, main = "Constrained Cluster (CONISS)")
-bstick(clust_out)
-
-# Cut the tree into exactly 2 groups (as confirmed by Broken Stick plot)
-regimes <- cutree(clust_out, k = 2)
-shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
-print(paste("The mathematical regime shift occurred in:", shift_year))
-
-
-
-# East
-matrix_dat <- dat %>%
-  filter(Region == "East") %>%
-  select(YEAR, Species, StdWtYhat) %>%
-  pivot_wider(names_from = Species, values_from = StdWtYhat) %>%
-  drop_na() %>%  # PCA/Clustering requires no missing values
-  arrange(YEAR) %>%
-  column_to_rownames("YEAR")
-  
-# Run Constrained Clustering (CONISS)
-dist_mat <- vegdist(matrix_dat[,-1], method = "euclidean")
-clust_out <- chclust(dist_mat, method = "coniss")
-plot(clust_out, hang = -1, main = "Constrained Cluster (CONISS)")
-bs = bstick(clust_out)
-
-# Cut the tree into exactly 2 groups (as confirmed by Broken Stick plot)
-regimes <- cutree(clust_out, k = 2)
-shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
-print(paste("The mathematical regime shift occurred in:", shift_year))
-
-
-
-# West
-matrix_dat <- dat %>%
-  filter(Region == "West") %>%
-  select(YEAR, Species, StdWtYhat) %>%
-  pivot_wider(names_from = Species, values_from = StdWtYhat) %>%
-  drop_na() %>%  # PCA/Clustering requires no missing values
-  arrange(YEAR) %>%
-  column_to_rownames("YEAR")
-  
-# Run Constrained Clustering (CONISS)
-dist_mat <- vegdist(matrix_dat[,-1], method = "euclidean")
-clust_out <- chclust(dist_mat, method = "coniss")
-plot(clust_out, hang = -1, main = "Constrained Cluster (CONISS)")
-bs = bstick(clust_out)
-
-# Cut the tree into exactly 2 groups (as confirmed by Broken Stick plot)
-regimes <- cutree(clust_out, k = 2)
-shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
-print(paste("The mathematical regime shift occurred in:", shift_year))
-```
-
-
-
-Using Mandy's traffic light plot code
+Mandy's traffic light code to view relative trends for all species
 ```{r}
 #create a Species-Region combined column
 dat$Sp_Reg = paste0(dat$Species,".",dat$Region) 
@@ -156,65 +61,46 @@ dat$Sp_Reg = paste0(dat$Species,".",dat$Region)
 matrix_dat <- as.data.frame(dat %>%
   select(YEAR, Sp_Reg, StdWtYhat) %>%
   pivot_wider(names_from = Sp_Reg, values_from = StdWtYhat) %>%
-  filter(YEAR > 2003) %>% 
   arrange(YEAR))
 
-str(matrix_dat)
+YEAR = data.frame(YEAR = seq(1993,2023, 1))
+YEAR$YEAR = as.numeric(YEAR$YEAR)
+matrix_dat2 <- left_join(YEAR, matrix_dat)
 
+str(matrix_dat2)
+
+png(filename = plot_filename, 
+    width = 10,           
+    height = 7,           
+    units = "in", 
+    res = 300)           
 par(mar = c(5, 11, 4, 2))
-trafficLightPlot2(matrix_dat, noNAs = 0.50, cexlabs = 0.9, splits = 4, method = "nmds")
+plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "nmds")
+dev.off()
 ```
 
-
-
-
+Identify points where community composition changed the most using clustering.
 ```{r}
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
+# prepare a matrix (years as rows, species as columns)
+matrix_dat <- dat %>%
+  select(YEAR, Sp_Reg, StdWtYhat) %>%
+  pivot_wider(names_from = Sp_Reg, values_from = StdWtYhat) %>%
+  drop_na() %>%  
+  arrange(YEAR) %>%
+  column_to_rownames("YEAR")
+  
+# FIX: Use the entire matrix since YEAR is already gone from the columns!
+dist_mat <- vegdist(matrix_dat, method = "euclidean")
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+clust_out <- chclust(dist_mat, method = "coniss")
+plot(clust_out, hang = -1, main = "Constrained Cluster (CONISS)")
+
+# This will now have finite values to plot!
+bstick(clust_out, ng = 9)
+
+# Cut the tree into exactly 2 groups (as confirmed by Broken Stick plot)
+regimes <- cutree(clust_out, k = 2)
+shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
+print(paste("The mathematical regime shift occurred in:", shift_year))
 ```
 
-# 3. Save Formatted data as csv
-
-This will save your data to the appropriate folder.
-```{r}
-write.csv(formatted_data, file = csv_filename, row.names = F)
-```
-
-
-# 4. Create Data_Prep object
-
-Please use your formatted csv to create a "data_prep" object.
-For more info on the data_prep function see the vignette linked above.
-```{r}
-data_obj<-IEAnalyzeR::data_prep(csv_filename)
-```
-
-# 5. Save Formatted data_prep object
-
-This will save your data to the appropriate folder.
-```{r}
-saveRDS(data_obj, file = object_filename)
-```
-
-# 6. Preview Plot
-
-Use the IEAnalyzeR plotting function to preview the data.
-This will not necessarily be the final figure used in reports.
-For more info on the plot_fn_obj function go HERE
-
-```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
-```
-
-# 7. Save plot
-
-This will save the plot to the correct folder.
-Adjust height & width using (height=, width=, unit="in") if needed.
-
-```{r}
-ggsave(filename = plot_filename)
-```
