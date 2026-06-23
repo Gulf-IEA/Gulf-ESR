@@ -69,6 +69,13 @@ matrix_dat2 <- left_join(YEAR, matrix_dat)
 
 str(matrix_dat2)
 
+#view plot        
+par(mar = c(5, 11, 4, 2))
+plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "nmds")
+```
+
+save plot
+```{r}
 png(filename = plot_filename, 
     width = 10,           
     height = 7,           
@@ -78,6 +85,7 @@ par(mar = c(5, 11, 4, 2))
 plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "nmds")
 dev.off()
 ```
+
 
 Identify points where community composition changed the most using clustering.
 ```{r}
