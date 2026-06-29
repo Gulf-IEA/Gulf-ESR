@@ -64,7 +64,7 @@
     "IEAnalyzeR": {
       "Package": "IEAnalyzeR",
       "Version": "0.1.0",
-      "Source": "Git",
+      "Source": "GitHub",
       "Type": "Package",
       "Title": "Standardized Functions for the Gulf-IEA Ecosystem Status Reports",
       "Authors@R": "c(person(given = \"Brittany\", family = \"Troast\", email = \"brittany.troast@noaa.gov\", role = c(\"aut\", \"cre\")), person(given = \"Carissa\", family = \"Gervasi\", role = c(\"aut\"), email = \"carissa.gervasi@noaa.gov\", comment = c(ORCID = \"0000-0001-8049-7069\")), person(given = \"Brendan\", family = \"Turley\", email = \"brendan.turley@noaa.gov\", role = c(\"aut\")), person(given = \"Willem\", family = \"Klajbor\", email = \"willem.klajbor@noaa.gov\", role = c(\"aut\")))",
@@ -94,29 +94,6 @@
         "rmarkdown"
       ],
       "VignetteBuilder": "knitr",
-      "RemoteType": "xgit",
-      "RemoteUrl": "https://github.com/Gulf-IEA/IEAnalyzeR",
-      "RemoteSha": "6286a908985f6278f5eedc3c72d537de5b3cff7d",
-      "NeedsCompilation": "no",
-      "Author": "Brittany Troast [aut, cre], Carissa Gervasi [aut] (<https://orcid.org/0000-0001-8049-7069>), Brendan Turley [aut], Willem Klajbor [aut]"
-    },
-    "ISOcodes": {
-      "Package": "ISOcodes",
-      "Version": "2025.05.18",
-      "Source": "Repository",
-      "Encoding": "UTF-8",
-      "Title": "Selected ISO Codes",
-      "Authors@R": "c(person(\"Christian\", \"Buchta\", role = \"aut\"), person(\"Kurt\", \"Hornik\", role = c(\"aut\", \"cre\"), email = \"Kurt.Hornik@R-project.org\", comment = c(ORCID = \"0000-0003-4198-9911\")))",
-      "Description": "ISO language, territory, currency, script and character codes. Provides ISO 639 language codes, ISO 3166 territory codes, ISO 4217 currency codes, ISO 15924 script codes, and the ISO 8859 character codes as well as the UN M.49 area codes.",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ],
-      "License": "GPL-2",
-      "LazyData": "yes",
-      "NeedsCompilation": "no",
-      "Author": "Christian Buchta [aut], Kurt Hornik [aut, cre] (ORCID: <https://orcid.org/0000-0003-4198-9911>)",
-      "Maintainer": "Kurt Hornik <Kurt.Hornik@R-project.org>",
-      "Repository": "CRAN"
       "Author": "Brittany Troast [aut, cre], Carissa Gervasi [aut] (<https://orcid.org/0000-0001-8049-7069>), Brendan Turley [aut], Willem Klajbor [aut]",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
@@ -273,7 +250,6 @@
       "Description": "Provides color schemes for maps (and other graphics) designed by Cynthia Brewer as described at http://colorbrewer2.org.",
       "License": "Apache License 2.0",
       "NeedsCompilation": "no",
-      "Repository": "CRAN"
       "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
@@ -739,7 +715,8 @@
       "NeedsCompilation": "yes",
       "Author": "Steve Dutky [aut] (S original; then (after MM's port) revised and modified), Martin Maechler [cre, aut] (Initial R port; tweaks, <https://orcid.org/0000-0002-8685-9910>)",
       "Maintainer": "Martin Maechler <maechler@stat.math.ethz.ch>",
-      "Repository": "CRAN"
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
     },
     "blob": {
       "Package": "blob",
@@ -2160,7 +2137,8 @@
       "NeedsCompilation": "yes",
       "Author": "David Meyer [aut, cre] (ORCID: <https://orcid.org/0000-0002-5196-3048>), Evgenia Dimitriadou [aut, cph], Kurt Hornik [aut] (ORCID: <https://orcid.org/0000-0003-4198-9911>), Andreas Weingessel [aut], Friedrich Leisch [aut], Chih-Chung Chang [ctb, cph] (libsvm C++-code), Chih-Chen Lin [ctb, cph] (libsvm C++-code)",
       "Maintainer": "David Meyer <David.Meyer@R-project.org>",
-      "Repository": "CRAN"
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
     },
     "ellipsis": {
       "Package": "ellipsis",
@@ -4367,7 +4345,6 @@
         "stats",
         "graphics"
       ],
-      "Repository": "CRAN"
       "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
@@ -5656,7 +5633,8 @@
       "URL": "https://www.rforge.net/png/",
       "BugReports": "https://github.com/s-u/png/issues/",
       "NeedsCompilation": "yes",
-      "Repository": "CRAN"
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
     },
     "praise": {
       "Package": "praise",
@@ -5882,7 +5860,8 @@
       "NeedsCompilation": "yes",
       "Author": "David Meyer [aut, cre] (ORCID: <https://orcid.org/0000-0002-5196-3048>), Christian Buchta [aut]",
       "Maintainer": "David Meyer <David.Meyer@R-project.org>",
-      "Repository": "CRAN"
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
     },
     "ps": {
       "Package": "ps",
