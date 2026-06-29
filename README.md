@@ -1,5 +1,5 @@
 ### [Ecosystem Status Report Best Practices](https://gulf-iea.github.io/ESR-Best-Practices/)
-Please refer to this manual when developing and updating the Gulf ESR
+Please refer to this manual when developing and updating the Gulf ESR.
 
 ## Folder structure
 * data 
