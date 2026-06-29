@@ -1,0 +1,114 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+File created on 2026-04-29. Data were sent to us by Kate Overly
+
+# 0. Setup
+
+Add any packages that are needed for analysis in this code chunk.
+
+```{r packages}
+library(IEAnalyzeR)
+library(here)
+library(ggplot2)
+library(tidyverse)
+library(vegan)
+library(rioja)
+library(plotTimeSeries)
+```
+
+File Naming Setup.
+!! Auto generated-Do Not Change !!
+
+```{r}
+
+root_name<- "reef_fish_abundance"
+
+csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")) 
+object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
+plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
+
+```
+
+# 1. Read Data
+
+Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
+
+```{r}
+dat = read.csv(here("data/unformatted/All_Species_Combined_Table_SeaFiSh_2023.csv"))
+```
+
+# 2. Clean data and create time series csv
+
+Transform the data to fit the IEA data format.
+For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
+
+
+Mandy's traffic light code to view relative trends for all species
+```{r}
+#create a Species-Region combined column
+dat$Sp_Reg = paste0(dat$Species,".",dat$Region) 
+
+matrix_dat <- as.data.frame(dat %>%
+  select(YEAR, Sp_Reg, StdWtYhat) %>%
+  pivot_wider(names_from = Sp_Reg, values_from = StdWtYhat) %>%
+  arrange(YEAR))
+
+YEAR = data.frame(YEAR = seq(1993,2023, 1))
+YEAR$YEAR = as.numeric(YEAR$YEAR)
+matrix_dat2 <- left_join(YEAR, matrix_dat)
+
+str(matrix_dat2)
+
+#view plot        
+par(mar = c(5, 11, 4, 2))
+plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "nmds")
+```
+
+save plot
+```{r}
+png(filename = plot_filename, 
+    width = 10,           
+    height = 7,           
+    units = "in", 
+    res = 300)           
+par(mar = c(5, 11, 4, 2))
+plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "nmds")
+dev.off()
+```
+
+
+Identify points where community composition changed the most using clustering.
+```{r}
+# prepare a matrix (years as rows, species as columns)
+matrix_dat <- dat %>%
+  select(YEAR, Sp_Reg, StdWtYhat) %>%
+  pivot_wider(names_from = Sp_Reg, values_from = StdWtYhat) %>%
+  drop_na() %>%  
+  arrange(YEAR) %>%
+  column_to_rownames("YEAR")
+  
+# FIX: Use the entire matrix since YEAR is already gone from the columns!
+dist_mat <- vegdist(matrix_dat, method = "euclidean")
+
+clust_out <- chclust(dist_mat, method = "coniss")
+plot(clust_out, hang = -1, main = "Constrained Cluster (CONISS)")
+
+# This will now have finite values to plot!
+bstick(clust_out, ng = 9)
+
+# Cut the tree into exactly 2 groups (as confirmed by Broken Stick plot)
+regimes <- cutree(clust_out, k = 2)
+shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
+print(paste("The mathematical regime shift occurred in:", shift_year))
+```
+
