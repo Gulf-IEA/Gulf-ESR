@@ -9,21 +9,20 @@ editor:
     wrap: sentence
 ---
 
-File created on 2026-05-28
+File created on 2026-07-09
 
 # 0. Setup
 
 Add any packages that are needed for analysis in this code chunk.
 
 ```{r packages}
-devtools::install_github("Gulf-IEA/IEAnalyzeR", ref = "fix-partial_dates_data", force = T)
-
 library(IEAnalyzeR)
 library(here)
 library(ggplot2)
 
-library(ncdf4)
-library(dplyr)
+library(terra)
+library(tidyterra)
+library(tigris)
 ```
 
 File Naming Setup.
@@ -31,7 +30,7 @@ File Naming Setup.
 
 ```{r}
 
-root_name<- "SLR"
+root_name<- "SLR_city"
 
 csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")) 
 object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
@@ -43,10 +42,8 @@ plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
 
 Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
 
-Data found [here](https://www.star.nesdis.noaa.gov/socd/lsa/SeaLevelRise/LSA_SLR_timeseries.php)
-
 ```{r}
-slr_unformatted<-read.csv("../../../data/unformatted/slr_sla_goa_free_ref_90.csv", skip = 5)
+pt_slr<-read.csv("../../../data/unformatted/techrpt86_PaP_of_HTFlooding.csv", skip=10)
 ```
 
 # 2. Clean data and create time series csv
@@ -55,41 +52,29 @@ Transform the data to fit the IEA data format.
 For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
-The data set has some overlapping time periods during satellite switches. During those periods it is mainly just going bak and forth between satellites, but sometimes there are values from two satellites for the same time period. For those few instances I am averaging the value. 
+
+Data also here
+https://tidesandcurrents.noaa.gov/sltrends/mslUSTrendsTable.html
 ```{r}
+#Load and rename data
+slr_txt<-read.delim("https://tidesandcurrents.noaa.gov/sltrends/data/USStationsLinearSeaLevelTrends.txt", sep = "",
+                    col.names = c("stat_id","stat_nm", "yr_first", "yr_last", "yr_range", "per_comp", "trend_mmyr","ci_mmyr", "trend_ftcent", "ci_ftcent", "lat", "long"))
 
-slr_satmerge<-slr_unformatted %>% 
-  mutate(
-    top_jas1=ifelse(!is.na(TOPEX.Poseidon) & !is.na(Jason.1), (TOPEX.Poseidon+Jason.1)/2,
-                    ifelse(!is.na(TOPEX.Poseidon), TOPEX.Poseidon, Jason.1)),
-    jas1_jas2=ifelse(!is.na(Jason.1) & !is.na(Jason.2), (Jason.1+Jason.2)/2,
-                    ifelse(!is.na(Jason.1), Jason.1, Jason.2)),
-    jas2_jas3=ifelse(!is.na(Jason.2) & !is.na(Jason.3), (Jason.2+Jason.3)/2,
-                    ifelse(!is.na(Jason.2), Jason.2, Jason.3)),
-    jas3_sent=ifelse(!is.na(Jason.3) & !is.na(Sentinel.6MF), (Jason.3+Sentinel.6MF)/2,
-                    ifelse(!is.na(Jason.3), Jason.3, Sentinel.6MF)))
+#Format data and cut to gulf cities
+slr_txt<-tidyr::separate(slr_txt, stat_nm, sep = ", ", into = c("city", "state"), remove = F)
+gulf_states<-c("TX", "LA", "MS", "AL", "FL")
+slr_gulf<-slr_txt[slr_txt$state %in% gulf_states,]
+atl_rem<-c("Fernandina Beach","Mayport","Port Canaveral", "Lake Worth Pier", "Virginia Key")
+slr_gulf<-slr_gulf[!slr_gulf$city %in% atl_rem, ]
 
-slr_all<-slr_satmerge %>%  mutate(
-  all_sats=ifelse(!is.na(top_jas1), top_jas1,
-                  ifelse(!is.na(jas1_jas2), jas1_jas2,
-                         ifelse(!is.na(jas1_jas2), jas1_jas2,
-                                ifelse(!is.na(jas2_jas3), jas2_jas3,jas3_sent))))) %>% 
-    select(year, slr=all_sats)
-```
-
-```{r}
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("Sea Level Rise")
-unit_names = c("Change in mean sea level (mm)")
-extent_names = c("Gulf of America")
-
-formatted_data = IEAnalyzeR::convert_cleaned_data(slr_all, indicator_names, unit_names, extent_names)
 ```
 
 # 3. Save Formatted data as csv
 
 This will save your data to the appropriate folder.
-```{r}
+
+- Not standard timeseries data
+```{r, eval=F}
 write.csv(formatted_data, file = csv_filename, row.names = F)
 ```
 
@@ -98,14 +83,18 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 
 Please use your formatted csv to create a "data_prep" object.
 For more info on the data_prep function see the vignette linked above.
-```{r}
-data_obj<-IEAnalyzeR::data_prep(df=formatted_data)
+
+- Not standard timeseries data
+```{r, eval=F}
+data_obj<-IEAnalyzeR::data_prep(csv_filename)
 ```
 
 # 5. Save Formatted data_prep object
 
 This will save your data to the appropriate folder.
-```{r}
+
+- Not standard timeseries data
+```{r, eval=F}
 saveRDS(data_obj, file = object_filename)
 ```
 
@@ -116,7 +105,33 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, lwd = 0.5, fig.width = 6)
+#Get gulf states map outline
+gulf_states<-states(cb = T, resolution = "5m")
+state_nms<-c("Texas", "Louisiana", "Mississippi", "Alabama", "Georgia","Florida")
+gulf_states<-gulf_states[gulf_states$NAME %in% state_nms,]
+gulf_states<-gulf_states$geometry
+gulf_states<-as_spatvector(gulf_states)
+
+#Cut to partial state outlines
+new_bb<-ext(-99.3,-80, 22.87229, 32)
+new_bb<-vect(new_bb, crs(gulf_states))
+gulf_out<-crop(gulf_states, new_bb)
+
+#Plot
+ggplot(slr_gulf, aes(x=long, y=lat))+
+  geom_spatvector(data = gulf_out, fill="grey80", color="white", inherit.aes=F)+
+  geom_point(aes(fill=trend_mmyr), shape=21, color="white", stroke=0.5, size=1.75)+
+  scale_fill_viridis_c()+
+  scale_x_continuous(expand = c(0,0))+
+  scale_y_continuous(expand = c(0,0))+
+  labs(fill="RSL Trend\n(mm/yr)")+
+  theme_void()+
+  theme(legend.position = c(0.5, 0.25),
+                      legend.direction = "horizontal",
+                      legend.text = element_text(size=7),
+                      legend.title = element_text(size=8),
+                      legend.key.height = unit(0.5, "cm"),
+                      plot.margin = margin(3,3,3,3,"pt"))
 ```
 
 # 7. Save plot
@@ -125,5 +140,5 @@ This will save the plot to the correct folder.
 Adjust height & width using (height=, width=, unit="in") if needed.
 
 ```{r}
-ggsave(filename = plot_filename, width = 6, height = 3, units = "in")
+ggsave(filename = plot_filename, height = 3, width = 5.5, units = "in", bg= "white")
 ```
