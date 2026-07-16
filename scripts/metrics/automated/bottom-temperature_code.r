@@ -120,12 +120,14 @@ sbt_eez_ts <- data.frame(
 )
 
 setwd(here('data/intermediate'))
-save(sbt_eez, sbt_eez_ts, file = 'sbt_tmp.RData')
+writeRaster(sbt_eez, "sbt_eez.tif", overwrite = TRUE)
+save(sbt_eez_ts, file = 'sbt_tmp.RData')
 
 } else {
   
   setwd(here('data/intermediate'))
   load('sbt_tmp.RData')
+  sbt_eez <- rast("sbt_eez.tif")
   
 }
 
