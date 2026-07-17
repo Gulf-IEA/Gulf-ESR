@@ -294,7 +294,9 @@ dev.off()
 
 ### spatial regression
 
-sbt_m <- app(sbt_eez, mean, na.rm = T)
+# sbt_m <- app(sbt_eez, mean, na.rm = T)
+
+sbt_m <- tapp(sbt_eez, index = rep(1:12, 33), fun = mean, na.rm = T)
 
 sbt_eez_anom <- sbt_eez - sbt_m
 
@@ -305,7 +307,7 @@ sbt_5yr_t <- regress(recent_lyrs, 1:nlyr(recent_lyrs)) |>
 # plot(sbt_5yr_t[['x']])
 
 sbt_25 <- sbt_eez_anom[[time(sbt_eez_anom) > "2024-12-31"]] |>
-  app(mean, na.rm = t) |>
+  app(mean, na.rm = T) |>
   clamp(lower=-1.5, upper=1.5, values=TRUE)
 
 
@@ -332,7 +334,7 @@ plot(gulf_eez, add = T)
 
 plot(sbt_25, 
      col = a_cols, range = c(-1.5,1.5),
-     plg = list(tick = 'out', format='g'),
+     plg = list(tick = 'out', format='f'),
      main = '2025 SBT anomaly (°C)')
 plot(world, add= T, col = 'gray')
 plot(gulf_eez, add = T)
@@ -357,13 +359,13 @@ sbt_2025_a <- tapp(lyrs_2025_a, index = rep(1:4, each = 3), fun = mean, na.rm = 
 sbt_2025 <- tapp(lyrs_2025, index = rep(1:4, each = 3), fun = mean, na.rm = T)
 
 
-a_brks <- seq(-11,11,.5)
+a_brks <- seq(-3,3,.1)
 a_cols <- cmocean('balance')(length(a_brks)-1)
 t_brks <- seq(3.5,34,.5)
 t_cols <- cmocean('thermal')(length(t_brks)-1)
 
 plot(sbt_2025_a,
-     col = a_cols, range = c(-11,11),
+     col = a_cols, range = c(-3,3),
      plg = list(tick = 'out'))
 plot(sbt_2025,
      col = t_cols, range = c(3.5,34),
