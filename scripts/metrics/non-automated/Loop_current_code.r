@@ -152,9 +152,11 @@ print(f"Python: Success! Saved clean CSV to: {output_path}"))")
 
 your_data <- read.csv("data/unformatted/Loop_current.csv")
 names(your_data)[1] <- "Year"
+#temp_dates <- as.Date(your_data$Year, format = "%m/%d/%Y")
+#your_data$Year <- as.numeric(format(temp_dates, "%Y")) + 
+#  (as.numeric(format(temp_dates, "%m")) - 1) / 12
 temp_dates <- as.Date(your_data$Year, format = "%m/%d/%Y")
-your_data$Year <- as.numeric(format(temp_dates, "%Y")) + 
-  (as.numeric(format(temp_dates, "%m")) - 1) / 12
+your_data$Year <- format(temp_dates, "%b-%Y")
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
