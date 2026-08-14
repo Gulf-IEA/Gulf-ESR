@@ -372,3 +372,23 @@ plot(sbt_2025,
      plg = list(tick = 'out'))
 
 
+plot(sbt_2025[[1]],
+     col = t_cols, range = c(3.5,34),
+     plg = list(tick = 'out'))
+contour(sbt_2025[[1]], add = T)
+
+plot(sbt_2025[[2]],
+     col = t_cols, range = c(3.5,34),
+     plg = list(tick = 'out'))
+contour(sbt_2025[[2]], add = T)
+
+plot(sbt_2025[[3]],
+     col = t_cols, range = c(3.5,34),
+     plg = list(tick = 'out'))
+contour(sbt_2025[[3]], add = T)
+
+plot(sbt_2025[[4]],
+     col = t_cols, range = c(3.5,34),
+     plg = list(tick = 'out'))
+contour(sbt_2025[[4]], add = T)
+
