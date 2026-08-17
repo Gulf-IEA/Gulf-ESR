@@ -78,6 +78,8 @@ iho <- vect('iho.shp') |> makeValid()
 
 gulf_eez <- terra::intersect(eez, iho)
 
+rm(eez, iho)
+gc()
 
 # download by year to avoid timeout errors --------------------
 
@@ -214,6 +216,8 @@ if(review_code == F){
   # 2. Run cell-level regression to get intercept and slope
   # regress returns a SpatRaster with 2 layers: (Intercept) and x (slope)
   trend_model <- regress(sst_r, t_vals, na.rm = T)
+  # trend_model2 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2), na.rm = T)
+  # trend_model3 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2) + I(x^3), na.rm = T)
   
   # 3. Calculate the linear trend for each layer
   # trend = intercept + slope * time
@@ -262,6 +266,7 @@ if(review_code == F){
   
   setwd(here('data/intermediate'))
   load('mhw_results.RData')
+  load('mhw_dt_results.RData')
   
 }
 
@@ -273,6 +278,7 @@ if(review_code == F){
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
+### raw
 ### annual ----------------
 yr_mhw <- aggregate(cell ~ year(index_start),
                     data = mhw_cube,
@@ -288,19 +294,44 @@ plot(yr_mhw$year, yr_mhw$percent, typ = 'l')
 ### annual-degree days ----------------
 yr_mhw_dd <- aggregate(cbind(intensity_cumulative) ~ year(index_start),
                        data = mhw_cube,
-                       mean, na.rm=T) |>
+                       median, na.rm=T) |>
   setNames(c('year','intensity_cumulative')) |>
   merge(expand.grid(year=1982:2025),all=T)
 yr_mhw_dd$intensity_cumulative[is.na(yr_mhw_dd$intensity_cumulative)] <- 0
 
 plot(yr_mhw_dd$year, yr_mhw_dd$intensity_cumulative, typ = 'l')
 
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("Percentage of US Gulf EEZ", 'Cummulative Intensity (Degree-Days)')
-unit_names = c("Percentage", 'Degree-Days')
-extent_names = rep("Marine Heatwaves",2)
+### detrended
+### annual ----------------
+yr_mhw_dt <- aggregate(cell ~ year(index_start),
+                    data = mhw_dt_cube,
+                    function(x) length(unique(x))) |>
+  setNames(c('year','cell')) |>
+  merge(expand.grid(year=1982:2025),all=T)
+yr_mhw_dt$cell[is.na(yr_mhw_dt$cell)] <- 0
+yr_mhw_dt$percent <- yr_mhw_dt$cell / ngrid
+yr_mhw_dt$kmsq <- yr_mhw_dt$cell * cellsize_km
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw$year, yr_mhw$percent, yr_mhw_dd$intensity_cumulative),
+plot(yr_mhw_dt$year, yr_mhw_dt$percent, typ = 'l')
+
+### annual-degree days ----------------
+yr_mhw_dd_dt <- aggregate(cbind(intensity_cumulative) ~ year(index_start),
+                       data = mhw_dt_cube,
+                       median, na.rm=T) |>
+  setNames(c('year','intensity_cumulative')) |>
+  merge(expand.grid(year=1982:2025),all=T)
+yr_mhw_dd_dt$intensity_cumulative[is.na(yr_mhw_dd_dt$intensity_cumulative)] <- 0
+
+plot(yr_mhw_dd_dt$year, yr_mhw_dd_dt$intensity_cumulative, typ = 'l')
+
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c("EEZ Area", 'Cummulative Intensity',"EEZ Area detrended", 'Cummulative Intensity detrended')
+unit_names = rep(c("Percentage", 'Degree-Days'),2)
+extent_names = rep('US Gulf EEZ',4)
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw$year, yr_mhw$percent, yr_mhw_dd$intensity_cumulative,
+                                                        yr_mhw_dt$percent, yr_mhw_dd_dt$intensity_cumulative),
                                                   indicator_names, unit_names, extent_names)
 
 
@@ -334,14 +365,15 @@ saveRDS(data_obj, file = object_filename)
 # For more info on the plot_fn_obj function go HERE
 
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T,
-                        sep_ylabs = T, manual_title = 'Marine Heatwaves')
+                        sep_ylabs = T, manual_title = 'Marine Heatwaves',
+                        ylab_sublabel = T, fig.width = 8)
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename, width = 7, height = 6, unit = 'in')
+ggsave(filename = plot_filename, width = 9, height = 6, unit = 'in')
 
 
 
@@ -532,7 +564,7 @@ plot(yr_mhw$year, yr_mhw$percent, typ = 'l')
 ### annual-degree days ----------------
 yr_mhw_dd <- aggregate(cbind(intensity_cumulative) ~ year(index_start),
                        data = mhw_dt_cube,
-                       mean, na.rm=T) |>
+                       median, na.rm=T) |>
   setNames(c('year','intensity_cumulative')) |>
   merge(expand.grid(year=1982:2025),all=T)
 yr_mhw_dd$intensity_cumulative[is.na(yr_mhw_dd$intensity_cumulative)] <- 0
@@ -673,7 +705,7 @@ world <- ne_download(scale = 10, type = "countries",
 
 
 ### where are the MHWs?
-cell_ll <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
+cell_ll <- unique(mhw_dt_cube[, c("cell", "x", 'y')]) |>
   setNames(c('cell','lon','lat'))
 
 # event_no_mean <- aggregate(event_no ~ cell, data = mhw_cube, length) |>
@@ -681,8 +713,8 @@ cell_ll <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
 #   merge(lon_lat, all = T)
 # mean_event_no <- matrix(event_no_mean$event_no/length(styear:enyear), 29, 69)
 
-event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_cube, length) |>
-  setNames(c('cell','year','event_no'))
+event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_dt_cube, length) |>
+  setNames(c('cell','year','event_no')) |> type.convert()
 event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
   merge(cell_ll, all = T) |>
   merge(lon_lat, all = T)
@@ -704,7 +736,7 @@ setDT(event_no_yr)
 slopes_dt <- event_no_yr[, 
                          .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]), 
                          by = cell]
-gridcell_lm <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
+gridcell_lm <- unique(mhw_dt_cube[, c("cell", "x", 'y')]) |>
   setNames(c('cell','lon','lat')) |>
   merge(slopes_dt) |>
   merge(lon_lat, all = T)
