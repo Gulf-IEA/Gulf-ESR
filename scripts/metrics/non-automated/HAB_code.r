@@ -9,8 +9,10 @@ library(reticulate)
 library(dplyr)
 library(tidyr)
 
+reticulate::py_require(c("numpy", "pandas", "geopandas"))
+
 # Automatically hook into the host computer's active Python execution engine
-reticulate::use_python(Sys.which("python"), required = FALSE)
+#reticulate::use_python(Sys.which("python"), required = FALSE)
 
 # File Naming Setup.
 # !! Auto generated-Do Not Change !!
@@ -40,7 +42,7 @@ data_dir   = r.r_data_dir
 shp_path   = r.r_shp_path
 output_dir = r.r_output_dir
 
-start_year = 1985
+start_year = 2000
 end_year = 2025
 
 target_counties = [
@@ -188,9 +190,13 @@ your_data$Year <- as.numeric(format(temp_dates, "%Y")) +
 # ### 2. Clean data and create time series csv ####
 
 # Calculate a clean Regional Average across all counties.
-# This provides the clean 2-column structure that preserves your template layout perfectly.
+# This provides the clean 2-column structure that preserves the template layout.
 your_data$Regional_Average <- rowMeans(your_data[, target_counties], na.rm = TRUE)
+
 baseline_data <- your_data[, c("Year", "Regional_Average")]
+names(baseline_data) <- c("year", "value")
+
+baseline_data <- baseline_data[!is.na(baseline_data$value),]
 
 indicator_names <- "Karenia brevis Bloom Intensity (Regional Average)"
 unit_names      <- "Mean Log Concentration (>10k Cells)"
@@ -212,21 +218,15 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 # ----------------------------------------------------
 # ### 4. Create Data_Prep object ####
 
-data_obj <- IEAnalyzeR::data_prep(csv_filename)
+#data_obj <- IEAnalyzeR::data_prep(csv_filename)
 
 # ----------------------------------------------------
 # ### 5. Save Formatted data_prep object ####
 
-saveRDS(data_obj, file = object_filename)
+#saveRDS(data_obj, file = object_filename)
 
 # ----------------------------------------------------
 # ### 6. Preview Plot (The Theme Thief Method) ####
-
-print("R: Extracting package styling guidelines and generating Hovmöller plot...")
-
-# Step A: Generate a quick standard package timeline to harvest its official design theme
-dummy_plot <- IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = FALSE)
-iea_style  <- dummy_plot$theme
 
 # Step B: Pivot our wide layout data into a long structure for standard 2D ggplot tiles
 long_hab <- plotting_data %>%
