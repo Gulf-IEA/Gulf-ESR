@@ -7,3 +7,13 @@
 /.quarto/
 
 keys.api
+
+# Ignore all massive NetCDF data files
+*.nc
+
+# Ignore Jupyter notebook checkpoint files
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Ignore your local scratchpad/testing folder completely
+sandbox/
