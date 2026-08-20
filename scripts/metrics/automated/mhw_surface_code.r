@@ -111,6 +111,7 @@ if(review_code == F){
   
   
   system.time(
+    ### I have a scratch repository for intermediate files, but you can change this to your own directory
     setwd("C:/Users/brendan.turley/Documents/R_projects/ESR-indicator-scratch/data/intermediate_files"),
     for(h in 1:length(years)){
       cat('\n', years[h], '\n')
@@ -178,14 +179,14 @@ if(review_code == F){
   sst_r <- rast(sst_a[dim(sst_a)[1]:1,,], crs="EPSG:4326") 
   ext(sst_r) <- c(min_lon, max_lon, min_lat, max_lat)
   time(sst_r) <- as.Date(dates)
+  
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   saveRDS(sst_r, 'sst_raster_brick.rds')
   sst_r <- readRDS('sst_raster_brick.rds')
-  
+  ### crop to US Gulf EEZ
   ann_gwide <- crop(sst_r, gulf_eez) |> mask(gulf_eez)
   cellsize_km <- cellSize(ann_gwide,unit='km') |> values() |> mean()
-  
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   writeCDF(ann_gwide, 'oisst_gulf.nc',overwrite=TRUE)
@@ -193,8 +194,9 @@ if(review_code == F){
   data <- ncvar_get(dat, 'oisst_gulf')
   lon <- ncvar_get(dat, 'longitude')
   lat <- ncvar_get(dat, 'latitude')
+  ### lon/lat grid locations for spatial plots
   lon_lat <- expand.grid(lon = lon,lat = lat)
-  
+  ### create overall gridded mean and number of grid cells
   dat_m <- apply(data,c(1,2),mean,na.rm=T)
   ngrid <- length(which(!is.na(dat_m)))
   
@@ -202,7 +204,8 @@ if(review_code == F){
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   mhw_cube <- detect3(file_in = 'oisst_gulf.nc',
                       return_type = "df", 
-                      clim_period = c("1982-01-01", "2011-12-31"))
+                      # clim_period = c("1982-01-01", "2011-12-31"))
+                      clim_period = c("1990-01-01", "2020-12-31")) ### more recent reference period per WMO
   ### save intermediate file
   save(mhw_cube, ngrid, cellsize_km, lon_lat,
        file = 'mhw_results.RData')
@@ -229,16 +232,15 @@ if(review_code == F){
   
   # 4. Subtract the trend from the original data (Detrend)
   sst_rdt <- sst_r - trend_stack
-  
   rm(trend_model,intercept,slope,trend_stack)
+  
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   saveRDS(sst_rdt, 'sst_rdetrend_brick.rds')
   sst_rdt <- readRDS('sst_rdetrend_brick.rds')
-  
+  ### crop to US Gulf EEZ
   ann_dt_gwide <- crop(sst_rdt, gulf_eez) |> mask(gulf_eez)
   cellsize_km <- cellSize(ann_dt_gwide, unit='km') |> values() |> mean()
-  
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   writeCDF(ann_dt_gwide, 'oisst_dt_gulf.nc',overwrite=TRUE)
@@ -246,8 +248,9 @@ if(review_code == F){
   data <- ncvar_get(dat, 'oisst_dt_gulf')
   lon <- ncvar_get(dat, 'longitude')
   lat <- ncvar_get(dat, 'latitude')
+  ### lon/lat grid locations for spatial plots
   lon_lat <- expand.grid(lon = lon,lat = lat)
-  
+  ### create overall gridded mean and number of grid cells
   dat_m <- apply(data,c(1,2),mean,na.rm=T)
   ngrid <- length(which(!is.na(dat_m)))
   
@@ -255,7 +258,8 @@ if(review_code == F){
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   mhw_dt_cube <- detect3(file_in = 'oisst_dt_gulf.nc',
                          return_type = "df", 
-                         clim_period = c("1982-01-01", "2011-12-31"))
+                         # clim_period = c("1982-01-01", "2011-12-31"))
+                         clim_period = c("1990-01-01", "2020-12-31")) ### more recent reference period per WMO
   ### save intermediate file
   setwd(here('data/intermediate'))
   save(mhw_dt_cube, ngrid, cellsize_km, lon_lat,
@@ -267,6 +271,7 @@ if(review_code == F){
   setwd(here('data/intermediate'))
   load('mhw_results.RData')
   load('mhw_dt_results.RData')
+  ### ngrid, cellsize_km, lon_lat are the same between datasets, so its ok to overwrite
   
 }
 
@@ -287,18 +292,18 @@ yr_mhw <- aggregate(cell ~ year(index_start),
   merge(expand.grid(year=1982:2025),all=T)
 yr_mhw$cell[is.na(yr_mhw$cell)] <- 0
 yr_mhw$percent <- yr_mhw$cell / ngrid
-yr_mhw$kmsq <- yr_mhw$cell * cellsize_km
-
+# yr_mhw$kmsq <- yr_mhw$cell * cellsize_km ### decided to go with percent EEZ not total area
+### gut check
 plot(yr_mhw$year, yr_mhw$percent, typ = 'l')
 
 ### annual-degree days ----------------
-yr_mhw_dd <- aggregate(cbind(intensity_cumulative) ~ year(index_start),
+yr_mhw_dd <- aggregate(intensity_cumulative ~ year(index_start),
                        data = mhw_cube,
                        median, na.rm=T) |>
   setNames(c('year','intensity_cumulative')) |>
   merge(expand.grid(year=1982:2025),all=T)
 yr_mhw_dd$intensity_cumulative[is.na(yr_mhw_dd$intensity_cumulative)] <- 0
-
+### gut check
 plot(yr_mhw_dd$year, yr_mhw_dd$intensity_cumulative, typ = 'l')
 
 ### detrended
@@ -310,8 +315,8 @@ yr_mhw_dt <- aggregate(cell ~ year(index_start),
   merge(expand.grid(year=1982:2025),all=T)
 yr_mhw_dt$cell[is.na(yr_mhw_dt$cell)] <- 0
 yr_mhw_dt$percent <- yr_mhw_dt$cell / ngrid
-yr_mhw_dt$kmsq <- yr_mhw_dt$cell * cellsize_km
-
+# yr_mhw_dt$kmsq <- yr_mhw_dt$cell * cellsize_km
+### gut check
 plot(yr_mhw_dt$year, yr_mhw_dt$percent, typ = 'l')
 
 ### annual-degree days ----------------
@@ -321,7 +326,7 @@ yr_mhw_dd_dt <- aggregate(cbind(intensity_cumulative) ~ year(index_start),
   setNames(c('year','intensity_cumulative')) |>
   merge(expand.grid(year=1982:2025),all=T)
 yr_mhw_dd_dt$intensity_cumulative[is.na(yr_mhw_dd_dt$intensity_cumulative)] <- 0
-
+### gut check
 plot(yr_mhw_dd_dt$year, yr_mhw_dd_dt$intensity_cumulative, typ = 'l')
 
 
@@ -330,7 +335,8 @@ indicator_names = c("EEZ Area", 'Cummulative Intensity',"EEZ Area detrended", 'C
 unit_names = rep(c("Percentage", 'Degree-Days'),2)
 extent_names = rep('US Gulf EEZ',4)
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw$year, yr_mhw$percent, yr_mhw_dd$intensity_cumulative,
+formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw$year, 
+                                                        yr_mhw$percent, yr_mhw_dd$intensity_cumulative,
                                                         yr_mhw_dt$percent, yr_mhw_dd_dt$intensity_cumulative),
                                                   indicator_names, unit_names, extent_names)
 
@@ -396,7 +402,7 @@ mains <- list('Winter - DJF',
               'Summer - JJA',
               'Fall - SON')
 
-png(here('figures/plots/mhw-surface-area-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# png(here('figures/plots/mhw-surface-area-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
 par(mfrow = c(2,2), mar = c(3,5,2,1),
     oma = c(0,0,3,0))
 for(i in 1:4){
@@ -422,10 +428,10 @@ for(i in 1:4){
 }
 
 mtext('Proportion of US Gulf EEZ with Marine Heatwaves', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-dev.off()
+# dev.off()
 
 
-png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
 par(mfrow = c(2,2), mar = c(3,5,2,1),
     oma = c(0,0,3,0))
 
@@ -448,25 +454,25 @@ for(i in 1:4){
 }
 
 mtext('US Gulf EEZ Marine Heatwave Cummulative Intensity', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-dev.off()
+# dev.off()
 
 
-### spatial plots
+#####################
+### spatial plots ###
+#####################
 
 ### shapefile for plotting
 world <- ne_download(scale = 10, type = "countries", 
                      returnclass = 'sv') |>
   crop(ext(min_lon,max_lon,min_lat,max_lat))
 
-
-
 ### where are the MHWs?
 cell_ll <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
   setNames(c('cell','lon','lat'))
 
 # event_no_mean <- aggregate(event_no ~ cell, data = mhw_cube, length) |>
-#   merge(cell_ll, all = T) |>
-#   merge(lon_lat, all = T)
+  # merge(cell_ll, all = T) |>
+  # merge(lon_lat, all = T)
 # mean_event_no <- matrix(event_no_mean$event_no/length(styear:enyear), 29, 69)
 
 event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_cube, length) |>
@@ -474,8 +480,9 @@ event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_cube, l
 event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
   merge(cell_ll, all = T) |>
   merge(lon_lat, all = T)
-mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
+hdt1 <- hist(event_no_mean$event_no)
 
+mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
 ### put into raster
 event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
 ext(event_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
@@ -483,7 +490,7 @@ crs(event_rast) <- "EPSG:4326"
 plot(event_rast)
 
 ### colors and breaks for plotting
-e_brks <- seq(2.4,4.2,.05)
+e_brks <- hdt1$breaks
 e_cols <- (cmocean('thermal')(length(e_brks)-1))
 
 
@@ -496,7 +503,7 @@ gridcell_lm <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
   setNames(c('cell','lon','lat')) |>
   merge(slopes_dt) |>
   merge(lon_lat, all = T)
-hist(gridcell_lm$slope)
+hdt2 <- hist(gridcell_lm$slope*10)
 
 mhw_slope <- matrix(gridcell_lm$slope*10, 29, 69)
 ### put into raster
@@ -506,17 +513,17 @@ crs(slope_rast) <- "EPSG:4326"
 plot(slope_rast)
 
 ### colors and breaks for plotting
-s_brks <- seq(.24,1.88,.05)
-s_cols <- (cmocean('amp')(length(s_brks)-1))
+s_brks <- seq(-max(abs(range(hdt2$breaks))),max(abs(range(hdt2$breaks))),.1)
+s_cols <- (cmocean('balance')(length(s_brks)-1))
 
 
 
-png(here('figures/plots/mhw-surface-spatial-plot.png'), 
-    width = 6, height = 6, units = 'in', res = 300)
+# png(here('figures/plots/mhw-surface-spatial-plot.png'), 
+    # width = 6, height = 6, units = 'in', res = 300)
 par(mfrow=c(2,1))
 
 plot(event_rast,
-     col = e_cols, range = c(2.4,4.2),
+     col = e_cols, #range = c(2.4,4.2),
      plg = list(tick = 'out'),
      main = 'Marine Heatwaves (mean number per year)',
      mar = c(1, 2, 1, 4))
@@ -525,7 +532,7 @@ contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
 # plot(gulf_eez, add = T)
 
 plot(slope_rast,
-     col = s_cols, range = c(.24,1.88),
+     col = s_cols, #range = c(.24,1.88),
      plg = list(tick = 'out'),
      main = 'Marine Heatwave Trend (events per decade)',
      mar = c(1, 2, 1, 4))
@@ -533,94 +540,14 @@ plot(world, add= T, col = 'gray')
 contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
 # plot(gulf_eez, add = T)
 
-dev.off()
+# dev.off()
 
 
 
 ### detrended
 
-#----------------------------------------------------
-#### 2. Clean data and create time series csv ####
-
-#Transform the data to fit the IEA data format.
-#For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
-#Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
-
 setwd(here('data/intermediate'))
 load('mhw_dt_results.RData')
-
-### annual ----------------
-yr_mhw <- aggregate(cell ~ year(index_start),
-                    data = mhw_dt_cube,
-                    function(x) length(unique(x))) |>
-  setNames(c('year','cell')) |>
-  merge(expand.grid(year=1982:2025),all=T)
-yr_mhw$cell[is.na(yr_mhw$cell)] <- 0
-yr_mhw$percent <- yr_mhw$cell / ngrid
-yr_mhw$kmsq <- yr_mhw$cell * cellsize_km
-
-plot(yr_mhw$year, yr_mhw$percent, typ = 'l')
-
-### annual-degree days ----------------
-yr_mhw_dd <- aggregate(cbind(intensity_cumulative) ~ year(index_start),
-                       data = mhw_dt_cube,
-                       median, na.rm=T) |>
-  setNames(c('year','intensity_cumulative')) |>
-  merge(expand.grid(year=1982:2025),all=T)
-yr_mhw_dd$intensity_cumulative[is.na(yr_mhw_dd$intensity_cumulative)] <- 0
-
-plot(yr_mhw_dd$year, yr_mhw_dd$intensity_cumulative, typ = 'l')
-
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("Percentage of US Gulf EEZ", 'Cummulative Intensity (Degree-Days)')
-unit_names = c("Percentage", 'Degree-Days')
-extent_names = rep("Marine Heatwaves",2)
-
-formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw$year, yr_mhw$percent, yr_mhw_dd$intensity_cumulative),
-                                                  indicator_names, unit_names, extent_names)
-
-
-#----------------------------------------------------
-#### 3. Save Formatted data as csv ####
-
-# This will save your data to the appropriate folder.
-
-# write.csv(formatted_data, file = csv_filename, row.names = F)
-
-#----------------------------------------------------
-#### 4. Create Data_Prep object ####
-
-#Please use your formatted csv to create a "data_prep" object.
-#For more info on the data_prep function see the vignette linked above.
-
-data_obj <- IEAnalyzeR::data_prep(formatted_data)
-
-
-#----------------------------------------------------
-#### 5. Save Formatted data_prep object ####
-
-#This will save your data to the appropriate folder.
-
-# saveRDS(data_obj, file = object_filename)
-
-
-#----------------------------------------------------
-#### 6. Preview Plot ####
-# Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
-# For more info on the plot_fn_obj function go HERE
-
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T,
-                        sep_ylabs = T, manual_title = 'Marine Heatwaves')
-
-#----------------------------------------------------
-#### 7. Save plot ####
-# This will save the plot to the correct folder.
-# Adjust height & width using (height=, width=, unit="in") if needed.
-
-# ggsave(filename = plot_filename, width = 7, height = 6, unit = 'in')
-
-
-
 
 ### seasonal -------------------
 mhw_cube <- mhw_dt_cube |> 
@@ -666,7 +593,7 @@ for(i in 1:4){
 }
 
 mtext('Proportion of US Gulf EEZ with Marine Heatwaves', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-dev.off()
+# dev.off()
 
 
 # png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
@@ -694,15 +621,14 @@ for(i in 1:4){
 mtext('US Gulf EEZ Marine Heatwave Cummulative Intensity', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
 # dev.off()
 
-
-### spatial plots
+#####################
+### spatial plots ###
+#####################
 
 ### shapefile for plotting
 world <- ne_download(scale = 10, type = "countries", 
                      returnclass = 'sv') |>
   crop(ext(min_lon,max_lon,min_lat,max_lat))
-
-
 
 ### where are the MHWs?
 cell_ll <- unique(mhw_dt_cube[, c("cell", "x", 'y')]) |>
