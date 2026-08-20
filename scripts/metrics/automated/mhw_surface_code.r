@@ -12,7 +12,7 @@ library(lubridate)
 library(ncdf4)
 library(terra)
 library(sf)
-library(pak)
+# library(pak)
 library(rnaturalearth)
 library(rnaturalearthdata)
 # pak::pak("robwschlegel/heatwave3")
@@ -184,62 +184,93 @@ if(review_code == F){
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
   saveRDS(sst_r, 'sst_raster_brick.rds')
   sst_r <- readRDS('sst_raster_brick.rds')
-  ### crop to US Gulf EEZ
-  ann_gwide <- crop(sst_r, gulf_eez) |> mask(gulf_eez)
-  cellsize_km <- cellSize(ann_gwide,unit='km') |> values() |> mean()
-  ### save intermediate file
-  setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
-  writeCDF(ann_gwide, 'oisst_gulf.nc',overwrite=TRUE)
-  dat <- nc_open('oisst_gulf.nc')
-  data <- ncvar_get(dat, 'oisst_gulf')
-  lon <- ncvar_get(dat, 'longitude')
-  lat <- ncvar_get(dat, 'latitude')
-  ### lon/lat grid locations for spatial plots
-  lon_lat <- expand.grid(lon = lon,lat = lat)
-  ### create overall gridded mean and number of grid cells
-  dat_m <- apply(data,c(1,2),mean,na.rm=T)
-  ngrid <- length(which(!is.na(dat_m)))
   
-  ### this is the MHW detection function
-  setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
-  mhw_cube <- detect3(file_in = 'oisst_gulf.nc',
-                      return_type = "df", 
-                      # clim_period = c("1982-01-01", "2011-12-31"))
-                      clim_period = c("1990-01-01", "2020-12-31")) ### more recent reference period per WMO
-  ### save intermediate file
-  save(mhw_cube, ngrid, cellsize_km, lon_lat,
-       file = 'mhw_results.RData')
-  gc()
+  
+  #########################################
+  ### non-detrended MHW was dropped following NESFC lead on MHW indicator development
+  #########################################
+  
+  # ### crop to US Gulf EEZ
+  # ann_gwide <- crop(sst_r, gulf_eez) |> mask(gulf_eez)
+  # cellsize_km <- cellSize(ann_gwide,unit='km') |> values() |> mean()
+  # ### save intermediate file
+  # setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
+  # writeCDF(ann_gwide, 'oisst_gulf.nc',overwrite=TRUE)
+  # dat <- nc_open('oisst_gulf.nc')
+  # data <- ncvar_get(dat, 'oisst_gulf')
+  # lon <- ncvar_get(dat, 'longitude')
+  # lat <- ncvar_get(dat, 'latitude')
+  # ### lon/lat grid locations for spatial plots
+  # lon_lat <- expand.grid(lon = lon,lat = lat)
+  # ### create overall gridded mean and number of grid cells
+  # dat_m <- apply(data,c(1,2),mean,na.rm=T)
+  # ngrid <- length(which(!is.na(dat_m)))
+  
+  # ### this is the MHW detection function
+  # setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
+  # mhw_cube <- detect3(file_in = 'oisst_gulf.nc',
+  #                     return_type = "df", 
+  #                     # clim_period = c("1982-01-01", "2011-12-31"))
+  #                     clim_period = c("1990-01-01", "2020-12-31")) ### more recent reference period per WMO
+  # ### save intermediate file
+  # save(mhw_cube, ngrid, cellsize_km, lon_lat,
+  #      file = 'mhw_results.RData')
+  # gc()
+  
+  ####################################
+  ### end non-detrended code chunk ###
+  ####################################
   
   
   ### detrended
   # 1. Create a time vector (e.g., layer indices 1 to n)
   t_vals <- 1:nlyr(sst_r)
   
-  # 2. Run cell-level regression to get intercept and slope
-  # regress returns a SpatRaster with 2 layers: (Intercept) and x (slope)
-  trend_model <- regress(sst_r, t_vals, na.rm = T)
+  # ### linear ###
+  # # 2. Run cell-level regression to get intercept and slope
+  # # regress returns a SpatRaster with 2 layers: (Intercept) and x (slope)
+  # trend_model <- regress(sst_r, t_vals, na.rm = T)
+  # 
+  # # 3. Calculate the linear trend for each layer
+  # # trend = intercept + slope * time
+  # intercept <- trend_model[[1]]
+  # slope <- trend_model[[2]]
+  # 
+  # # Generate the trend raster stack
+  # trend_stack <- intercept + slope * t_vals
+  # 
+  # # 4. Subtract the trend from the original data (Detrend)
+  # sst_rdt <- sst_r - trend_stack
+  # rm(trend_model,intercept,slope,trend_stack)
+  # 
+  # ### quadratic ###
   # trend_model2 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2), na.rm = T)
-  # trend_model3 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2) + I(x^3), na.rm = T)
+  # trend_stack2 <- trend_model2[[1]] + 
+  #   trend_model2[[2]] * t_vals + 
+  #   trend_model2[[3]] * t_vals^2
+  # 
+  # # 4. Subtract the trend from the original data (Detrend)
+  # sst_rdt2 <- sst_r - trend_stack2
   
-  # 3. Calculate the linear trend for each layer
-  # trend = intercept + slope * time
-  intercept <- trend_model[[1]]
-  slope <- trend_model[[2]]
   
-  # Generate the trend raster stack
-  trend_stack <- intercept + slope * t_vals
+  ### cubic ###
+  ### this method was chosen to follow the NEFSC lead on MHW indicator development
+  ### the residual sum of squares was lower and the values were cooler compared to linear and quadratic detrending``
+  trend_model3 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2) + I(x^3), na.rm = T)
+  trend_stack3 <- trend_model3[[1]] + 
+    trend_model3[[2]] * t_vals + 
+    trend_model3[[3]] * t_vals^2 +
+    trend_model3[[4]] * t_vals^3
   
   # 4. Subtract the trend from the original data (Detrend)
-  sst_rdt <- sst_r - trend_stack
-  rm(trend_model,intercept,slope,trend_stack)
+  sst_rdt3 <- sst_r - trend_stack3
   
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
-  saveRDS(sst_rdt, 'sst_rdetrend_brick.rds')
-  sst_rdt <- readRDS('sst_rdetrend_brick.rds')
+  saveRDS(sst_rdt3, 'sst_rdetrend_brick.rds')
+  sst_rdt3 <- readRDS('sst_rdetrend_brick.rds')
   ### crop to US Gulf EEZ
-  ann_dt_gwide <- crop(sst_rdt, gulf_eez) |> mask(gulf_eez)
+  ann_dt_gwide <- crop(sst_rdt3, gulf_eez) |> mask(gulf_eez)
   cellsize_km <- cellSize(ann_dt_gwide, unit='km') |> values() |> mean()
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
@@ -259,7 +290,7 @@ if(review_code == F){
   mhw_dt_cube <- detect3(file_in = 'oisst_dt_gulf.nc',
                          return_type = "df", 
                          # clim_period = c("1982-01-01", "2011-12-31"))
-                         clim_period = c("1990-01-01", "2020-12-31")) ### more recent reference period per WMO
+                         clim_period = c("1991-01-01", "2020-12-31")) ### more recent reference period per WMO
   ### save intermediate file
   setwd(here('data/intermediate'))
   save(mhw_dt_cube, ngrid, cellsize_km, lon_lat,
@@ -283,28 +314,28 @@ if(review_code == F){
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
-### raw
-### annual ----------------
-yr_mhw <- aggregate(cell ~ year(index_start),
-                    data = mhw_cube,
-                    function(x) length(unique(x))) |>
-  setNames(c('year','cell')) |>
-  merge(expand.grid(year=1982:2025),all=T)
-yr_mhw$cell[is.na(yr_mhw$cell)] <- 0
-yr_mhw$percent <- yr_mhw$cell / ngrid
-# yr_mhw$kmsq <- yr_mhw$cell * cellsize_km ### decided to go with percent EEZ not total area
-### gut check
-plot(yr_mhw$year, yr_mhw$percent, typ = 'l')
-
-### annual-degree days ----------------
-yr_mhw_dd <- aggregate(intensity_cumulative ~ year(index_start),
-                       data = mhw_cube,
-                       median, na.rm=T) |>
-  setNames(c('year','intensity_cumulative')) |>
-  merge(expand.grid(year=1982:2025),all=T)
-yr_mhw_dd$intensity_cumulative[is.na(yr_mhw_dd$intensity_cumulative)] <- 0
-### gut check
-plot(yr_mhw_dd$year, yr_mhw_dd$intensity_cumulative, typ = 'l')
+# ### raw; dropped in favor of detrended
+# ### annual ----------------
+# yr_mhw <- aggregate(cell ~ year(index_start),
+#                     data = mhw_cube,
+#                     function(x) length(unique(x))) |>
+#   setNames(c('year','cell')) |>
+#   merge(expand.grid(year=1982:2025),all=T)
+# yr_mhw$cell[is.na(yr_mhw$cell)] <- 0
+# yr_mhw$percent <- yr_mhw$cell / ngrid
+# # yr_mhw$kmsq <- yr_mhw$cell * cellsize_km ### decided to go with percent EEZ not total area
+# ### gut check
+# plot(yr_mhw$year, yr_mhw$percent, typ = 'l')
+# 
+# ### annual-degree days ----------------
+# yr_mhw_dd <- aggregate(intensity_cumulative ~ year(index_start),
+#                        data = mhw_cube,
+#                        median, na.rm=T) |>
+#   setNames(c('year','intensity_cumulative')) |>
+#   merge(expand.grid(year=1982:2025),all=T)
+# yr_mhw_dd$intensity_cumulative[is.na(yr_mhw_dd$intensity_cumulative)] <- 0
+# ### gut check
+# plot(yr_mhw_dd$year, yr_mhw_dd$intensity_cumulative, typ = 'l')
 
 ### detrended
 ### annual ----------------
