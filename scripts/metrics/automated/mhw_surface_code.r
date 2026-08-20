@@ -47,26 +47,27 @@ max_lon <- -80
 min_lat <- 18
 max_lat <- 31
 
-### bathymetry
-# setwd("~/data/bathy")
-# burl <- 'etopo1.nc'
-
-burl <- 'https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc'
-bdat <- nc_open(burl)
-# crs <- 'EPSG:4326'
-
-ln <- ncvar_get(bdat, 'lon')
-ln_i <- which(ln>=min_lon & ln<=max_lon)
-lt <- ncvar_get(bdat, 'lat')
-lt_i <- which(lt>=min_lat & lt<=max_lat)
-
-bathy <- ncvar_get(bdat, 'z', 
-                   start = c(ln_i[1],lt_i[1]),
-                   count = c(length(ln_i), length(lt_i)))
-# bathy <- ncvar_get(bdat, 'Band1', 
+# ### bathymetry; not used in final product but useful for exploratory plotting
+# ### could be used if we wat to restrict MHWs to only areas to a certain depth
+# # setwd("~/data/bathy")
+# # burl <- 'etopo1.nc'
+# 
+# burl <- 'https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc'
+# bdat <- nc_open(burl)
+# # crs <- 'EPSG:4326'
+# 
+# ln <- ncvar_get(bdat, 'lon')
+# ln_i <- which(ln>=min_lon & ln<=max_lon)
+# lt <- ncvar_get(bdat, 'lat')
+# lt_i <- which(lt>=min_lat & lt<=max_lat)
+# 
+# bathy <- ncvar_get(bdat, 'z', 
 #                    start = c(ln_i[1],lt_i[1]),
 #                    count = c(length(ln_i), length(lt_i)))
-nc_close(bdat)
+# # bathy <- ncvar_get(bdat, 'Band1', 
+# #                    start = c(ln_i[1],lt_i[1]),
+# #                    count = c(length(ln_i), length(lt_i)))
+# nc_close(bdat)
 
 # load shapefile to subset  --------------------------------
 ### shapefiles downloaded from marineregions.org (future goal implement mregions2 R package for shapefile)
@@ -300,7 +301,7 @@ if(review_code == F){
 } else {
   
   setwd(here('data/intermediate'))
-  load('mhw_results.RData')
+  # load('mhw_results.RData')
   load('mhw_dt_results.RData')
   ### ngrid, cellsize_km, lon_lat are the same between datasets, so its ok to overwrite
   
@@ -360,14 +361,24 @@ yr_mhw_dd_dt$intensity_cumulative[is.na(yr_mhw_dd_dt$intensity_cumulative)] <- 0
 ### gut check
 plot(yr_mhw_dd_dt$year, yr_mhw_dd_dt$intensity_cumulative, typ = 'l')
 
+# ### intensity max ----------------
+# yr_mhw_dd_dt <- aggregate(cbind(intensity_max) ~ year(index_start),
+#                           data = mhw_dt_cube,
+#                           max, na.rm=T) |>
+#   setNames(c('year','intensity_max')) |>
+#   merge(expand.grid(year=1982:2025),all=T)
+# yr_mhw_dd_dt$intensity_max[is.na(yr_mhw_dd_dt$intensity_max)] <- 0
+# ### gut check
+# plot(yr_mhw_dd_dt$year, yr_mhw_dd_dt$intensity_max, typ = 'l')
+
+
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("EEZ Area", 'Cummulative Intensity',"EEZ Area detrended", 'Cummulative Intensity detrended')
-unit_names = rep(c("Percentage", 'Degree-Days'),2)
-extent_names = rep('US Gulf EEZ',4)
+indicator_names = c("EEZ Area", 'Cummulative Intensity')
+unit_names = c("Percentage", 'Degree-Days')
+extent_names = rep('US Gulf EEZ',2)
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw$year, 
-                                                        yr_mhw$percent, yr_mhw_dd$intensity_cumulative,
+formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw_dt$year,
                                                         yr_mhw_dt$percent, yr_mhw_dd_dt$intensity_cumulative),
                                                   indicator_names, unit_names, extent_names)
 
@@ -401,7 +412,8 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T,
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, 
+                        pts = T, #pt_size = 1.5,
                         sep_ylabs = T, manual_title = 'Marine Heatwaves',
                         ylab_sublabel = T, fig.width = 8)
 
@@ -410,329 +422,336 @@ IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T,
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename, width = 9, height = 6, unit = 'in')
+ggsave(filename = plot_filename, width = 6, height = 5, unit = 'in')
 
 
 
 
-### seasonal -------------------
-mhw_cube <- mhw_cube |> 
-  mutate(year = year(index_start),
-         month = month(index_start),
-         yr_sea = case_when(
-           month==12 ~ year+1,
-           TRUE ~ year
-         ))
-seasons <- list(c(12,1,2),
-                c(3,4,5),
-                c(6,7,8),
-                c(9,10,11))
-# yr_mon$yr_sea <- ifelse(yr_mon$month==12, yr_mon$year+1, yr_mon$year)
-mains <- list('Winter - DJF',
-              'Spring - MAM',
-              'Summer - JJA',
-              'Fall - SON')
-
-# png(here('figures/plots/mhw-surface-area-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
-par(mfrow = c(2,2), mar = c(3,5,2,1),
-    oma = c(0,0,3,0))
-for(i in 1:4){
-  tmp <- subset(mhw_cube, month %in% seasons[[i]])
-  yagg <- aggregate(cell ~ year(index_start),
-                    data = tmp,
-                    function(x) length(unique(x))) |>
-    setNames(c('year','cell')) |>
-    merge(expand.grid(year=1982:2025),all=T)
-  yagg$cell[is.na(yagg$cell)] <- 0
-  yagg$percent <- yagg$cell / ngrid
-  yagg$kmsq <- yagg$cell * cellsize_km
-  
-  mod <- summary(lm(percent ~ year, data = yagg))
-  plot(yagg$year, yagg$percent, typ = 'l', lwd = 2,
-       las = 1, xlab = '', ylab = 'EEZ Proportion', main = mains[[i]],
-       panel.first = list(abline(h = .5, lty = 5)),
-       ylim = c(0,1))
-  if(mod$coefficients[8]<=.05){
-    abline(mod, col = 'orange', lwd = 2)
-  }
-  print(mod)
-}
-
-mtext('Proportion of US Gulf EEZ with Marine Heatwaves', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-# dev.off()
+##############################################
+### exploratory plots for future reference ###
+##############################################
 
 
-# png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
-par(mfrow = c(2,2), mar = c(3,5,2,1),
-    oma = c(0,0,3,0))
-
-for(i in 1:4){
-  tmp <- subset(mhw_cube, month %in% seasons[[i]])
-  yagg <- aggregate(intensity_cumulative ~ year(index_start),
-                    data = tmp,
-                    mean, na.rm = T) |>
-    setNames(c('year','intensity_cumulative')) |>
-    merge(expand.grid(year=1982:2025),all=T)
-  yagg$cell[is.na(yagg$intensity_cumulative)] <- 0
-  
-  mod <- summary(lm(intensity_cumulative ~ year, data = yagg))
-  plot(yagg$year, yagg$intensity_cumulative, typ = 'l', lwd = 2,
-       las = 1, xlab = '', ylab = 'Degree-Days', main = mains[[i]])
-  if(mod$coefficients[8]<=.05){
-    abline(mod, col = 'orange', lwd = 2)
-  }
-  print(mod)
-}
-
-mtext('US Gulf EEZ Marine Heatwave Cummulative Intensity', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-# dev.off()
-
-
-#####################
-### spatial plots ###
-#####################
-
-### shapefile for plotting
-world <- ne_download(scale = 10, type = "countries", 
-                     returnclass = 'sv') |>
-  crop(ext(min_lon,max_lon,min_lat,max_lat))
-
-### where are the MHWs?
-cell_ll <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
-  setNames(c('cell','lon','lat'))
-
-# event_no_mean <- aggregate(event_no ~ cell, data = mhw_cube, length) |>
-  # merge(cell_ll, all = T) |>
-  # merge(lon_lat, all = T)
-# mean_event_no <- matrix(event_no_mean$event_no/length(styear:enyear), 29, 69)
-
-event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_cube, length) |>
-  setNames(c('cell','year','event_no'))
-event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
-  merge(cell_ll, all = T) |>
-  merge(lon_lat, all = T)
-hdt1 <- hist(event_no_mean$event_no)
-
-mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
-### put into raster
-event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
-ext(event_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
-crs(event_rast) <- "EPSG:4326"
-plot(event_rast)
-
-### colors and breaks for plotting
-e_brks <- hdt1$breaks
-e_cols <- (cmocean('thermal')(length(e_brks)-1))
-
-
-### spatial trend
-setDT(event_no_yr)
-slopes_dt <- event_no_yr[, 
-                         .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]), 
-                         by = cell]
-gridcell_lm <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
-  setNames(c('cell','lon','lat')) |>
-  merge(slopes_dt) |>
-  merge(lon_lat, all = T)
-hdt2 <- hist(gridcell_lm$slope*10)
-
-mhw_slope <- matrix(gridcell_lm$slope*10, 29, 69)
-### put into raster
-slope_rast <- rast(mhw_slope[nrow(mhw_slope):1,])
-ext(slope_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
-crs(slope_rast) <- "EPSG:4326"
-plot(slope_rast)
-
-### colors and breaks for plotting
-s_brks <- seq(-max(abs(range(hdt2$breaks))),max(abs(range(hdt2$breaks))),.1)
-s_cols <- (cmocean('balance')(length(s_brks)-1))
-
-
-
-# png(here('figures/plots/mhw-surface-spatial-plot.png'), 
-    # width = 6, height = 6, units = 'in', res = 300)
-par(mfrow=c(2,1))
-
-plot(event_rast,
-     col = e_cols, #range = c(2.4,4.2),
-     plg = list(tick = 'out'),
-     main = 'Marine Heatwaves (mean number per year)',
-     mar = c(1, 2, 1, 4))
-plot(world, add= T, col = 'gray')
-contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
-# plot(gulf_eez, add = T)
-
-plot(slope_rast,
-     col = s_cols, #range = c(.24,1.88),
-     plg = list(tick = 'out'),
-     main = 'Marine Heatwave Trend (events per decade)',
-     mar = c(1, 2, 1, 4))
-plot(world, add= T, col = 'gray')
-contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
-# plot(gulf_eez, add = T)
-
-# dev.off()
-
-
-
-### detrended
-
-setwd(here('data/intermediate'))
-load('mhw_dt_results.RData')
-
-### seasonal -------------------
-mhw_cube <- mhw_dt_cube |> 
-  mutate(year = year(index_start),
-         month = month(index_start),
-         yr_sea = case_when(
-           month==12 ~ year+1,
-           TRUE ~ year
-         ))
-seasons <- list(c(12,1,2),
-                c(3,4,5),
-                c(6,7,8),
-                c(9,10,11))
-# yr_mon$yr_sea <- ifelse(yr_mon$month==12, yr_mon$year+1, yr_mon$year)
-mains <- list('Winter - DJF',
-              'Spring - MAM',
-              'Summer - JJA',
-              'Fall - SON')
-
-# png(here('figures/plots/mhw-surface-area-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
-par(mfrow = c(2,2), mar = c(3,5,2,1),
-    oma = c(0,0,3,0))
-for(i in 1:4){
-  tmp <- subset(mhw_cube, month %in% seasons[[i]])
-  yagg <- aggregate(cell ~ year(index_start),
-                    data = tmp,
-                    function(x) length(unique(x))) |>
-    setNames(c('year','cell')) |>
-    merge(expand.grid(year=1982:2025),all=T)
-  yagg$cell[is.na(yagg$cell)] <- 0
-  yagg$percent <- yagg$cell / ngrid
-  yagg$kmsq <- yagg$cell * cellsize_km
-  
-  mod <- summary(lm(percent ~ year, data = yagg))
-  plot(yagg$year, yagg$percent, typ = 'l', lwd = 2,
-       las = 1, xlab = '', ylab = 'EEZ Proportion', main = mains[[i]],
-       panel.first = list(abline(h = .5, lty = 5)),
-       ylim = c(0,1))
-  if(mod$coefficients[8]<=.05){
-    abline(mod, col = 'orange', lwd = 2)
-  }
-  print(mod)
-}
-
-mtext('Proportion of US Gulf EEZ with Marine Heatwaves', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-# dev.off()
-
-
-# png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
-par(mfrow = c(2,2), mar = c(3,5,2,1),
-    oma = c(0,0,3,0))
-
-for(i in 1:4){
-  tmp <- subset(mhw_cube, month %in% seasons[[i]])
-  yagg <- aggregate(intensity_cumulative ~ year(index_start),
-                    data = tmp,
-                    mean, na.rm = T) |>
-    setNames(c('year','intensity_cumulative')) |>
-    merge(expand.grid(year=1982:2025),all=T)
-  yagg$cell[is.na(yagg$intensity_cumulative)] <- 0
-  
-  mod <- summary(lm(intensity_cumulative ~ year, data = yagg))
-  plot(yagg$year, yagg$intensity_cumulative, typ = 'l', lwd = 2,
-       las = 1, xlab = '', ylab = 'Degree-Days', main = mains[[i]])
-  if(mod$coefficients[8]<=.05){
-    abline(mod, col = 'orange', lwd = 2)
-  }
-  print(mod)
-}
-
-mtext('US Gulf EEZ Marine Heatwave Cummulative Intensity', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-# dev.off()
-
-#####################
-### spatial plots ###
-#####################
-
-### shapefile for plotting
-world <- ne_download(scale = 10, type = "countries", 
-                     returnclass = 'sv') |>
-  crop(ext(min_lon,max_lon,min_lat,max_lat))
-
-### where are the MHWs?
-cell_ll <- unique(mhw_dt_cube[, c("cell", "x", 'y')]) |>
-  setNames(c('cell','lon','lat'))
-
-# event_no_mean <- aggregate(event_no ~ cell, data = mhw_cube, length) |>
+# ### seasonal -------------------
+# mhw_cube <- mhw_cube |> 
+#   mutate(year = year(index_start),
+#          month = month(index_start),
+#          yr_sea = case_when(
+#            month==12 ~ year+1,
+#            TRUE ~ year
+#          ))
+# seasons <- list(c(12,1,2),
+#                 c(3,4,5),
+#                 c(6,7,8),
+#                 c(9,10,11))
+# # yr_mon$yr_sea <- ifelse(yr_mon$month==12, yr_mon$year+1, yr_mon$year)
+# mains <- list('Winter - DJF',
+#               'Spring - MAM',
+#               'Summer - JJA',
+#               'Fall - SON')
+# 
+# # png(here('figures/plots/mhw-surface-area-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# par(mfrow = c(2,2), mar = c(3,5,2,1),
+#     oma = c(0,0,3,0))
+# for(i in 1:4){
+#   tmp <- subset(mhw_cube, month %in% seasons[[i]])
+#   yagg <- aggregate(cell ~ year(index_start),
+#                     data = tmp,
+#                     function(x) length(unique(x))) |>
+#     setNames(c('year','cell')) |>
+#     merge(expand.grid(year=1982:2025),all=T)
+#   yagg$cell[is.na(yagg$cell)] <- 0
+#   yagg$percent <- yagg$cell / ngrid
+#   yagg$kmsq <- yagg$cell * cellsize_km
+#   
+#   mod <- summary(lm(percent ~ year, data = yagg))
+#   plot(yagg$year, yagg$percent, typ = 'l', lwd = 2,
+#        las = 1, xlab = '', ylab = 'EEZ Proportion', main = mains[[i]],
+#        panel.first = list(abline(h = .5, lty = 5)),
+#        ylim = c(0,1))
+#   if(mod$coefficients[8]<=.05){
+#     abline(mod, col = 'orange', lwd = 2)
+#   }
+#   print(mod)
+# }
+# 
+# mtext('Proportion of US Gulf EEZ with Marine Heatwaves', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+# # dev.off()
+# 
+# 
+# # png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# par(mfrow = c(2,2), mar = c(3,5,2,1),
+#     oma = c(0,0,3,0))
+# 
+# for(i in 1:4){
+#   tmp <- subset(mhw_cube, month %in% seasons[[i]])
+#   yagg <- aggregate(intensity_cumulative ~ year(index_start),
+#                     data = tmp,
+#                     mean, na.rm = T) |>
+#     setNames(c('year','intensity_cumulative')) |>
+#     merge(expand.grid(year=1982:2025),all=T)
+#   yagg$cell[is.na(yagg$intensity_cumulative)] <- 0
+#   
+#   mod <- summary(lm(intensity_cumulative ~ year, data = yagg))
+#   plot(yagg$year, yagg$intensity_cumulative, typ = 'l', lwd = 2,
+#        las = 1, xlab = '', ylab = 'Degree-Days', main = mains[[i]])
+#   if(mod$coefficients[8]<=.05){
+#     abline(mod, col = 'orange', lwd = 2)
+#   }
+#   print(mod)
+# }
+# 
+# mtext('US Gulf EEZ Marine Heatwave Cummulative Intensity', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+# # dev.off()
+# 
+# 
+# #####################
+# ### spatial plots ###
+# #####################
+# 
+# ### shapefile for plotting
+# world <- ne_download(scale = 10, type = "countries", 
+#                      returnclass = 'sv') |>
+#   crop(ext(min_lon,max_lon,min_lat,max_lat))
+# 
+# ### where are the MHWs?
+# cell_ll <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
+#   setNames(c('cell','lon','lat'))
+# 
+# # event_no_mean <- aggregate(event_no ~ cell, data = mhw_cube, length) |>
+#   # merge(cell_ll, all = T) |>
+#   # merge(lon_lat, all = T)
+# # mean_event_no <- matrix(event_no_mean$event_no/length(styear:enyear), 29, 69)
+# 
+# event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_cube, length) |>
+#   setNames(c('cell','year','event_no'))
+# event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
 #   merge(cell_ll, all = T) |>
 #   merge(lon_lat, all = T)
-# mean_event_no <- matrix(event_no_mean$event_no/length(styear:enyear), 29, 69)
-
-event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_dt_cube, length) |>
-  setNames(c('cell','year','event_no')) |> type.convert()
-event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
-  merge(cell_ll, all = T) |>
-  merge(lon_lat, all = T)
-mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
-
-### put into raster
-event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
-ext(event_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
-crs(event_rast) <- "EPSG:4326"
-plot(event_rast)
-
-### colors and breaks for plotting
-e_brks <- seq(1.85,3.9,.05)
-e_cols <- (cmocean('thermal')(length(e_brks)-1))
-
-
-### spatial trend
-setDT(event_no_yr)
-slopes_dt <- event_no_yr[, 
-                         .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]), 
-                         by = cell]
-gridcell_lm <- unique(mhw_dt_cube[, c("cell", "x", 'y')]) |>
-  setNames(c('cell','lon','lat')) |>
-  merge(slopes_dt) |>
-  merge(lon_lat, all = T)
-hist(gridcell_lm$slope)
-
-mhw_slope <- matrix(gridcell_lm$slope*10, 29, 69)
-### put into raster
-slope_rast <- rast(mhw_slope[nrow(mhw_slope):1,])
-ext(slope_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
-crs(slope_rast) <- "EPSG:4326"
-plot(slope_rast)
-
-### colors and breaks for plotting
-s_brks <- seq(-1.05,1.05,.05)
-s_cols <- (cmocean('balance')(length(s_brks)-1))
-
-
-
-# png(here('figures/plots/mhw-surface-spatial-plot.png'), 
-    # width = 6, height = 6, units = 'in', res = 300)
-par(mfrow=c(2,1))
-
-plot(event_rast,
-     col = e_cols, range = c(1.85,3.9),
-     plg = list(tick = 'out'),
-     main = 'Marine Heatwaves (mean number per year)',
-     mar = c(1, 2, 1, 4))
-plot(world, add= T, col = 'gray')
-contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# hdt1 <- hist(event_no_mean$event_no)
+# 
+# mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
+# ### put into raster
+# event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
+# ext(event_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
+# crs(event_rast) <- "EPSG:4326"
+# plot(event_rast)
+# 
+# ### colors and breaks for plotting
+# e_brks <- hdt1$breaks
+# e_cols <- (cmocean('thermal')(length(e_brks)-1))
+# 
+# 
+# ### spatial trend
+# setDT(event_no_yr)
+# slopes_dt <- event_no_yr[, 
+#                          .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]), 
+#                          by = cell]
+# gridcell_lm <- unique(mhw_cube[, c("cell", "x", 'y')]) |>
+#   setNames(c('cell','lon','lat')) |>
+#   merge(slopes_dt) |>
+#   merge(lon_lat, all = T)
+# hdt2 <- hist(gridcell_lm$slope*10)
+# 
+# mhw_slope <- matrix(gridcell_lm$slope*10, 29, 69)
+# ### put into raster
+# slope_rast <- rast(mhw_slope[nrow(mhw_slope):1,])
+# ext(slope_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
+# crs(slope_rast) <- "EPSG:4326"
+# plot(slope_rast)
+# 
+# ### colors and breaks for plotting
+# s_brks <- seq(-max(abs(range(hdt2$breaks))),max(abs(range(hdt2$breaks))),.1)
+# s_cols <- (cmocean('balance')(length(s_brks)-1))
+# 
+# 
+# 
+# # png(here('figures/plots/mhw-surface-spatial-plot.png'), 
+#     # width = 6, height = 6, units = 'in', res = 300)
+# par(mfrow=c(2,1))
+# 
+# plot(event_rast,
+#      col = e_cols, #range = c(2.4,4.2),
+#      plg = list(tick = 'out'),
+#      main = 'Marine Heatwaves (mean number per year)',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# # plot(gulf_eez, add = T)
+# 
+# plot(slope_rast,
+#      col = s_cols, #range = c(.24,1.88),
+#      plg = list(tick = 'out'),
+#      main = 'Marine Heatwave Trend (events per decade)',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# # plot(gulf_eez, add = T)
+# 
+# # dev.off()
+# 
+# 
+# 
+# ### detrended
+# 
+# setwd(here('data/intermediate'))
+# load('mhw_dt_results.RData')
+# 
+# ### seasonal -------------------
+# mhw_cube <- mhw_dt_cube |> 
+#   mutate(year = year(index_start),
+#          month = month(index_start),
+#          yr_sea = case_when(
+#            month==12 ~ year+1,
+#            TRUE ~ year
+#          ))
+# seasons <- list(c(12,1,2),
+#                 c(3,4,5),
+#                 c(6,7,8),
+#                 c(9,10,11))
+# # yr_mon$yr_sea <- ifelse(yr_mon$month==12, yr_mon$year+1, yr_mon$year)
+# mains <- list('Winter - DJF',
+#               'Spring - MAM',
+#               'Summer - JJA',
+#               'Fall - SON')
+# 
+# # png(here('figures/plots/mhw-surface-area-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# par(mfrow = c(2,2), mar = c(3,5,2,1),
+#     oma = c(0,0,3,0))
+# for(i in 1:4){
+#   tmp <- subset(mhw_cube, month %in% seasons[[i]])
+#   yagg <- aggregate(cell ~ year(index_start),
+#                     data = tmp,
+#                     function(x) length(unique(x))) |>
+#     setNames(c('year','cell')) |>
+#     merge(expand.grid(year=1982:2025),all=T)
+#   yagg$cell[is.na(yagg$cell)] <- 0
+#   yagg$percent <- yagg$cell / ngrid
+#   yagg$kmsq <- yagg$cell * cellsize_km
+#   
+#   mod <- summary(lm(percent ~ year, data = yagg))
+#   plot(yagg$year, yagg$percent, typ = 'l', lwd = 2,
+#        las = 1, xlab = '', ylab = 'EEZ Proportion', main = mains[[i]],
+#        panel.first = list(abline(h = .5, lty = 5)),
+#        ylim = c(0,1))
+#   if(mod$coefficients[8]<=.05){
+#     abline(mod, col = 'orange', lwd = 2)
+#   }
+#   print(mod)
+# }
+# 
+# mtext('Proportion of US Gulf EEZ with Marine Heatwaves', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+# # dev.off()
+# 
+# 
+# # png(here('figures/plots/mhw-surface-dd-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# par(mfrow = c(2,2), mar = c(3,5,2,1),
+#     oma = c(0,0,3,0))
+# 
+# for(i in 1:4){
+#   tmp <- subset(mhw_cube, month %in% seasons[[i]])
+#   yagg <- aggregate(intensity_cumulative ~ year(index_start),
+#                     data = tmp,
+#                     mean, na.rm = T) |>
+#     setNames(c('year','intensity_cumulative')) |>
+#     merge(expand.grid(year=1982:2025),all=T)
+#   yagg$cell[is.na(yagg$intensity_cumulative)] <- 0
+#   
+#   mod <- summary(lm(intensity_cumulative ~ year, data = yagg))
+#   plot(yagg$year, yagg$intensity_cumulative, typ = 'l', lwd = 2,
+#        las = 1, xlab = '', ylab = 'Degree-Days', main = mains[[i]])
+#   if(mod$coefficients[8]<=.05){
+#     abline(mod, col = 'orange', lwd = 2)
+#   }
+#   print(mod)
+# }
+# 
+# mtext('US Gulf EEZ Marine Heatwave Cummulative Intensity', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+# # dev.off()
+# 
+# #####################
+# ### spatial plots ###
+# #####################
+# 
+# ### shapefile for plotting
+# world <- ne_download(scale = 10, type = "countries", 
+#                      returnclass = 'sv') |>
+#   crop(ext(min_lon,max_lon,min_lat,max_lat))
+# 
+# ### where are the MHWs?
+# cell_ll <- unique(mhw_dt_cube[, c("cell", "x", 'y')]) |>
+#   setNames(c('cell','lon','lat'))
+# 
+# # event_no_mean <- aggregate(event_no ~ cell, data = mhw_cube, length) |>
+# #   merge(cell_ll, all = T) |>
+# #   merge(lon_lat, all = T)
+# # mean_event_no <- matrix(event_no_mean$event_no/length(styear:enyear), 29, 69)
+# 
+# event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_dt_cube, length) |>
+#   setNames(c('cell','year','event_no')) |> type.convert()
+# event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
+#   merge(cell_ll, all = T) |>
+#   merge(lon_lat, all = T)
+# h1dt <- hist(event_no_mean$event_no)
+# 
+# mean_event_no <- matrix(event_no_mean$event_no, 29, 69)
+# ### put into raster
+# event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
+# ext(event_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
+# crs(event_rast) <- "EPSG:4326"
+# plot(event_rast)
+# 
+# ### colors and breaks for plotting
+# e_brks <- seq(min(h1dt$breaks),max(h1dt$breaks),.05)
+# e_cols <- (cmocean('thermal')(length(e_brks)-1))
+# 
+# 
+# ### spatial trend
+# setDT(event_no_yr)
+# slopes_dt <- event_no_yr[, 
+#                          .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]), 
+#                          by = cell]
+# gridcell_lm <- unique(mhw_dt_cube[, c("cell", "x", 'y')]) |>
+#   setNames(c('cell','lon','lat')) |>
+#   merge(slopes_dt) |>
+#   merge(lon_lat, all = T)
+# h2dt <- hist(gridcell_lm$slope*10)
+# 
+# mhw_slope <- matrix(gridcell_lm$slope*10, 29, 69)
+# ### put into raster
+# slope_rast <- rast(mhw_slope[nrow(mhw_slope):1,])
+# ext(slope_rast) <- c(range(lon_lat$lon),range(lon_lat$lat))
+# crs(slope_rast) <- "EPSG:4326"
+# plot(slope_rast)
+# 
+# ### colors and breaks for plotting
+# s_brks <- seq(-1,1,.05)
+# s_cols <- (cmocean('balance')(length(s_brks)-1))
+# 
+# 
+# 
+# png(here('figures/plots/mhw-surface-spatial-plot.png'),
+#     width = 6, height = 6, units = 'in', res = 300)
+# par(mfrow=c(2,1))
+# 
+# plot(event_rast,
+#      col = e_cols, range = c(min(e_brks),max(e_brks)),
+#      plg = list(tick = 'out'),
+#      main = 'Marine Heatwaves (mean number per year)',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
 # plot(gulf_eez, add = T)
-
-plot(slope_rast,
-     col = s_cols, range = c(-1.05,1.05),
-     plg = list(tick = 'out'),
-     main = 'Marine Heatwave Trend (events per decade)',
-     mar = c(1, 2, 1, 4))
-plot(world, add= T, col = 'gray')
-contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# 
+# plot(slope_rast,
+#      col = s_cols, range = c(min(s_brks),max(s_brks)),
+#      # breaks = s_brks,
+#      plg = list(tick = 'out'),
+#      main = 'Marine Heatwave Trend (events per decade)',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
 # plot(gulf_eez, add = T)
-
-dev.off()
+# 
+# dev.off()
 
