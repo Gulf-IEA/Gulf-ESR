@@ -374,7 +374,7 @@ plot(yr_mhw_dd_dt$year, yr_mhw_dd_dt$intensity_cumulative, typ = 'l')
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("EEZ Area", 'Cummulative Intensity')
+indicator_names = c("EEZ Area", 'Cumulative Intensity')
 unit_names = c("Percentage", 'Degree-Days')
 extent_names = rep('US Gulf EEZ',2)
 
