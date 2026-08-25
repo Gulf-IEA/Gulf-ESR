@@ -106,6 +106,8 @@ sector_years <- daily_status %>%
   distinct(sector, year) %>%
   arrange(sector, year)
 
+annual_averages <- vector("list", nrow(sector_years))
+
 for (row_number in seq_len(nrow(sector_years))) {
   current_sector <- sector_years$sector[[row_number]]
   current_year <- sector_years$year[[row_number]]
@@ -122,6 +124,12 @@ for (row_number in seq_len(nrow(sector_years))) {
       values_fill = 0L
     )
 
+  annual_averages[[row_number]] <- tibble(
+    sector = current_sector,
+    year = current_year,
+    average_open_days = mean(rowSums(status_matrix[-1]))
+  )
+
   output_name <- sprintf(
     "%s_matrix_%d.csv",
     tolower(current_sector),
@@ -135,9 +143,23 @@ for (row_number in seq_len(nrow(sector_years))) {
   )
 }
 
+annual_summary <- bind_rows(annual_averages) %>%
+  mutate(sector = tolower(sector)) %>%
+  pivot_wider(
+    names_from = sector,
+    values_from = average_open_days
+  ) %>%
+  arrange(year)
+
+write.csv(
+  annual_summary,
+  file.path(output_directory, "annual_average_open_days.csv"),
+  row.names = FALSE
+)
+
 message(
   "Created ",
   nrow(sector_years),
-  " matrices in ",
+  " matrices and an annual summary in ",
   output_directory
 )
