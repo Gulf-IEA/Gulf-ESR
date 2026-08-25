@@ -127,7 +127,7 @@ for (row_number in seq_len(nrow(sector_years))) {
   annual_averages[[row_number]] <- tibble(
     sector = current_sector,
     year = current_year,
-    average_open_days = mean(rowSums(status_matrix[-1]))
+    average_open_species = mean(colSums(status_matrix[-1]))
   )
 
   output_name <- sprintf(
@@ -147,13 +147,13 @@ annual_summary <- bind_rows(annual_averages) %>%
   mutate(sector = tolower(sector)) %>%
   pivot_wider(
     names_from = sector,
-    values_from = average_open_days
+    values_from = average_open_species
   ) %>%
   arrange(year)
 
 write.csv(
   annual_summary,
-  file.path(output_directory, "annual_average_open_days.csv"),
+  file.path(output_directory, "annual_average_open_species.csv"),
   row.names = FALSE
 )
 
