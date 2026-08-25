@@ -12,4 +12,13 @@ if (length(missing_packages) > 0) {
   install.packages(missing_packages, lib = user_library)
 }
 
-invisible(lapply(packages, requireNamespace, quietly = TRUE))
+unavailable_packages <- packages[
+  !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(unavailable_packages) > 0) {
+  stop(
+    "Package installation failed: ",
+    paste(unavailable_packages, collapse = ", ")
+  )
+}
