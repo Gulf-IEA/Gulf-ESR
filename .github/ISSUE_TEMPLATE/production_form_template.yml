@@ -111,8 +111,8 @@ body:
       description: Is this a single metric from a single data source or is it a group of metrics from multiple data sources?
       multiple: false
       options:
-        - yes
-        - no
+        - single
+        - group
     validations:
       required: true
   
