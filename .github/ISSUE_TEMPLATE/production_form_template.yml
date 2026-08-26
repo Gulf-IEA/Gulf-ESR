@@ -90,7 +90,7 @@ body:
     id: code_link
     attributes:
       label: Direct Link to Code
-      description: Please provide direct link to the code used to process these data, if necessary.
+      description: Please provide direct link to the code used to process these data.
       placeholder:
     validations:
       required: false
@@ -244,6 +244,24 @@ body:
       value:
     validations:
       required: true
+
+  - type: input
+    id: reference_files
+    attributes:
+      label: Reference Files Used
+      description: Please provide direct link to any reference files that were used.
+      placeholder:
+    validations:
+      required: false
+
+  - type: input
+    id: intermediate_files
+    attributes:
+      label: Intermediate Files Created
+      description: Please provide direct link to any intermediate files that were made.
+      placeholder:
+    validations:
+      required: false
 
   - type: dropdown
     id: visualization_type
