@@ -1,6 +1,6 @@
 ---
-name: Metric Production Form
-description: "This form is to be filled out once all details about an ESR Metric have been compiled. Responses will directly populate the ESR Methods Document." 
+name: Production Form
+description: "This form is to be filled out once all details about an ESR Metric or group of metrics have been compiled. ONE FORM PER R SCRIPT. Responses will directly populate the ESR Methods Document." 
 title: "[PRODUCTION]:"
 labels: '[PRODUCTION]'
 
@@ -9,13 +9,13 @@ body:
     id: description
     attributes:
       value: |
-        Please do not fill out this form until ALL details have been compiled for your metric. These responses will directly populate the ESR Methods Document. Please contact Brendan, Brittany, Carissa, Mandy, or Will with questions.
+        Please do not fill out this form until ALL details have been compiled for your metric(s). These responses will directly populate the ESR Methods Document. Please contact Brendan, Brittany, Carissa, Mandy, or Will with questions.
         
   - type: input
     id: metric
     attributes:
-      label: Metric Title (Full Name)
-      description: The full, spelled out name of this metric.
+      label: Title (Full Name)
+      description: The full, spelled out name of this metric or group of metrics.
       placeholder: Ex. Sea Surface Temperature (rather than SST)
     validations:
       required: true
@@ -23,8 +23,8 @@ body:
   - type: input
     id: root
     attributes:
-      label: Metric File Root Name
-      description: For all files related to this metric, what will the shortened prefix be?
+      label: File Root Name
+      description: For all files related to this metric or group of metrics, what will the shortened prefix be?
       placeholder: ex. degree_heating_wks for Degree Heating Weeks
     validations:
       required: true
@@ -33,7 +33,7 @@ body:
     id: shortname
     attributes:
       label: Short Code Name
-      description: What is the abbreviation or short name for this metric? To be used in synthesis figures when full name is too large.
+      description: What is the abbreviation or short name for this metric or metric group? To be used in synthesis figures when full name is too large.
       placeholder: ex. SST for Sea Surface Temperature
     validations:
       required: false
@@ -42,7 +42,7 @@ body:
     id: parent_indicator
     attributes:
       label: Parent Indicator
-      description: Optional. Use this if there are multiple metrics that fall under one broader indicator. 
+      description: Optional. Use this if there are multiple metrics or groups of metrics that fall under one broader indicator (more than one R script per indicator). 
     validations:
       required: false
       
@@ -50,16 +50,16 @@ body:
     id: category
     attributes:
       label: Indicator Category
-      description: To what category does this metric and indicator belong?
+      description: To what category does this metric or metric group belong?
       multiple: false
       options:
         - Choose Category
-        - Bycatch/Reduce Waste
-        - Ecosystem Protection
-        - Food Production
-        - Governance
         - Risk
-        - Socio-economic Health
+        - Support Fishery Production
+        - Socioeconomic Health
+        - Avoid Waste and Bycatch
+        - Promote Good Governance
+        - Protect Habitat and Ecosystem Health
     validations:
       required: true
       
@@ -67,29 +67,60 @@ body:
     id: description
     attributes:
       label: Plain Language Description
-      description: Please describe this metric using plain language in one sentence or less.
+      description: Please describe this metric or metric group using plain language in one sentence or less.
       value: "Satellite-derived monthly sea surface temperature for the Gulf of America EEZ."
     validations:
       required: true
 
   - type: dropdown
-    id: effort_level
+    id: automation_level
     attributes:
-      label: Data type associated with Level of Effort Required to Update Metric
+      label: Data type associated with automation level (updatability of the metric).
       description: How intensive is the update process for these data?
       multiple: false
       options:
         - Automated
         - Non-automated
         - Confidential
+        - N/A (check dependencies)
     validations:
       required: true
 
   - type: input
+    id: code_link
+    attributes:
+      label: Direct Link to Code
+      description: Please provide direct link to the code used to process these data, if necessary.
+      placeholder:
+    validations:
+      required: false
+
+  - type: input
+    id: final_data_link
+    attributes:
+      label: Direct Link to Final Data
+      description: Please provide direct link to the final data for this metric.
+      placeholder:
+    validations:
+      required: true
+
+  - type: dropdown
+    id: single_or_composite
+    attributes:
+      label: Metric Type
+      description: Is this a single metric from a single data source or is it a group of metrics from multiple data sources?
+      multiple: false
+      options:
+        - yes
+        - no
+    validations:
+      required: true
+  
+  - type: input
     id: data_source
     attributes:
       label: Data Source (Organization and Program)
-      description: What Program or Organization is responsible for these data?
+      description: What Program or Organization is responsible for these data? If this is a group of metrics where the individual data sources are described elsewhere, put N/A.
       placeholder: ex. EPA BEACON Program
     validations:
       required: true
@@ -98,7 +129,7 @@ body:
     id: data_access
     attributes:
       label: Data Access Point or Portal
-      description: What Person, Service or Website are you using to Access these Data?
+      description: What Person, Service or Website are you using to Access these Data? If this is a group of metrics where the individual data sources are described elsewhere, put N/A.
       placeholder: ex. NOAA OCM ENOW Portal (with link)
     validations:
       required: true
@@ -107,7 +138,7 @@ body:
     id: data_link
     attributes:
       label: Direct Link to Data
-      description: If available, please provide a direct link to the data.
+      description: If available, please provide a direct link to the data. If this is a group of metrics where the individual data sources are described elsewhere, put N/A.
       placeholder:
     validations:
       required: false
@@ -116,7 +147,7 @@ body:
     id: public_availability
     attributes:
       label: Public Availability and Privacy
-      description: State the public availability of source data for this indicator.
+      description: State the public availability of source data for this indicator. If this is a group of metrics where the individual data sources are described elsewhere, put N/A.
       multiple: false
       options:
         - Source data are publicly available.
@@ -128,7 +159,7 @@ body:
     id: data_availability
     attributes:
       label: Data Availability Statement
-      description: Please provide the required Data Availability Statement for these data, if necessary
+      description: Please provide the required Data Availability Statement for these data, if necessary. If this is a group of metrics where the individual data sources are described elsewhere, put N/A.
       value: "ex. Due to confidentiality agreements, supporting data can only be made available to bona fide researchers subject to a non-disclosure agreement. Details of the data and how to request access are available from [digital resource manager contact info] at [institution where data reside]."
     validations:
       required: false
@@ -174,7 +205,7 @@ body:
     attributes:
       label: Temporal Extent (Time Period) of Data
       description: Please provide the temporal extent of these data. Please use the following format- [min] - [max]
-      placeholder: "undefined FILL THIS IN WITH A SPECIFIC DATETIME"
+      placeholder: "ex. 2000 - 2025 OR 01-2020 - 12-2025"
     validations:
       required: false
 
@@ -191,7 +222,7 @@ body:
     id: unit
     attributes:
       label: Unit of Measurement
-      description: Please provide the unit of measurement for these data.
+      description: Please provide the unit of measurement for these data. If there is more than one unit separate them with semi-colons.
       placeholder: "ex. mg/ml"
     validations:
       required: true
@@ -209,26 +240,8 @@ body:
     id: method
     attributes:
       label: Methods
-      description: Please provide a full plain language description of the methods used to handle and process these data.
+      description: Please provide a full plain language description of the methods used to handle and process these data. I.e., describe in plain language everything the R script does.
       value:
-    validations:
-      required: true
-
-  - type: input
-    id: code_link
-    attributes:
-      label: Direct Link to Code
-      description: Please provide direct link to the code used to process these data, if necessary.
-      placeholder:
-    validations:
-      required: false
-
-  - type: input
-    id: final_data_link
-    attributes:
-      label: Direct Link to Final Data
-      description: Please provide direct link to the final data for this metric.
-      placeholder:
     validations:
       required: true
 
@@ -236,33 +249,27 @@ body:
     id: visualization_type
     attributes:
       label: Type of Visualization
-      description: State the type of visualization that will be used to display this metric. Multiple options can be selected.
+      description: State the type of visualization(s) that will be used to display this metric. Multiple options can be selected.
       multiple: true
       options:
-        - Time Series Trend
-        - Map
+        - Gridded Spatial Map
+        - Point Based Spatial Map
+        - Reference Map
+        - Single Gulf Wide Time Series
+        - Multiple Gulf Wide Time Series
+        - Single Non-Gulf Wide Time Series
+        - Multiple Non-Gulf Wide Time Series
+        - Stoplight Plot
         - Table
         - Other
     validations:
       required: true
 
-  - type: dropdown
-    id: trend_analysis_method
-    attributes:
-      label: Trend Analysis Method
-      description: Select the approach used to develop the Status and Trend for this time series, if necessary.
-      multiple: false
-      options:
-        - Test5
-        - Test6
-    validations:
-      required: false
-
   - type: textarea
     id: report_text
     attributes:
       label: Text for ESR 
-      description: Please provide one paragraph to accompany the indicator figure in the report. Follow the recipe below. 
+      description: Please provide one paragraph to accompany the indicator figure in the report. Follow the recipe below. This can be a draft, does not have to be perfect.
       placeholder: "1 - a sentence describing why the indicator is important, i.e., what it is intended to convey or encompass 2 - a plain language description of how the indicator was derived (e.g., from XYZ data source we took annual averages) 3 - A sentence or two describing trends and any notable anomalies"
     validations:
       required: true
