@@ -19,4 +19,6 @@ keys.api
 sandbox/
 
 # ignore confidential unformated data folder
-data/unformated/confidential/
+data/unformatted/confidential/
+
+
