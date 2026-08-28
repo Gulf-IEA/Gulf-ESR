@@ -37,6 +37,37 @@ dat <- read_xlsx('sefsc_G&T_FY24 fof 2026.xlsx', sheet = "G&T CS", n_max = 26)
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
+### EDA
+names(dat) ### pull columns 4:18
+dat$`Program Year`
+
+for(i in c(1:19,25)){
+  if(i<12 | i>14){
+    plot(2010:2024, dat[i,4:18], typ = 'o', ylab = dat[i,1])
+    mtext(i) 
+  }
+}
+
+plot(2010:2024, dat[1,4:18],
+     typ='o',ylab='pounds',
+     ylim=c(0,max(dat[1,4:18]|>as.numeric())))
+points(2010:2024, dat[2,4:18],typ='o',col=2)
+
+plot(2010:2024, dat[15,4:18],
+     typ='o',ylab='GINI',
+     ylim=c(0.6,1))
+for(i in 16:19){
+  points(2010:2024, dat[i,4:18],typ='o',col=i-14)
+  
+}
+
+### default to the SERO IFQ metrics, the SEFSC data for non-CS data
+### uncertain about the difference between:
+# Aggregate Revenue from non-catch share species  (SEFC)             
+# Non-CS Species Revenue  2  (SEFC)
+### Ask Juan Agar
+
+
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = c("")
 unit_names = c("")
