@@ -372,18 +372,37 @@ core_priority_species <- c(
   "TRIGGERFISH, GRAY"
 )
 
-dat_assessed <- landings_github %>%
-  filter(
-    COMMON_NAME %in% core_priority_species)
-
-dat_assessed$total_mil_lbs = dat_assessed$TOTAL_LIVE_POUNDS / 1e6
-dat_assessed$total_mil_dollars = dat_assessed$TOTAL_DOLLARS / 1e6
-
-assessed_finfish = dat_assessed %>% 
+# 1. Load the GDP deflator dataset and aggregate to annual average deflators
+deflator_annual <- read_csv(here("data/intermediate/gdp_deflator_interpolated.csv")) %>%
+  mutate(LAND_YEAR = as.numeric(format(as.Date(date), "%Y"))) %>%
   group_by(LAND_YEAR) %>%
-  summarize(total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), total_mil_dollars  = sum(total_mil_dollars, na.rm = TRUE), .groups = "drop") %>% 
+  summarise(annual_deflator = mean(gdp_deflator_dollar, na.rm = TRUE), .groups = "drop")
+
+# Define target baseline deflator (2024 dollars)
+target_deflator_2024 <- deflator_annual %>%
+  filter(LAND_YEAR == 2024) %>%
+  pull(annual_deflator)
+
+dat_assessed <- landings_github %>%
+  filter(COMMON_NAME %in% core_priority_species) %>%
+  left_join(deflator_annual, by = "LAND_YEAR") %>%
+  mutate(
+    # Convert nominal dollars to constant 2024 dollars
+    TOTAL_DOLLARS_2024 = TOTAL_DOLLARS * (target_deflator_2024 / annual_deflator),
+    total_mil_lbs = TOTAL_LIVE_POUNDS / 1e6,
+    total_mil_dollars_2024 = TOTAL_DOLLARS_2024 / 1e6
+  )
+
+assessed_finfish <- dat_assessed %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
   select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
 
+write_csv(dat_assessed, here("data/intermediate/managed_species_landings_by_species.csv"))
 write_csv(assessed_finfish, here("data/intermediate/gulf_core_priority_species_landings_1972_present.csv"))
 ```
 
@@ -433,16 +452,158 @@ ggplot(comparison_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6, fill = Series
 ```
 
 
+
+### Unmanaged species
+
+Let's go back to the clean_data and filter for the unmanaged species we want to plot. First some diagnostics.
+
+```{r}
+# Define exclusions (Managed GMFMC species + Shellfish + Broad Aggregates)
+shellfish_and_broad <- c(
+  "SHRIMP, NORTHERN BROWN", "SHRIMP, NORTHERN WHITE", "SHRIMP, NORTHERN PINK",
+  "SHRIMP, ROYAL RED", "SHRIMP, ROCK", "LOBSTER, CARIBBEAN SPINY", "CRAB, GOLDEN DEEPSEA",
+  "CRAB, BLUE", "CRAB, STONE", "OYSTER, EASTERN", "SNAIL, OTHER", "STARS, OTHER SEA"
+)
+
+# Filter for strictly unmanaged finfish taxa
+unmanaged_diagnostics <- clean_data %>%
+  filter(
+    LAND_YEAR >= 1972,
+    !COMMON_NAME %in% core_priority_species,
+    !COMMON_NAME %in% shellfish_and_broad,
+    !str_detect(COMMON_NAME, regex("UNCLASSIFIED|UNIDENTIFIED|OTHER|GENUS|FAMILY|NOS|SPEC", ignore_case = TRUE))
+  ) %>%
+  group_by(SPECIES_ITIS, COMMON_NAME) %>%
+  summarise(
+    TOTAL_LIVE_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
+    TOTAL_NOMINAL_DOLLARS = sum(TOTAL_DOLLARS, na.rm = TRUE),
+    YEARS_PRESENT = n_distinct(LAND_YEAR),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(TOTAL_LIVE_LBS))
+
+# View top 30 unmanaged species by volume
+print(head(unmanaged_diagnostics, 30))
+```
+
+Let's run a Pareto distribution & sensitivity analysis. Calculates the cumulative percentage of total unmanaged marine finfish volume accounted for by each species, ranks them from highest to lowest, and tests if the time series trend changes when using top 5, top 10, top 15, or top 25 species. Trying to remove species was like playing constant whack a mole. Random things just kept popping up. So a better approach was to make a whitelist of known major commercial marine finfish that are not managed. 
+
+```{r}
+
+# Explicit Whitelist: Major Unmanaged Commercial Marine Finfish in the Gulf of Mexico
+unmanaged_marine_finfish_vector <- c(
+  # Primary Coastal / Estuarine Finfish
+  "MULLET, STRIPED", "MULLET, WHITE", "DRUM, BLACK", "CROAKER, ATLANTIC", 
+  "SEATROUT, SPOTTED", "SEATROUT, SAND", "SHEEPSHEAD", "LADYFISH", 
+  "POMPANO, FLORIDA", "SPOT", "KINGFISHES", "MOJARRAS", "BALLYHOOS", "PINFISH",
+  
+  # Coastal Pelagics & Baitfish (Non-Menhaden)
+  "HERRING, ATLANTIC THREAD", "SARDINE, SPANISH", "JACK, CREVALLE", 
+  "RUNNER, BLUE", "SCAD, ROUND", "SCADS", "BLUEFISH", "BUTTERFISH,GULF", 
+  "SHAD, GIZZARD", "SHAD, AMERICAN", "HARVESTFISH", "LOOKDOWN"
+)
+
+# 2. Cumulative Landings Pareto Analysis
+pareto_df <- clean_data %>%
+  filter(
+    LAND_YEAR >= 1972,
+    COMMON_NAME %in% unmanaged_marine_finfish_vector
+  ) %>%
+  group_by(COMMON_NAME) %>%
+  summarise(TOTAL_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(TOTAL_LBS)) %>%
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(TOTAL_LBS),
+    CUM_PCT = (CUM_LBS / sum(TOTAL_LBS)) * 100
+  )
+
+
+# 3. Sensitivity Analysis: Plot trajectories using Top 5, Top 10, Top 15, vs Top 25
+top5_spp  <- pareto_df %>% filter(RANK <= 5) %>% pull(COMMON_NAME)
+top10_spp <- pareto_df %>% filter(RANK <= 10) %>% pull(COMMON_NAME)
+top15_spp <- pareto_df %>% filter(RANK <= 15) %>% pull(COMMON_NAME)
+top25_spp <- pareto_df %>% filter(RANK <= 25) %>% pull(COMMON_NAME)
+
+sensitivity_df <- unmanaged_pool %>%
+  filter(COMMON_NAME %in% top25_spp) %>%
+  mutate(
+    Cutoff = case_when(
+      COMMON_NAME %in% top5_spp ~ "Top 5 Species",
+      COMMON_NAME %in% top10_spp ~ "Top 10 Species",
+      COMMON_NAME %in% top15_spp ~ "Top 15 Species",
+      TRUE ~ "Top 25 Species"
+    )
+  ) %>%
+  group_by(LAND_YEAR, Cutoff) %>%
+  summarise(TOTAL_LIVE_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE), .groups = "drop")
+
+# Plot sensitivity curves
+ggplot(sensitivity_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6, color = Cutoff)) +
+  geom_line(linewidth = 1.1) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = seq(1972, 2025, by = 5)) +
+  labs(
+    title = "Sensitivity of Unmanaged Finfish Trajectory to Taxonomic Scope",
+    subtitle = "Testing cumulative volume thresholds (Top 5 vs 10 vs 15 vs 25 species)",
+    x = "Year",
+    y = "Live Landings (Millions of Pounds)",
+    color = "Inclusion Threshold"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom", plot.title = element_text(face = "bold"))
+```
+
+Now we can get the unmanaged data
+
+```{r}
+# 1. Filter landings to the explicit unmanaged marine finfish list & adjust for inflation
+dat_unmanaged <- clean_data %>%
+  filter(
+    LAND_YEAR >= 1972,
+    COMMON_NAME %in% unmanaged_marine_finfish_vector
+  ) %>%
+  left_join(deflator_annual, by = "LAND_YEAR") %>%
+  mutate(
+    TOTAL_DOLLARS_2024 = TOTAL_DOLLARS * (target_deflator_2024 / annual_deflator),
+    total_mil_lbs = TOTAL_LIVE_POUNDS / 1e6,
+    total_mil_dollars_2024 = TOTAL_DOLLARS_2024 / 1e6
+  )
+
+# 2. Summarize annual totals
+unmanaged_summary <- dat_unmanaged %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
+
+# Save intermediate summary CSV
+write_csv(dat_unmanaged, here("data/intermediate/unmanaged_species_landings_by_species.csv"))
+write_csv(unmanaged_summary, here("data/intermediate/gulf_unmanaged_species_landings_1972_present.csv"))
+```
+
+
+
 Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function.
 Replace "your_data" in the code below with whatever your dataframe is called.
 
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Commercial landings", 2)
-unit_names = c("Whole weight (million lbs)", "Million dollars ($)")
+unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
 extent_names = c("Assessed finfish", "Assessed finfish")
 
 formatted_assessed_finfish = IEAnalyzeR::convert_cleaned_data(assessed_finfish, indicator_names, unit_names, extent_names)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = rep("Commercial landings", 2)
+unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
+extent_names = c("Unassessed finfish", "Unassessed finfish")
+
+formatted_unassessed_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, indicator_names, unit_names, extent_names)
 
 ```
 
@@ -484,7 +645,7 @@ For more info on the plot_fn_obj function go HERE
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Managed Finfish")
 ggsave(filename = plot_filename1)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Unassessed Finfish")
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish")
 ggsave(filename = plot_filename2)
 ```
 
@@ -521,6 +682,45 @@ ggsave(filename = plot_filename2)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ignore everything below this...
+
+
+
+
+
 ```{r}
 dat_assessed = read.csv(here("data/intermediate/gulf_15_target_assessed_species_1972_present.csv"))
 head(dat_assessed)
@@ -546,49 +746,6 @@ unassessed_finfish_all = dat_unassessed_summary %>%
   summarize(total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), total_mil_dollars  = sum(total_mil_dollars, na.rm = TRUE), .groups = "drop") %>% 
   select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
