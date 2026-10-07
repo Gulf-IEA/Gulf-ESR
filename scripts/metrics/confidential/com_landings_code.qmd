@@ -161,10 +161,7 @@ cat("Confidential rows successfully removed!\n")
 cat("Original rows:", nrow(landings_raw), "\n")
 cat("Cleaned dataset rows:", nrow(landings_github), "\n")
 ```
-
-
-
-
+###############################################################################################
 
 # 2. Clean data and create time series csv
 
@@ -178,82 +175,8 @@ Start from here if you are just using the saved dataset.
 landings_github = read_csv(here("data/intermediate/gom_commercial_landings_1972_2025_clean.csv"))
 ```
 
-Ok so the broad categories are not included as managed species according to the FLAG_FMP_SPP column. If we ignore them, we might ignore a lot of landings.
-
-This plot is to check if we really need to include those uncategorized broad groups. How much of the total landings do they account for?
-
-```{r}
-# Gulf Council Finfish FMP Broad Groups
-gulf_council_aggregates <- c(
-  # Reef Fish FMP Aggregates
-  "GROUPERS", "UNCLASSIFIED GROUPERS", "SNAPPER", "SNAPPERS", "UNCLASSIFIED SNAPPERS",
-  "TILEFISHES", "PORGIES", "TRIGGERFISH", "TRIGGERFISHES", "GRUNT", "GRUNTS", 
-  "WRASSE", "WRASSES", "HOGFISH", "AMBERJACKS", "JACKS", "RUNNERS",
-  # Coastal Migratory Pelagics (CMP) FMP Aggregates
-  "MACKERELS", "UNCLASSIFIED MACKERELS", "POMPANOS",
-  # Red Drum FMP / Sciaenids Aggregates
-  "DRUMS", "SEATROUTS"
-)
-
-# Optional: Highly Migratory Species (HMS) - Managed Federally / Secretarial, not directly GMFMC
-hms_aggregates <- c("SHARK", "SHARK, UNIDENTIFIED", "SHARKS", "TUNAS", "BILLFISHES", "SWORDFISH")
-
-# Categorize into Council-relevant groupings
-plot1_council_df <- landings_github %>%
-  filter(LAND_YEAR >= 1972) %>%
-  mutate(
-    # Ensure uppercase clean matching
-    NAME_UPPER = str_to_upper(trimws(COMMON_NAME)),
-    
-    Category = case_when(
-      FLAG_FMP_SPP == 1 ~ "Species-Specific Managed Landings",
-      NAME_UPPER %in% gulf_council_aggregates ~ "Unclassified Managed Family Groups (GMFMC)",
-      NAME_UPPER %in% hms_aggregates ~ "HMS / Pelagic Family Groups",
-      TRUE ~ "Other / Unmanaged"
-    )
-  ) %>%
-  filter(Category != "Other / Unmanaged") %>%
-  group_by(LAND_YEAR, Category) %>%
-  summarise(
-    TOTAL_LIVE_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Plot for ESR Presentation
-ggplot(plot1_council_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6, fill = Category)) +
-  geom_area(alpha = 0.85, color = "black", linewidth = 0.3) +
-  scale_fill_manual(values = c(
-    "Species-Specific Managed Landings" = "#2c7fb8", 
-    "Unclassified Managed Family Groups (GMFMC)" = "#fe9929",
-    "HMS / Pelagic Family Groups" = "#7fcdbb"
-  )) +
-  scale_y_continuous(labels = comma_format()) +
-  scale_x_continuous(breaks = seq(1972, 2025, by = 5)) +
-  labs(
-    title = "Gulf of Mexico Commercial Managed Finfish Extraction (1972–Present)",
-    subtitle = "Ecosystem Status Report: Evaluated by management flagging and aggregate reporting categories",
-    x = "Year",
-    y = "Live Landings (Millions of Pounds)",
-    fill = "Reporting & Management Strata",
-    caption = "Data Source: NOAA SEFSC Commercial Landings Extraction MV. Excludes shellfish/shrimp."
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "bottom",
-    legend.box = "vertical",
-    panel.grid.minor = element_blank(),
-    plot.title = element_text(face = "bold", size = 13),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-```
-
-
-YAY the uncategorized group are a small blip. We can safely move forward with just plotting the landings for all species categorized as FLAG_FMP_SPP == 1 (Managed). 
-
-
 ```{r}
 # Filter & Prepare Clean Working Data
-# ------------------------------------------------------------------------------
 clean_data <- landings_github %>%
   filter(!is.na(LAND_YEAR)) %>%
   mutate(fmp_status = if_else(FLAG_FMP_SPP == 1, "Managed", "Unmanaged"))
@@ -262,11 +185,13 @@ managed_data <- clean_data %>%
   filter(fmp_status == "Managed")
 
 unique(managed_data$COMMON_NAME)
-
 ```
 
 
-clean the dataset to only keep species within Gulf Council Finfish FMPs.
+clean the dataset to only keep species within Gulf Council Finfish FMPs, the Coastal Migratory Pelagics (CMP) FMP, and the red drum FMP. 
+https://www.fisheries.noaa.gov/species/federally-managed-gulf-america-reef-fish
+https://www.fisheries.noaa.gov/management-plan/gulf-and-south-atlantic-coastal-migratory-pelagic-fishery-management-plan 
+https://www.fisheries.noaa.gov/management-plan/gulf-red-drum-fishery-management-plan 
 ```{r}
 # Strictly verified GMFMC-managed finfish species
 gmfmc_finfish_official <- c(
@@ -278,16 +203,16 @@ gmfmc_finfish_official <- c(
   # Reef Fish FMP - Groupers
   "GROUPER, GAG", "GROUPER, RED", "SCAMP", "GROUPER, YELLOWEDGE", 
   "GROUPER, BLACK", "GROUPER, YELLOWFIN", "GROUPER, YELLOWMOUTH", 
-  "GROUPER, SNOWY", "GROUPER, WARSAW", "GROUPER, GOLIATH", "GROUPER, NASSAU",
+  "GROUPER, SNOWY", "GROUPER, WARSAW", "GROUPER, GOLIATH", "GROUPER, NASSAU", "HIND, SPECKLED",
   
   # Reef Fish FMP - Tilefishes
   "TILEFISH, GOLDEN", "TILEFISH, BLUELINE", "TILEFISH, GOLDFACE",
   
   # Reef Fish FMP - Jacks
-  "AMBERJACK, GREATER", "AMBERJACK, LESSER", "JACK, ALMACO",
+  "AMBERJACK, GREATER", "AMBERJACK, LESSER", "JACK, ALMACO", "RUDDERFISH, BANDED",
   
   # Reef Fish FMP - Others
-  "TRIGGERFISH, GRAY", "HOGFISH",
+  "TRIGGERFISH, GRAY", "HOGFISH", 
   
   # Coastal Migratory Pelagics (CMP) FMP
   "MACKEREL, KING", "MACKEREL, SPANISH", "COBIA",
@@ -296,81 +221,7 @@ gmfmc_finfish_official <- c(
   "DRUM, RED"
 )
 
-# Filter landings_github to strictly official GMFMC finfish
-gmfmc_landings_df <- landings_github %>%
-  filter(
-    LAND_YEAR >= 1972,
-    COMMON_NAME %in% gmfmc_finfish_official
-  ) %>%
-  group_by(LAND_YEAR, COMMON_NAME) %>%
-  summarise(
-    TOTAL_LIVE_POUNDS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-```
-
-```{r}
-# Summarize annual landings using ONLY clean GMFMC finfish species
-plot1_clean_df <- gmfmc_landings_df %>%
-  group_by(LAND_YEAR) %>%
-  summarise(
-    TOTAL_LIVE_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Generate plot
-ggplot(plot1_clean_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6)) +
-  geom_area(fill = "#2c7fb8", alpha = 0.75, color = "#023858", linewidth = 0.8) +
-  geom_point(color = "#023858", size = 1.5) +
-  scale_y_continuous(labels = comma_format(), limits = c(0, NA), expand = expansion(mult = c(0, 0.05))) +
-  scale_x_continuous(breaks = seq(1972, 2025, by = 5)) +
-  labs(
-    title = "Gulf of Mexico Commercial Managed Finfish Extraction (1972–Present)",
-    subtitle = "Ecosystem Status Report: Filtered to GMFMC Managed Finfish (Excludes Shellfish & Non-GMFMC Taxa)",
-    x = "Year",
-    y = "Live Landings (Millions of Pounds)",
-    caption = "Data Source: NOAA SEFSC Commercial Landings Extraction MV."
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.minor = element_blank(),
-    plot.title = element_text(face = "bold", size = 13),
-    plot.subtitle = element_text(color = "grey30", size = 10),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-```
-
-Now let's just compare this to the core priority species managed by the council.
-
-```{r}
-
-unique(gmfmc_landings_df$COMMON_NAME)
-
-# Vector of your core priority species
-core_priority_species <- c(
-  # Drums / CMP / Pelagics
-  "DRUM, RED", "COBIA", "MACKEREL, SPANISH", "MACKEREL, KING", "HOGFISH",
-  
-  # Snappers
-  "SNAPPER, RED", "SNAPPER, CUBERA", "SNAPPER, LANE", "SNAPPER, GRAY", 
-  "SNAPPER, MUTTON", "SNAPPER, YELLOWTAIL", "SNAPPER, VERMILION",
-  
-  # Mid-water / Deepwater Snappers (Mid-water snapper complex components)
-  "SNAPPER, SILK", "SNAPPER, BLACKFIN", "SNAPPER, QUEEN", "WENCHMAN",
-  
-  # Groupers
-  "GROUPER, RED", "GROUPER, GAG", "GROUPER, YELLOWEDGE", "SCAMP",
-  
-  # Jacks (Jack complex components)
-  "AMBERJACK, GREATER", "AMBERJACK, LESSER", "JACK, ALMACO",
-  
-  # Tilefishes (Tilefish complex components)
-  "TILEFISH, GOLDEN", "TILEFISH, BLUELINE", "TILEFISH, GOLDFACE",
-  
-  # Triggerfish
-  "TRIGGERFISH, GRAY"
-)
+# Filter landings to strictly official GMFMC finfish
 
 # 1. Load the GDP deflator dataset and aggregate to annual average deflators
 deflator_annual <- read_csv(here("data/intermediate/gdp_deflator_interpolated.csv")) %>%
@@ -383,8 +234,8 @@ target_deflator_2024 <- deflator_annual %>%
   filter(LAND_YEAR == 2024) %>%
   pull(annual_deflator)
 
-dat_assessed <- landings_github %>%
-  filter(COMMON_NAME %in% core_priority_species) %>%
+dat_managed <- clean_data %>%
+  filter(COMMON_NAME %in% gmfmc_finfish_official) %>%
   left_join(deflator_annual, by = "LAND_YEAR") %>%
   mutate(
     # Convert nominal dollars to constant 2024 dollars
@@ -393,7 +244,7 @@ dat_assessed <- landings_github %>%
     total_mil_dollars_2024 = TOTAL_DOLLARS_2024 / 1e6
   )
 
-assessed_finfish <- dat_assessed %>% 
+managed_finfish <- dat_managed %>% 
   group_by(LAND_YEAR) %>%
   summarise(
     total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
@@ -402,54 +253,98 @@ assessed_finfish <- dat_assessed %>%
   ) %>% 
   select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
 
-write_csv(dat_assessed, here("data/intermediate/managed_species_landings_by_species.csv"))
-write_csv(assessed_finfish, here("data/intermediate/gulf_core_priority_species_landings_1972_present.csv"))
+write_csv(dat_managed, here("data/intermediate/managed_species_landings_by_species.csv"))
+write_csv(managed_finfish, here("data/intermediate/gulf_managed_species_com_landings_1972_present.csv"))
 ```
 
 
-This is just a check to make sure we are not missing anything important in the core species list.
+
+Ok so the broad categories are not included as managed species according to the FLAG_FMP_SPP column. If we ignore them, we might ignore a lot of landings.
+
+This plot is to check if we really need to include those uncategorized broad groups. How much of the total landings do they account for?
+
 ```{r}
-# 1. Prepare combined comparative dataset
-comparison_df <- gmfmc_landings_df %>%
+# First need to try to figure out how many broad groups exist. Theoretically all the broad groups should have single words for the species name. 
+broad_groups = clean_data %>% 
+  filter(
+    # Matches "unclassified" or "unknown" (case-insensitive)
+    str_detect(COMMON_NAME, regex("unclassified|unknown", ignore_case = TRUE)) |
+    # Matches single words (no spaces)
+    !str_detect(COMMON_NAME, "\\s")) %>% 
+  distinct(COMMON_NAME) %>% 
+  arrange(COMMON_NAME)
+
+write_csv(broad_groups, here("data/intermediate/gulf_broad_groups_commercial_list.csv"))
+
+# Now let's pull out all the broad groups that may contain our federally managed species. 
+gulf_council_aggregates <- c(
+  "AMBERJACKS",
+  "DRUMS",
+  "GROUPERS",
+  "JACKS",
+  "MACKERELS",
+  "SNAPPERS",
+  "TILEFISHES",
+  "TRIGGERFISHES",
+  "MACKERELS, KING AND CERO"
+)
+
+#check
+test = clean_data %>% 
+  filter(COMMON_NAME %in% gulf_council_aggregates) %>% 
+  distinct(COMMON_NAME)
+
+
+# See how much of the landings are in these broad groups
+plot1_council_df <- clean_data %>%
   mutate(
-    Series = if_else(
-      COMMON_NAME %in% core_priority_species,
-      "Core Priority Species Subset",
-      "Other Managed GMFMC Finfish"
+    Category = case_when(
+      COMMON_NAME %in% gmfmc_finfish_official ~ "Species-Specific Managed Landings",
+      COMMON_NAME %in% gulf_council_aggregates ~ "Unclassified Managed Family Groups",
+      TRUE ~ "Other / Unmanaged"
     )
   ) %>%
-  group_by(LAND_YEAR, Series) %>%
+  filter(Category != "Other / Unmanaged") %>%
+  group_by(LAND_YEAR, Category) %>%
   summarise(
-    TOTAL_LIVE_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
+    TOTAL_LIVE_POUNDS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
     .groups = "drop"
   )
 
-# 2. Generate Comparative Stacked Area Plot
-ggplot(comparison_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6, fill = Series)) +
-  geom_area(alpha = 0.8, color = "black", linewidth = 0.3) +
+# Plot
+ggplot(plot1_council_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_POUNDS / 1e6, fill = Category)) +
+  geom_area(alpha = 0.85, color = "black", linewidth = 0.3) +
   scale_fill_manual(values = c(
-    "Core Priority Species Subset" = "#08519c", 
-    "Other Managed GMFMC Finfish" = "#9ecae1"
+    "Species-Specific Managed Landings" = "#2c7fb8", 
+    "Unclassified Managed Family Groups" = "#fe9929"
   )) +
-  scale_y_continuous(labels = comma_format(), limits = c(0, NA), expand = expansion(mult = c(0, 0.05))) +
+  scale_y_continuous(labels = comma_format()) +
   scale_x_continuous(breaks = seq(1972, 2025, by = 5)) +
   labs(
-    title = "Gulf of Mexico Managed Commercial Finfish Extraction (1972–Present)",
-    subtitle = "Comparing Total GMFMC Managed Finfish Landings vs. Core Priority Species Subset",
+    title = "Gulf Commercial Managed Finfish Extraction (1972–Present)",
     x = "Year",
     y = "Live Landings (Millions of Pounds)",
-    fill = "Species Selection Strategy",
-    caption = "Data Source: NOAA SEFSC Commercial Landings Extraction MV. Excludes shellfish and non-GMFMC taxa."
+    fill = "Reporting & Management Strata"
   ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "bottom",
+    legend.box = "vertical",
     panel.grid.minor = element_blank(),
     plot.title = element_text(face = "bold", size = 13),
-    plot.subtitle = element_text(color = "grey30", size = 10),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 ```
+
+
+Ok so there is a fairly substantial number of landings earlier in the time series for those broad groups. Options:
+
+1. Ignore the broad groups (potentially underestimate landings early in the time series)
+2. Cut the time series to 1986, the first full year that the FL trip ticket program was active and species were being reported more consistently.
+3. Add the broad category data to the species specific data, possibly overestimating landings
+4. Add uncertainty to the graph using upper and lower bounds, with the upper bound being the species-specific landings plus broad group landings and the lower bound being just the species specific landings. 
+
+
 
 
 
@@ -468,8 +363,7 @@ shellfish_and_broad <- c(
 # Filter for strictly unmanaged finfish taxa
 unmanaged_diagnostics <- clean_data %>%
   filter(
-    LAND_YEAR >= 1972,
-    !COMMON_NAME %in% core_priority_species,
+    !COMMON_NAME %in% gmfmc_finfish_official,
     !COMMON_NAME %in% shellfish_and_broad,
     !str_detect(COMMON_NAME, regex("UNCLASSIFIED|UNIDENTIFIED|OTHER|GENUS|FAMILY|NOS|SPEC", ignore_case = TRUE))
   ) %>%
@@ -486,29 +380,16 @@ unmanaged_diagnostics <- clean_data %>%
 print(head(unmanaged_diagnostics, 30))
 ```
 
-Let's run a Pareto distribution & sensitivity analysis. Calculates the cumulative percentage of total unmanaged marine finfish volume accounted for by each species, ranks them from highest to lowest, and tests if the time series trend changes when using top 5, top 10, top 15, or top 25 species. Trying to remove species was like playing constant whack a mole. Random things just kept popping up. So a better approach was to make a whitelist of known major commercial marine finfish that are not managed. 
+Menhaden clearly rule the world and there are 529 other species in the dataset...Menhaden clearly have to come out.
+
+Let's run a Pareto distribution & sensitivity analysis on the rest of the species. Calculates the cumulative percentage of total unmanaged marine finfish volume accounted for by each species, ranks them from highest to lowest, and tests if the time series trend changes when using top 5, top 10, top 15, or top 25 species. Trying to remove species was like playing constant whack a mole. Random things just kept popping up. So a better approach was to make a whitelist of known major commercial marine finfish that are not managed. 
 
 ```{r}
+unmanaged_all = clean_data %>% 
+  filter(COMMON_NAME %in% unmanaged_diagnostics$COMMON_NAME, COMMON_NAME != "MENHADENS")
 
-# Explicit Whitelist: Major Unmanaged Commercial Marine Finfish in the Gulf of Mexico
-unmanaged_marine_finfish_vector <- c(
-  # Primary Coastal / Estuarine Finfish
-  "MULLET, STRIPED", "MULLET, WHITE", "DRUM, BLACK", "CROAKER, ATLANTIC", 
-  "SEATROUT, SPOTTED", "SEATROUT, SAND", "SHEEPSHEAD", "LADYFISH", 
-  "POMPANO, FLORIDA", "SPOT", "KINGFISHES", "MOJARRAS", "BALLYHOOS", "PINFISH",
-  
-  # Coastal Pelagics & Baitfish (Non-Menhaden)
-  "HERRING, ATLANTIC THREAD", "SARDINE, SPANISH", "JACK, CREVALLE", 
-  "RUNNER, BLUE", "SCAD, ROUND", "SCADS", "BLUEFISH", "BUTTERFISH,GULF", 
-  "SHAD, GIZZARD", "SHAD, AMERICAN", "HARVESTFISH", "LOOKDOWN"
-)
-
-# 2. Cumulative Landings Pareto Analysis
-pareto_df <- clean_data %>%
-  filter(
-    LAND_YEAR >= 1972,
-    COMMON_NAME %in% unmanaged_marine_finfish_vector
-  ) %>%
+# Cumulative Landings Pareto Analysis
+pareto_df <- unmanaged_all %>%
   group_by(COMMON_NAME) %>%
   summarise(TOTAL_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE), .groups = "drop") %>%
   arrange(desc(TOTAL_LBS)) %>%
@@ -518,21 +399,55 @@ pareto_df <- clean_data %>%
     CUM_PCT = (CUM_LBS / sum(TOTAL_LBS)) * 100
   )
 
+write_csv(pareto_df, here("data/intermediate/unmanaged__com_species_pareto_analysis.csv"))
 
-# 3. Sensitivity Analysis: Plot trajectories using Top 5, Top 10, Top 15, vs Top 25
-top5_spp  <- pareto_df %>% filter(RANK <= 5) %>% pull(COMMON_NAME)
-top10_spp <- pareto_df %>% filter(RANK <= 10) %>% pull(COMMON_NAME)
-top15_spp <- pareto_df %>% filter(RANK <= 15) %>% pull(COMMON_NAME)
-top25_spp <- pareto_df %>% filter(RANK <= 25) %>% pull(COMMON_NAME)
+# We need to remove more. SOOOO MANY RANDOM SPECIES WE DON'T CARE ABOUT
 
-sensitivity_df <- unmanaged_pool %>%
-  filter(COMMON_NAME %in% top25_spp) %>%
+# Define Regex Exclusion Patterns
+
+# Non-finfish / Invertebrates (Shrimp, Crabs, Oysters, Lobsters, Shellfish, Jellyfish, Corals, etc.)
+non_finfish_pattern <- "SHRIMP|CRAB|OYSTER|LOBSTER|CRAYFISH|PROCAMBARUS|CLAM|SCALLOP|OCTOPUS|SQUID|JELLYFISH|SPONGE|DOLLAR|TURTLE|TURBINIDAE|CONCH|CORAL|SEAWEED|ANIMALIA|BRYOPSIDALES|FORAMS|NUDIBRANCHS|CRUSTACEANS|SQUIDS|OCTOPUSES|SPONGES|CLAMS|SCALLOPS|HERMIT|STARFISH|SNAIL|ALGAE|WHELK|ANEMONE|NASSARIUS|CERITHIDEA|TEGULA|LIBINIA|MITHRACULUS|HIPPOSPONGIA|CHITONS|CORALLIMORPHARIA|CORALLINACEAE|DICOTYLEDONS|ULOTRICHALES|NASSA|STARS,|TURBAN"
+
+# Freshwater / Estuarine Non-Target Species (Catfish, Buffalo, Carp, Gar, Bowfin, etc.)
+freshwater_pattern <- "CATFISH|BUFFALO|CARP|BOWFIN|GAR|TILAPIA|SUNFISH|LARGEMOUTH|DRUM, FRESHWATER|SHAD, GIZZARD|BULLHEAD|PICKEREL|SUCKER|PADDLEFISH|SHAD, AMERICAN"
+
+# HMS / Pelagic Sharks & Tunas / Industrial Menhaden
+hms_menhaden_pattern <- "MENHADEN|TUNA|SWORDFISH|SHARK|MARLIN|SAILFISH|SPEARFISH"
+
+# Generic Broad Family Aggregates (Catch-all dealer codes)
+aggregate_pattern <- "^OSTEICHTHYES$|^GROUPERS$|^SNAPPERS$|^MACKERELS$|^TILEFISHES$|^JACKS$|^TRIGGERFISHES$|^AMBERJACKS$|^DRUMS$|^FISHES$|MACKERELS, KING AND CERO"
+
+# Combine all patterns into one regular expression
+all_exclusions <- paste(non_finfish_pattern, freshwater_pattern, hms_menhaden_pattern, aggregate_pattern, sep = "|")
+
+# 3. Filter and Recalculate True Clean Marine Finfish Pareto Rankings
+pareto_df2 <- pareto_df %>%
+  # Filter out non-target entries
+  filter(!str_detect(COMMON_NAME, regex(all_exclusions, ignore_case = TRUE))) %>%
+  # Sort by total pounds descending
+  arrange(desc(TOTAL_LBS)) %>%
+  # Recalculate Rank, Cumulative Pounds, and Cumulative Percentage
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(TOTAL_LBS),
+    CUM_PCT = (CUM_LBS / sum(TOTAL_LBS)) * 100
+  )
+
+
+# Sensitivity Analysis: Plot trajectories using Top 5, Top 10, Top 15, vs Top 25
+top10_spp  <- pareto_df2 %>% filter(RANK <= 10) %>% pull(COMMON_NAME)
+top20_spp <- pareto_df2 %>% filter(RANK <= 20) %>% pull(COMMON_NAME)
+top30_spp <- pareto_df2 %>% filter(RANK <= 30) %>% pull(COMMON_NAME)
+top40_spp <- pareto_df2 %>% filter(RANK <= 40) %>% pull(COMMON_NAME)
+
+sensitivity_df <- unmanaged_all %>%
+  filter(COMMON_NAME %in% top40_spp) %>%
   mutate(
     Cutoff = case_when(
-      COMMON_NAME %in% top5_spp ~ "Top 5 Species",
       COMMON_NAME %in% top10_spp ~ "Top 10 Species",
-      COMMON_NAME %in% top15_spp ~ "Top 15 Species",
-      TRUE ~ "Top 25 Species"
+      COMMON_NAME %in% top20_spp ~ "Top 20 Species",
+      COMMON_NAME %in% top30_spp ~ "Top 30 Species",
+      TRUE ~ "Top 40 Species"
     )
   ) %>%
   group_by(LAND_YEAR, Cutoff) %>%
@@ -545,7 +460,7 @@ ggplot(sensitivity_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6, color = Cuto
   scale_x_continuous(breaks = seq(1972, 2025, by = 5)) +
   labs(
     title = "Sensitivity of Unmanaged Finfish Trajectory to Taxonomic Scope",
-    subtitle = "Testing cumulative volume thresholds (Top 5 vs 10 vs 15 vs 25 species)",
+    subtitle = "Testing cumulative volume thresholds (Top 10 vs 20 vs 30 vs 40 species)",
     x = "Year",
     y = "Live Landings (Millions of Pounds)",
     color = "Inclusion Threshold"
@@ -554,33 +469,58 @@ ggplot(sensitivity_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6, color = Cuto
   theme(legend.position = "bottom", plot.title = element_text(face = "bold"))
 ```
 
-Now we can get the unmanaged data
+Ok now we have a better handle on which marine/coastal finfish are the major commercially harvested unmanaged species. The top 25 species make up 95% of the landings. So let's just plot those. 
 
 ```{r}
-# 1. Filter landings to the explicit unmanaged marine finfish list & adjust for inflation
+# Explicit Whitelists: Major Unmanaged Commercial Marine Finfish in the Gulf (top 95% of landings for unmanaged finfish)
+# Define sub-categories
+top_unmanaged_food_fish <- c(
+  "MULLET, STRIPED", "DRUM, BLACK", "LADYFISH", "SHEEPSHEAD", 
+  "CROAKER, ATLANTIC", "SEATROUT, SPOTTED", "JACK, CREVALLE", 
+  "FLATFISHES", "RUNNER, BLUE", "SEATROUT, SAND", "POMPANO, FLORIDA", 
+  "KINGFISHES", "BLUEFISH", "MULLET, WHITE", "DOLPHIN", "DOLPHINFISH"
+)
+
+top_unmanaged_bait_forage <- c(
+  "HERRING, ATLANTIC THREAD", "SARDINE, SPANISH", "HERRINGS", 
+  "SCAD, ROUND", "BUTTERFISH,GULF", "GRUNTS", "PORGIES", "SCADS", "MOJARRAS"
+)
+```
+
+Now we can get the unmanaged data!
+
+```{r}
+# Filter landings to both food and bait lists & adjust for inflation
 dat_unmanaged <- clean_data %>%
   filter(
-    LAND_YEAR >= 1972,
-    COMMON_NAME %in% unmanaged_marine_finfish_vector
+    COMMON_NAME %in% c(top_unmanaged_food_fish, top_unmanaged_bait_forage)
   ) %>%
   left_join(deflator_annual, by = "LAND_YEAR") %>%
   mutate(
     TOTAL_DOLLARS_2024 = TOTAL_DOLLARS * (target_deflator_2024 / annual_deflator),
     total_mil_lbs = TOTAL_LIVE_POUNDS / 1e6,
-    total_mil_dollars_2024 = TOTAL_DOLLARS_2024 / 1e6
+    total_mil_dollars_2024 = TOTAL_DOLLARS_2024 / 1e6,
+    
+    # Assign species category for conditional grouping
+    Species_Type = case_when(
+      COMMON_NAME %in% top_unmanaged_food_fish   ~ "Food",
+      COMMON_NAME %in% top_unmanaged_bait_forage ~ "Bait"
+    )
   )
 
-# 2. Summarize annual totals
+# 2. Summarize annual totals into 4 distinct columns
 unmanaged_summary <- dat_unmanaged %>% 
   group_by(LAND_YEAR) %>%
   summarise(
-    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
-    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE), 
+    food_mil_lbs     = sum(total_mil_lbs[Species_Type == "Food"], na.rm = TRUE),
+    food_mil_dollars = sum(total_mil_dollars_2024[Species_Type == "Food"], na.rm = TRUE),
+    bait_mil_lbs     = sum(total_mil_lbs[Species_Type == "Bait"], na.rm = TRUE),
+    bait_mil_dollars = sum(total_mil_dollars_2024[Species_Type == "Bait"], na.rm = TRUE),
     .groups = "drop"
   ) %>% 
-  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
+  select(LAND_YEAR, food_mil_lbs, food_mil_dollars, bait_mil_lbs, bait_mil_dollars)
 
-# Save intermediate summary CSV
+# Save intermediate summary CSVs
 write_csv(dat_unmanaged, here("data/intermediate/unmanaged_species_landings_by_species.csv"))
 write_csv(unmanaged_summary, here("data/intermediate/gulf_unmanaged_species_landings_1972_present.csv"))
 ```
@@ -599,9 +539,9 @@ extent_names = c("Assessed finfish", "Assessed finfish")
 formatted_assessed_finfish = IEAnalyzeR::convert_cleaned_data(assessed_finfish, indicator_names, unit_names, extent_names)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = rep("Commercial landings", 2)
-unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
-extent_names = c("Unassessed finfish", "Unassessed finfish")
+indicator_names = rep("Commercial landings", 4)
+unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)", "Whole weight (million lbs)", "Real value (2024 $ million)")
+extent_names = c("Unmanaged food fish", "Unmanaged food fish", "Unmanaged bait/forage fish", "Unmanaged bait/forage fish")
 
 formatted_unassessed_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, indicator_names, unit_names, extent_names)
 
@@ -645,7 +585,7 @@ For more info on the plot_fn_obj function go HERE
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Managed Finfish")
 ggsave(filename = plot_filename1)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish")
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"))
 ggsave(filename = plot_filename2)
 ```
 
