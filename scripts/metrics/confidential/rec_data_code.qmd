@@ -19,6 +19,11 @@ Add any packages that are needed for analysis in this code chunk.
 library(IEAnalyzeR)
 library(here)
 library(ggplot2)
+library(ROracle)
+library(keyring)
+library(tidyverse)
+library(scales)
+library(stringr)
 ```
 
 File Naming Setup.
@@ -28,9 +33,13 @@ File Naming Setup.
 
 root_name<- "rec_data"
 
-csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")) 
-object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
-plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
+csv_filename1<-here(paste0("data/formatted/formatted_csvs/", root_name, "_managed_spp_formatted.csv")) 
+object_filename1<-here(paste0("data/formatted/final_objects/", root_name, "_managed_spp_object.rds"))
+plot_filename1<-here(paste0("figures/plots/", root_name, "_managed_spp_plot.png"))
+
+csv_filename2<-here(paste0("data/formatted/formatted_csvs/", root_name, "_unmanaged_spp_formatted.csv")) 
+object_filename2<-here(paste0("data/formatted/final_objects/", root_name, "_unmanaged_spp_object.rds"))
+plot_filename2<-here(paste0("figures/plots/", root_name, "_unmanaged_spp_plot.png"))
 
 ```
 
@@ -38,15 +47,71 @@ plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
 
 Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
 
-```{r}
+Guidance for the rec data: https://sefsc.github.io/SEFSC-dolphin-analyses/MRIP.html
 
+```{r}
+Sys.setenv(TZ = "UTC", ORA_SDTZ = "UTC")
+
+# Define your username
+my_username <- "CGERVASI"
+
+# Connect using stored keyring password
+con <- dbConnect(dbDriver("Oracle"), 
+                 username = my_username,
+                 password = key_get("SECPR_Oracle", my_username),
+                 dbname = "SECPR")
 ```
+
+```{r}
+# Quick test loading the data. Remember to be on the VPN.
+
+ACL.test = dbGetQuery(con,
+                      paste0("select *
+                        from rdi.V_REC_ACL_MRIP_FES_IMP@secapxdv_dblk.sfsc.noaa.gov WHERE ROWNUM <= 1000" ))
+```
+
+```{r}
+#Now run the real query to get the entire table (takes a few min)
+
+ACL.raw <- dbGetQuery(con, "SELECT *
+                     FROM rdi.V_REC_ACL_MRIP_FES_IMP@secapxdv_dblk.sfsc.noaa.gov")
+```
+
+```{r}
+# close the connection
+
+dbDisconnect(con)
+```
+
 
 # 2. Clean data and create time series csv
 
 Transform the data to fit the IEA data format.
 For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
+
+```{r}
+head(ACL.raw)
+str(ACL.raw)
+
+#first we will subset to the Gulf. That is SUB_REG = 7. 
+
+ACL.gulf = ACL.raw %>% 
+  subset(SUB_REG == 7)
+
+#Now let's just get a list of all the species in the dataset and their total landings
+gulf_specs = ACL.gulf %>% 
+  group_by(NEW_COM) %>% 
+  summarize(
+    GOM_LABEL = first(GOM_LABEL),
+    total_landings = sum(LBSEST_SECWWT, na.rm = TRUE)
+  ) %>% 
+  arrange(GOM_LABEL, NEW_COM)
+
+#save this to look at more closely
+write_csv(gulf_specs, here("data/intermediate/gulf_rec_specs_list.csv"))
+```
+
 
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
