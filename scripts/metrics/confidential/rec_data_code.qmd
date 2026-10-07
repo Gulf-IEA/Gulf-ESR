@@ -33,17 +33,17 @@ File Naming Setup.
 
 root_name<- "rec_data"
 
-csv_filename1<-here(paste0("data/formatted/formatted_csvs/", root_name, "_managed_spp_formatted.csv")) 
-object_filename1<-here(paste0("data/formatted/final_objects/", root_name, "_managed_spp_object.rds"))
-plot_filename1<-here(paste0("figures/plots/", root_name, "_managed_spp_plot.png"))
+csv_filename1<-here(paste0("data/formatted/formatted_csvs/", root_name, "rec_managed_spp_formatted.csv")) 
+object_filename1<-here(paste0("data/formatted/final_objects/", root_name, "rec_managed_spp_object.rds"))
+plot_filename1<-here(paste0("figures/plots/", root_name, "rec_managed_spp_plot.png"))
 
-csv_filename2<-here(paste0("data/formatted/formatted_csvs/", root_name, "_unmanaged_spp_formatted.csv")) 
-object_filename2<-here(paste0("data/formatted/final_objects/", root_name, "_unmanaged_spp_object.rds"))
-plot_filename2<-here(paste0("figures/plots/", root_name, "_unmanaged_spp_plot.png"))
+csv_filename2<-here(paste0("data/formatted/formatted_csvs/", root_name, "rec_unmanaged_spp_formatted.csv")) 
+object_filename2<-here(paste0("data/formatted/final_objects/", root_name, "rec_unmanaged_spp_object.rds"))
+plot_filename2<-here(paste0("figures/plots/", root_name, "rec_unmanaged_spp_plot.png"))
 
 ```
 
-# 1. Read Data
+# 1. Read Data (SKIP IF YOU DO NOT NEED TO PULL FROM ORACLE)
 
 Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
 
@@ -83,13 +83,7 @@ ACL.raw <- dbGetQuery(con, "SELECT *
 dbDisconnect(con)
 ```
 
-
-# 2. Clean data and create time series csv
-
-Transform the data to fit the IEA data format.
-For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
-Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
-
+save the dataset 
 ```{r}
 head(ACL.raw)
 str(ACL.raw)
@@ -98,6 +92,21 @@ str(ACL.raw)
 
 ACL.gulf = ACL.raw %>% 
   subset(SUB_REG == 7)
+
+write_csv(ACL.gulf, here("data/intermediate/gulf_rec_landings_raw.csv"))
+```
+
+
+# 2. Clean data and create time series csv
+
+Transform the data to fit the IEA data format.
+For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
+
+```{r}
+ACL.raw = read_csv(here("data/intermediate/gulf_rec_landings_raw.csv"))
+
+
 
 #Now let's just get a list of all the species in the dataset and their total landings
 gulf_specs = ACL.gulf %>% 
@@ -112,21 +121,252 @@ gulf_specs = ACL.gulf %>%
 write_csv(gulf_specs, here("data/intermediate/gulf_rec_specs_list.csv"))
 ```
 
+```{r}
+clean_data <- ACL.gulf %>%
+  filter(!is.na(YEAR))
+```
+
+clean the dataset to only keep species within Gulf Council Finfish FMPs, the Coastal Migratory Pelagics (CMP) FMP, and the red drum FMP. 
+https://www.fisheries.noaa.gov/species/federally-managed-gulf-america-reef-fish
+https://www.fisheries.noaa.gov/management-plan/gulf-and-south-atlantic-coastal-migratory-pelagic-fishery-management-plan 
+https://www.fisheries.noaa.gov/management-plan/gulf-red-drum-fishery-management-plan 
+```{r}
+# Strictly verified GMFMC-managed finfish species
+gmfmc_finfish_official <- c(
+  # Reef Fish FMP - Snappers
+  "red snapper", "vermilion snapper", "gray snapper", "lane snapper", 
+  "mutton snapper", "yellowtail snapper", "cubera snapper", "silk snapper", 
+  "blackfin snapper", "queen snapper", "wenchman",
+  
+  # Reef Fish FMP - Groupers
+  "gag", "red grouper", "scamp", "yellowedge grouper", 
+  "black grouper", "yellowfin grouper", "yellowmouth grouper", 
+  "snowy grouper", "warsaw grouper", "goliath grouper", "nassau grouper", "speckled hind",
+  
+  # Reef Fish FMP - Tilefishes
+  "golden tilefish", "blueline tilefish", "goldface tilefish",
+  
+  # Reef Fish FMP - Jacks
+  "greater amberjack", "lesser amberjack", "almaco jack", "banded rudderfish",
+  
+  # Reef Fish FMP - Others
+  "gray triggerfish", "hogfish", 
+  
+  # Coastal Migratory Pelagics (CMP) FMP
+  "king mackerel", "spanish mackerel", "cobia",
+  
+  # Red Drum FMP
+  "red drum"
+)
+
+# Filter landings to strictly official GMFMC finfish
+
+dat_managed <- clean_data %>%
+  filter(NEW_COM %in% gmfmc_finfish_official,
+         YEAR < 2026)
+
+managed_finfish <- dat_managed %>% 
+  group_by(YEAR) %>%
+   mutate(
+    land_mil_lbs = LBSEST_SECWWT / 1e6,
+  ) %>% 
+  summarise(
+    total_mil_lbs = sum(land_mil_lbs, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  select(YEAR, total_mil_lbs)
+
+write_csv(dat_managed, here("data/intermediate/managed_species_landings_by_species_rec.csv"))
+write_csv(managed_finfish, here("data/intermediate/gulf_managed_species_rec_landings_1981_present.csv"))
+```
+
+
+### Unmanaged species
+
+Let's go back to the clean_data and filter for the unmanaged species we want to plot. First some diagnostics.
+
+```{r}
+# Define exclusions (Shellfish + Freshwater fish + Broad Aggregates)
+shellfish_and_broad <- c(
+  "alabama shad", "alligator gar", "american shad", "amberjack genus", 
+  "angelfish family", "anchovy family", "balao", "barracuda genus", 
+  "bass genus", "batfish family", "bigeye family", "bigmouth buffalo", 
+  "billfish family", "black bullhead", "black crappie", "blue catfish", 
+  "bluegill", "blue tilapia", "blue tilapia genus", "boxfish genus", 
+  "bowfin", "broad flounder", "brown bullhead", "burrfish genus", 
+  "butterfish family", "butterfly ray genus", "cardinalfish family", 
+  "cartilaginous fishes", "cat shark family", "chain pickerel", 
+  "channel catfish", "chloeia viridis", "cichlid family", "clinid family", 
+  "clingfish family", "combtooth blenny family", "common carp", 
+  "conger eel family", "cornetfish genus", "crappie genus", 
+  "cutlassfish, unidentified", "cusk-eel family", "damselfish family", 
+  "dogfish shark family", "dolphin family", "dolphin genus", "drum family", 
+  "eagle ray family", "eelpout family", "electric ray family", "fat sleeper", 
+  "flathead catfish", "florida gar", "flyingfish family", "flying gurnard family", 
+  "freshwater catfish family", "freshwater catfish genus", "freshwater drum", 
+  "frogfish genus", "gar family", "gar genus", "gizzard shad", "goby family", 
+  "goatfish family", "goosefish, unidentified", "grass carp", "green sunfish", 
+  "grunt family", "grunt genus", "hake genus", "hammerhead shark family", 
+  "hammerhead shark genus", "hemiramphus spp.", "herring family", 
+  "herring genus", "hybrid striped bass", "jack family", "jack genus", 
+  "jawfish family", "killifish family", "kingfish genus", "largemouth bass", 
+  "leatherjacket family", "lefteye flounder family", "lefteye flounder genus", 
+  "lionfish genus", "livebearer family", "lizardfish family", 
+  "lizardfish genus", "longnose gar", "mackerel family", "mackerel genus", 
+  "mackerel shark family", "manta family", "mayan cichlid", "menhaden genus", 
+  "mojarra family", "mola family", "moray family", "moray genus", 
+  "mullet family", "mullet genus", "na", "needlefish family", 
+  "needlefish genus", "orectolobidae shark family", "parrotfish family", 
+  "pipefish family", "pomfret family", "pompano, unidentified", 
+  "porgy family", "porgy genus", "porgy sp.", "pumpkinseed", 
+  "puffer family", "puffer genus lagocephalus", "puffer genus sphoeroides", 
+  "redbreast sunfish", "redear sunfish", "remora family", "remora genus", 
+  "requiem shark family", "requiem shark genus", "ribbonfish family", 
+  "righteye flounder family", "righteye flounder genus", "rock bass", 
+  "sand lance genus", "sand perch genus", "sand stargazer family", 
+  "sand tiger family", "sawfish family", "sawfish genus", "scorpionfish family", 
+  "sculpin family", "sea bass family", "sea bass genus", "sea catfish family", 
+  "sea chub family", "sea chub genus", "seahorse genus", "searobin family", 
+  "searobin genus", "seatrout genus", "shark, small coastal species", 
+  "shark, unidentified", "sharksucker genus", "sheepshead minnow", 
+  "shellfish / inverts", "shortnose gar", "shortnose sturgeon", 
+  "silverside family", "silverside genus", "silver carp", "skate genus", 
+  "skate, unidentified", "sleeper family", "smallmouth bass", 
+  "smallmouth buffalo", "smoothhound genus", "snailfish family", 
+  "snake eel family", "snapper family", "snapper genus", "snook genus", 
+  "snook, unidentified", "soapfish genus", "sole family", "spotted bass", 
+  "spotted gar", "spotted sunfish", "squirrelfish family", "squirrelfish genus", 
+  "star, lined sea", "stargazer family", "stingray family", "stingray genus", 
+  "sturgeon genus", "sunfish family", "sunfish genus", "sunshinefish", 
+  "tarpon family", "temperate bass genus", "threadfin genus", 
+  "tilapia genus", "tilefish family", "toadfish family", "toadfish genus", 
+  "tonguefish genus", "tuna genus", "unidentified bottom fish", 
+  "unidentified catfishes", "unidentified eel", "unidentified fish", 
+  "unidentified flounder or sole", "unidentified grouper", "unidentified sharks", 
+  "unidentified skate or ray", "unidentified surface fish", "warmouth", 
+  "western mosquitofish", "wheel/whiff genus", "whiff genus", "white bass", 
+  "white catfish", "white crappie", "white perch", "wrasse family", 
+  "yellow bass", "yellow bullhead", "yellow perch"
+)
+
+
+dat_unmanaged <- clean_data %>%
+  filter(
+    !NEW_COM %in% gmfmc_finfish_official,
+    !NEW_COM %in% shellfish_and_broad,
+         YEAR < 2026)
+
+unmanaged_finfish <- dat_unmanaged %>% 
+  group_by(YEAR) %>%
+   mutate(
+    land_mil_lbs = LBSEST_SECWWT / 1e6,
+  ) %>% 
+  summarise(
+    total_mil_lbs = sum(land_mil_lbs, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  select(YEAR, total_mil_lbs)
+
+write_csv(dat_unmanaged, here("data/intermediate/unmanaged_species_landings_by_species_rec.csv"))
+write_csv(unmanaged_finfish, here("data/intermediate/gulf_unmanaged_species_rec_landings_1981_present.csv"))
+```
+
+```{r}
+# Cumulative Landings Pareto Analysis
+pareto_df <- dat_unmanaged %>%
+  group_by(NEW_COM) %>%
+  mutate(
+    land_mil_lbs = LBSEST_SECWWT / 1e6,
+  ) %>% 
+  summarise(
+    total_mil_lbs = sum(land_mil_lbs, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_mil_lbs)) %>%
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(total_mil_lbs),
+    CUM_PCT = (CUM_LBS / sum(total_mil_lbs)) * 100
+  )
+
+write_csv(pareto_df, here("data/intermediate/unmanaged_rec_species_pareto_analysis.csv"))
+```
+
+Ok now we have a better handle on which marine/coastal finfish are the major commercially harvested unmanaged species. The top 33 species make up 90% of the landings. So let's just plot those. 
+
+```{r}
+# Top unmanaged recreational food/game fish species (~90% cumulative landings)
+top_unmanaged_food_fish <- c(
+  "spotted seatrout", "sheepshead", "black drum", "dolphin", 
+  "striped mullet", "sand seatrout", "white grunt", "little tunny", 
+  "southern flounder", "atlantic croaker", "hardhead catfish", "blackfin tuna", 
+  "crevalle jack", "gafftopsail catfish", "bluefish", "southern kingfish", 
+  "gulf kingfish", "yellowfin tuna", "blacktip shark", "great barracuda", 
+  "ladyfish", "wahoo", "florida pompano", "black sea bass", 
+  "gulf flounder", "common snook", "red porgy"
+)
+
+# Top unmanaged recreational bait/forage fish species
+top_unmanaged_bait_forage <- c(
+  "pinfish", "scaled sardine", "blue runner", 
+  "gulf menhaden", "atlantic thread herring", "round scad"
+)
+```
+
+Now we can get the unmanaged data!
+
+```{r}
+
+dat_unmanaged <- clean_data %>%
+  filter(
+    NEW_COM %in% c(top_unmanaged_food_fish, top_unmanaged_bait_forage),
+    YEAR < 2026
+  ) %>%
+  mutate(
+    land_mil_lbs = LBSEST_SECWWT / 1e6,
+    # Assign species category for conditional grouping
+    Species_Type = case_when(
+      NEW_COM %in% top_unmanaged_food_fish   ~ "Food",
+      NEW_COM %in% top_unmanaged_bait_forage ~ "Bait"
+    )
+  )
+
+# 2. Summarize annual totals into 4 distinct columns
+unmanaged_summary <- dat_unmanaged %>% 
+  group_by(YEAR) %>%
+  summarise(
+    food_mil_lbs     = sum(land_mil_lbs[Species_Type == "Food"], na.rm = TRUE),
+    bait_mil_lbs     = sum(land_mil_lbs[Species_Type == "Bait"], na.rm = TRUE)
+  ) %>% 
+  select(YEAR, food_mil_lbs, bait_mil_lbs)
+
+# Save intermediate summary CSVs
+write_csv(dat_unmanaged, here("data/intermediate/rec_unmanaged_species_landings_by_species.csv"))
+write_csv(unmanaged_summary, here("data/intermediate/rec_gulf_unmanaged_species_landings_1981_present.csv"))
+```
+
+
 
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
+indicator_names = "Recreational landings"
+unit_names = "Whole weight (million lbs)"
+extent_names = "Managed finfish"
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+formatted_assessed_finfish = IEAnalyzeR::convert_cleaned_data(managed_finfish, indicator_names, unit_names, extent_names)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c("Recreational landings", "Recreational landings")
+unit_names = c("Whole weight (million lbs)", "Whole weight (million lbs)")
+extent_names = c("Unmanaged food fish", "Unmanaged bait/forage fish")
+
+formatted_unmanaged_finfish = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, indicator_names, unit_names, extent_names)
 ```
 
 # 3. Save Formatted data as csv
 
 This will save your data to the appropriate folder.
 ```{r}
-write.csv(formatted_data, file = csv_filename, row.names = F)
+write.csv(formatted_assessed_finfish, file = csv_filename1, row.names = F)
+write.csv(formatted_unmanaged_finfish, file = csv_filename2, row.names = F)
 ```
 
 
@@ -135,14 +375,16 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 Please use your formatted csv to create a "data_prep" object.
 For more info on the data_prep function see the vignette linked above.
 ```{r}
-data_obj<-IEAnalyzeR::data_prep(csv_filename)
+data_obj1<-IEAnalyzeR::data_prep(csv_filename1)
+data_obj2<-IEAnalyzeR::data_prep(csv_filename2, subind = "extent")
 ```
 
 # 5. Save Formatted data_prep object
 
 This will save your data to the appropriate folder.
 ```{r}
-saveRDS(data_obj, file = object_filename)
+saveRDS(data_obj1, file = object_filename1)
+saveRDS(data_obj2, file = object_filename2)
 ```
 
 # 6. Preview Plot
@@ -152,7 +394,9 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Recreational Landings of Managed Finfish")
+
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Recreational Landings of Unmanaged Finfish", ylab_sublabel = c("extent", "unit"))
 ```
 
 # 7. Save plot
@@ -161,5 +405,7 @@ This will save the plot to the correct folder.
 Adjust height & width using (height=, width=, unit="in") if needed.
 
 ```{r}
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename1)
+
+ggsave(filename = plot_filename2)
 ```
