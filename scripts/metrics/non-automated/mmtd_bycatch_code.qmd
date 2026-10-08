@@ -1,0 +1,211 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+File created on 2026-10-01
+
+# 0. Setup
+
+Add any packages that are needed for analysis in this code chunk.
+
+```{r packages}
+# devtools::install_git("https://github.com/Gulf-IEA/IEAnalyzeR")
+# devtools::install_github("https://github.com/Gulf-IEA/IEAnalyzeR/tree/feat_NoLineMissData", force = T)
+
+library(IEAnalyzeR)
+library(here)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+```
+
+File Naming Setup.
+!! Auto generated-Do Not Change !!
+
+```{r}
+
+root_name<- "mmtd_bycatch"
+
+csv_filename_otter<-here(paste0("data/formatted/formatted_csvs/", paste0(root_name, "_otter"), "_formatted.csv")) 
+object_filename_otter<-here(paste0("data/formatted/final_objects/", paste0(root_name, "_otter"), "_object.rds"))
+plot_filename_otter<-here(paste0("figures/plots/", paste0(root_name, "_otter"), "_plot.png"))
+
+csv_filename_try<-here(paste0("data/formatted/formatted_csvs/", paste0(root_name, "_try"), "_formatted.csv")) 
+object_filename_try<-here(paste0("data/formatted/final_objects/", paste0(root_name, "_try"), "_object.rds"))
+plot_filename_try<-here(paste0("figures/plots/", paste0(root_name, "_try"), "_plot.png"))
+
+```
+
+# 1. Read Data
+
+Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
+
+Breaking Down what tables are:
+Table 3: Bycatch & Mortality for GoA otter trawl (updated method) 2016-2020
+Table 4: Bycatch & Mortality for GoA try nets 2016-2020
+
+```{r}
+tab3_otter<-data.frame(year=rep(2016:2020, 2),
+                       type=rep(c("Bycatch", "Mortality"), each=5),
+                       kemps=c(113,257,228,411,393,38,85,75,136,127),
+                       kemps_low95=c(19,47,38,62,75,6,15,12,19,23),
+                       kemps_high95=c(646,1162,1029,2230,1853,206,395,359,809,610),
+                       leatherback=c(12,23,22,20,20,4,8,7,7,7),
+                       leatherback_low95=c(2,5,5,3,3,1,1,2,1,1),
+                       leatherback_high95=c(54,97,79,74,79,18,33,28,25,28),
+                       loggerhead=c(22,46,40,35,35,7,15,13,12,12),
+                       loggerhead_low95=c(5,11,10,8,8,2,4,3,2,3),
+                       loggerhead_high95=c(82,156,146,135,124,29,55,53,47,41),
+                       green=c(150,156,144,133,141,50,51,48,45,47),
+                       green_low95=c(57,59,52,54,54,18,19,17,16,16),
+                       green_high95=c(355,352,360,301,337,127,119,127,113,117),
+                       unknown=c(78,83,78,76,76,26,28,26,25,25),
+                       unknown_low95=c(21,25,23,25,24,7,8,8,8,8),
+                       unknown_high95=c(197,211,198,195,189,70,72,69,64,68))
+
+tab3_otter_noconf<-select(tab3_otter, year, type, kemps, leatherback, loggerhead, green, unknown)
+
+tab3_otter_no_wide<-pivot_wider(tab3_otter_noconf, names_from = type, values_from = c(kemps, leatherback, loggerhead, green, unknown))
+```
+
+
+```{r}
+tab4_try<-data.frame(year=rep(2016:2020, 2),
+                       type=rep(c("Bycatch", "Mortality"), each=5),
+                       kemps=c(200,219,198,181,194,0,0,0,0,0),
+                       kemps_low95=c(54,59,48,47,59,0,0,0,0,0),
+                       kemps_high95=c(535,588,516,481,454,2,2,1,2,1),
+                       loggerhead=c(291,298,275,284,326,0,0,0,0,0),
+                       loggerhead_low95=c(100,102,98,95,104,0,0,0,0,0),
+                       loggerhead_high95=c(762,766,733,741,968,3,2,2,2,3),
+                       green=c(42,43,39,39,43,0,0,0,0,0),
+                       green_low95=c(13,13,11,12,15,0,0,0,0,0),
+                       green_high95=c(107,121,112,107,114,0,0,0,0,0),
+                       unknown=c(63,64,58,57,64,0,0,0,0,0),
+                       unknown_low95=c(22,24,20,22,23,0,0,0,0,0),
+                       unknown_high95=c(153,169,143,151,185,1,1,1,1,1))
+
+tab4_try_noconf<-select(tab4_try, year, type, kemps, loggerhead, green, unknown)
+
+tab4_try_no_wide<-pivot_wider(tab4_try_noconf, names_from = type, values_from = c(kemps, loggerhead, green, unknown))
+```
+
+# 2. Clean data and create time series csv
+
+Transform the data to fit the IEA data format.
+For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
+
+Otter Trawl Data
+```{r}
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c(rep(c("kemps", "leatherback", "loggerhead", "green", "unknown"), each=2))
+unit_names = c(rep(c("Bycatch", "Mortality"), 5))
+extent_names = c(rep("Gulf of America", 10))
+
+formatted_data_otter = IEAnalyzeR::convert_cleaned_data(tab3_otter_no_wide, indicator_names, unit_names, extent_names)
+
+```
+
+```{r}
+#Otter Trawl CI
+lowerCI<-select(tab3_otter, year, type, contains("low"))
+lowerCI_wd<-pivot_wider(lowerCI, id_cols=year, names_from = type, values_from = !c(year, type))
+
+upperCI<-select(tab3_otter, year, type, contains("high"))
+upperCI_wd<-pivot_wider(upperCI, id_cols=year, names_from = type, values_from = !c(year, type))
+
+
+ci_df_otter<-convert_ci_data(lowerCI_wd, upperCI_wd, indicator_names, unit_names, extent_names)
+
+```
+
+Try Data
+```{r}
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c(rep(c("kemps", "loggerhead", "green", "unknown"), each=2))
+unit_names = c(rep(c("Bycatch", "Mortality"), 4))
+extent_names = c(rep("Gulf of America", 8))
+
+formatted_data_try = IEAnalyzeR::convert_cleaned_data(tab4_try_no_wide, indicator_names, unit_names, extent_names)
+
+```
+
+```{r}
+#Try CI
+lowerCI<-select(tab4_try, year, type, contains("low"))
+lowerCI_wd<-pivot_wider(lowerCI, id_cols=year, names_from = type, values_from = !c(year, type))
+
+upperCI<-select(tab4_try, year, type, contains("high"))
+upperCI_wd<-pivot_wider(upperCI, id_cols=year, names_from = type, values_from = !c(year, type))
+
+
+ci_df_try<-convert_ci_data(lowerCI_wd, upperCI_wd, indicator_names, unit_names, extent_names)
+
+```
+
+
+# 3. Save Formatted data as csv
+
+This will save your data to the appropriate folder.
+```{r}
+write.csv(formatted_data_otter, file = csv_filename_otter, row.names = F)
+
+write.csv(formatted_data_try, file = csv_filename_try, row.names = F)
+```
+
+
+# 4. Create Data_Prep object
+
+Please use your formatted csv to create a "data_prep" object.
+For more info on the data_prep function see the vignette linked above.
+```{r}
+
+data_obj_otter<-data_prep(formatted_data_otter, trends = F, subind = "unit", ci_df = ci_df_otter)
+
+data_obj_try<-data_prep(csv_filename_try, trends = F, subind = "unit", ci_df = ci_df_try)
+
+```
+
+# 5. Save Formatted data_prep object
+
+This will save your data to the appropriate folder.
+```{r}
+saveRDS(data_obj_otter, file = object_filename_otter)
+
+saveRDS(data_obj_try, file = object_filename_try)
+```
+
+# 6. Preview Plot
+
+Use the IEAnalyzeR plotting function to preview the data.
+This will not necessarily be the final figure used in reports.
+For more info on the plot_fn_obj function go HERE
+
+```{r}
+plot_otter<-IEAnalyzeR::plot_fn_obj(df_obj = data_obj_otter, trend = F, facet_grid = c("indicator", "unit"),
+            manual_ylab = "Species", manual_title = NA)
+
+plot_try<-IEAnalyzeR::plot_fn_obj(df_obj = data_obj_try, trend = F, facet_grid = c("indicator", "unit"),
+            manual_ylab = "Species", manual_title = NA)
+```
+
+# 7. Save plot
+
+This will save the plot to the correct folder.
+Adjust height & width using (height=, width=, unit="in") if needed.
+
+```{r}
+
+ggsave(plot_otter,filename=plot_filename_otter, width = 6.5, height = 6, units = "in")
+
+ggsave(plot_try,filename=plot_filename_try, width = 6.5, height = 6, units = "in")
+```
