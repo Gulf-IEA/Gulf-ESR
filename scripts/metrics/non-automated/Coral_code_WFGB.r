@@ -25,18 +25,9 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 #   - Filename should use the syntax rootname_descriptivename
 
 # Read the raw benthic cover data
-raw_data <- read.csv(here("data/unformatted/2025WFGBRT.csv"))
+raw_data <- read.csv(here("data/unformatted/2025WFGBRT_Coral.csv"),check.names = FALSE)
 
-# Keep only the variables needed for the time series
-raw_data <- raw_data[, c("Year", "Benthic", "Cover")]
-
-# Reshape from stacked format to one column per benthic category
-your_data <- tidyr::pivot_wider(
-  raw_data,
-  names_from = Benthic,
-  values_from = Cover
-)
-
+your_data <- raw_data[, c("Year","Cover", "Richness")]
 
 # ----------------------------------------------------
 # ### 2. Clean data and create time series csv ####
@@ -51,37 +42,22 @@ your_data <- tidyr::pivot_wider(
 # extent_names = c("")
 
 indicator_names = c(
-  "Coral",
-  "Macroalgae",
-  "Sponge",
-  "Colonizable Substrate",
-  "CCA",
-  "Sand",
-  "Hydrocoral"
+  "Stony Coral",
+  "Stony Coral"
 )
 
 unit_names = c(
   "% area",
-  "% area",
-  "% area",
-  "% area",
-  "% area",
-  "% area",
-  "% area"
+  "Species Richness"
 )
 
 extent_names = c(
-  "West Flower Garden Banks",
-  "West Flower Garden Banks",
-  "West Flower Garden Banks",
-  "West Flower Garden Banks",
-  "West Flower Garden Banks",
   "West Flower Garden Banks",
   "West Flower Garden Banks"
 )
 
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, unit_names, indicator_names, extent_names)
 
 
 # ----------------------------------------------------
@@ -113,9 +89,17 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-plot <- IEAnalyzeR::plot_fn_obj(df_obj = data_obj,trend = TRUE)
+#plot <- IEAnalyzeR::plot_fn_obj(df_obj = data_obj,trend = TRUE)
 # Override the title
-plot <- plot + ggplot2::labs(title = "West Flower Garden Banks") + ggplot2::facet_wrap(~indicator, ncol = 1, scales = "free_y")
+plot <- IEAnalyzeR::plot_fn_obj(
+  df_obj = data_obj,
+  trend = TRUE,
+  manual_title = "West Flower Garden Banks Coral",
+  sep_ylabs = TRUE,
+  ncol = 1,
+  facet_scales = "free_y"
+)
+
 plot
 
 # ----------------------------------------------------
@@ -126,7 +110,7 @@ plot
 ggsave(
   filename = plot_filename,
   plot = plot,
-  width = 6,
-  height = 14,
+  width = 5,
+  height = 3,
   units = "in"
 )
