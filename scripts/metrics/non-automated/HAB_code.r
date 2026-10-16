@@ -246,6 +246,7 @@ long_hab <- plotting_data %>%
     County = factor(County, levels = rev(target_counties)) # Forces geographic Northwest to Southeast ordering
   )
 
+iea_style <- theme_bw(base_size = 12)
 # Step C: Construct Custom Hovmöller Matrix and graft IEAnalyzeR styles on top
 hovmoller_plot <- ggplot(long_hab, aes(x = TrueDate, y = County, fill = Category)) +
   geom_tile(color = NA) +
@@ -259,7 +260,7 @@ hovmoller_plot <- ggplot(long_hab, aes(x = TrueDate, y = County, fill = Category
   ) +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year", expand = c(0,0)) +
   labs(
-    title = "Karenia brevis Bloom History by County (2015 - 2025)",
+    title = "Karenia brevis Bloom History by County (2000 - 2025)",
     x = "Timeline",
     y = "Coastal Florida Counties"
   ) +
