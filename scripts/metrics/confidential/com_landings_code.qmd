@@ -585,8 +585,8 @@ For more info on the plot_fn_obj function go HERE
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Managed Finfish")
 ggsave(filename = plot_filename1)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"))
-ggsave(filename = plot_filename2)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 12)
+ggsave(filename = plot_filename2, width = 12)
 ```
 
 
