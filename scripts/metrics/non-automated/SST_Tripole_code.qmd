@@ -1,0 +1,491 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+File created on 2026-10-20
+
+This code is adapted from python code provided from Sang-Ki Lee @ AOML. Filename: natripole_sst_eof2.py
+
+# 0. Setup
+
+Add any packages that are needed for analysis in this code chunk.
+
+```{r packages}
+# devtools::install_git("https://github.com/Gulf-IEA/IEAnalyzeR/", branch = "feat_NoLineMissData")
+
+library(IEAnalyzeR)
+library(here)
+library(ggplot2)
+
+library(ncdf4)
+library(sf)
+library(rnaturalearth)
+library(RColorBrewer)
+
+```
+
+File Naming Setup.
+!! Auto generated-Do Not Change !!
+
+```{r}
+
+root_name<- "SST_Tripole"
+
+csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")) 
+object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
+plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
+
+```
+
+```{r}
+#Helper functions for calculation
+
+#Monthly Anomalies
+calc_anomalies <- function(M, months) {
+  anom <- M
+  for (m in 1:12) {
+    idx  <- which(months == m)
+    clim <- rowMeans(M[, idx, drop = FALSE], na.rm = TRUE)
+    clim[is.nan(clim)] <- NA
+    anom[, idx] <- M[, idx, drop = FALSE] - clim   # clim recycles down columns
+  }
+  anom
+}
+
+#Centered running mean along time
+roll_time <- function(A, k = 3, min_periods = 1) {
+  stopifnot(k %% 2 == 1)
+  half <- (k - 1) / 2
+  nt <- ncol(A)
+  S <- matrix(0, nrow(A), nt)
+  N <- matrix(0, nrow(A), nt)
+  for (o in -half:half) {
+    src <- seq_len(nt) + o
+    ok  <- src >= 1 & src <= nt
+    X <- matrix(NA_real_, nrow(A), nt)
+    X[, ok] <- A[, src[ok], drop = FALSE]
+    v <- !is.na(X)
+    X[!v] <- 0
+    S <- S + X
+    N <- N + v
+  }
+  out <- S / N
+  out[N < min_periods] <- NA
+  out
+}
+
+#Remove linear trend (and mean) along time per cell
+detrend_dim <- function(M) {
+  tt <- seq_len(ncol(M))
+  res <- apply(M, 1, function(y) {
+    ok <- !is.na(y)
+    if (sum(ok) < 2) return(y)
+    fit <- lm.fit(cbind(1, tt[ok]), y[ok])$coefficients
+    y - (fit[1] + fit[2] * tt)
+  })
+  t(res)
+}
+
+#Regress a field onto a 1D PC
+regress_spatial <- function(pc, pc_time, A, A_time) {
+  pc_n <- as.numeric(pc_time)
+  A_n  <- as.numeric(A_time)
+  common <- sort(intersect(pc_n, A_n))
+ 
+  pcc <- pc[match(common, pc_n)]
+  Ac  <- A[, match(common, A_n), drop = FALSE]
+ 
+  pc_anom <- pcc - mean(pcc)
+  Ad  <- Ac - rowMeans(Ac, na.rm = TRUE)
+  cov <- rowMeans(Ad * rep(pc_anom, each = nrow(Ac)), na.rm = TRUE)
+  v   <- mean(pc_anom^2)
+  out <- cov / v
+  out[is.nan(out)] <- NA
+  out
+}
+
+#3x3 spatial running mean on a lat/long matrix
+roll_2d <- function(Fm, min_n = 4) {
+  nx <- nrow(Fm); ny <- ncol(Fm)
+  S <- matrix(0, nx, ny); N <- matrix(0, nx, ny)
+  for (dx in -1:1) for (dy in -1:1) {
+    xs <- seq_len(nx) + dx; ys <- seq_len(ny) + dy
+    okx <- xs >= 1 & xs <= nx
+    oky <- ys >= 1 & ys <= ny
+    X <- matrix(NA_real_, nx, ny)
+    X[okx, oky] <- Fm[xs[okx], ys[oky]]
+    v <- !is.na(X)
+    X[!v] <- 0
+    S <- S + X
+    N <- N + v
+  }
+  out <- S / N
+  out[N < min_n] <- NA
+  out
+}
+
+#Convert a netCDF time axis to Date
+nc_time_to_date <- function(nc, varname = "time") {
+  tv    <- ncvar_get(nc, varname)
+  units <- ncatt_get(nc, varname, "units")$value
+  origin <- as.Date(sub(".*since\\s+([0-9]+-[0-9]+-[0-9]+).*", "\\1", units))
+  if (grepl("^days", units)) {
+    origin + tv
+  } else if (grepl("^hours", units)) {
+    origin + tv / 24
+  } else {
+    stop("Unhandled time units: ", units)
+  }
+}
+
+# Download with auto-resume (wget/curl) and verify completeness
+ensure_dataset <- function(filename, url) {
+  min_size_bytes <- 85 * 1024^2   # full ERSSTv6 file is ~90.1 MB
+ 
+  if (file.exists(filename) && file.size(filename) >= min_size_bytes) {
+    message(sprintf("Using verified local file: %s (%.1f MB)",
+                    filename, file.size(filename) / 1024^2))
+    return(invisible(TRUE))
+  }
+ 
+  message(sprintf("Dataset missing or incomplete (<85 MB). Downloading %s from NOAA PSL...",
+                  filename))
+ 
+  if (nzchar(Sys.which("wget"))) {
+    status <- system2("wget", c("-c", "--tries=10", "--timeout=30",
+                                shQuote(url), "-O", shQuote(filename)))
+    if (status != 0) stop("wget failed with status ", status)
+  } else if (nzchar(Sys.which("curl"))) {
+    status <- system2("curl", c("-C", "-", "--retry", "10", "--retry-delay", "3",
+                                "-L", "-o", shQuote(filename), shQuote(url)))
+    if (status != 0) stop("curl failed with status ", status)
+  } else {
+    # Fallback: base R downloader with retries (no resume)
+    options(timeout = max(600, getOption("timeout")))
+    for (attempt in 1:5) {
+      ok <- tryCatch({
+        download.file(url, filename, mode = "wb", quiet = FALSE)
+        TRUE
+      }, error = function(e) {
+        message(sprintf("Attempt %d/5 interrupted (%s). Retrying...",
+                        attempt, conditionMessage(e)))
+        Sys.sleep(2)
+        FALSE
+      })
+      if (ok) break
+    }
+  }
+ 
+  if (!file.exists(filename) || file.size(filename) < min_size_bytes) {
+    stop("Download incomplete. Please re-run to complete the download.")
+  }
+  invisible(TRUE)
+}
+```
+
+# 1. Read Data
+
+Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
+
+```{r}
+local_nc_file <- "../../../data/unformatted/sst.mnmean.nc"
+file_url <- "https://psl.noaa.gov/thredds/fileServer/Datasets/noaa.ersst.v6/sst.mnmean.nc"
+ 
+ensure_dataset(local_nc_file, file_url)
+ 
+nc  <- nc_open(local_nc_file)
+lon <- as.numeric(ncvar_get(nc, "lon"))
+lat <- as.numeric(ncvar_get(nc, "lat"))
+time_all <- nc_time_to_date(nc, "time")
+sst <- ncvar_get(nc, "sst")
+
+# Make sure the array is [lon, lat, time]
+dnames <- vapply(nc$var$sst$dim, function(d) d$name, character(1))
+sst <- aperm(sst, match(c("lon", "lat", "time"), dnames))
+nc_close(nc)
+ 
+# Ensure latitude is ascending
+if (lat[1] > lat[length(lat)]) {
+  sst <- sst[, rev(seq_along(lat)), , drop = FALSE]
+  lat <- rev(lat)
+}
+ 
+# Full 1950-2025 record
+keep <- time_all >= as.Date("1950-01-01") & time_all <= as.Date("2025-12-31")
+sst  <- sst[, , keep, drop = FALSE]
+time_sel <- time_all[keep]
+ 
+nlon <- length(lon); nlat <- length(lat); nt <- length(time_sel)
+M <- matrix(sst, nrow = nlon * nlat, ncol = nt)   # [cell, time]
+rm(sst)
+ 
+cell_lon <- rep(lon, times = nlat)
+cell_lat <- rep(lat, each  = nlon)
+months   <- as.integer(format(time_sel, "%m"))
+
+# A. Monthly anomalies + 3-month running mean
+sst_atl_anom_raw <- roll_time(calc_anomalies(M, months), k = 3)
+rm(M)
+ 
+# B. Detrend toggle
+DETREND <- FALSE
+ 
+if (DETREND) {
+  message("Detrending SST data...")
+  sst_atl_anom <- detrend_dim(sst_atl_anom_raw)
+} else {
+  message("Skipping detrending...")
+  sst_atl_anom <- sst_atl_anom_raw
+}
+rm(sst_atl_anom_raw)
+ 
+# C. North Atlantic domain (0-60N, 280-358E)
+sub <- which(cell_lat >= 0 & cell_lat <= 60 & cell_lon >= 280 & cell_lon <= 358)
+sub_lat <- cell_lat[sub]
+sub_lon <- cell_lon[sub]
+ 
+# Exclude non-Atlantic water bodies inside the bounding box
+is_pacific <- sub_lat < 10 & sub_lon <= 284
+is_med     <- sub_lat >= 30 & sub_lat <= 46 & sub_lon >= 355
+is_hudson  <- sub_lat >= 50 & sub_lon <= 282
+ 
+# Keep only ocean points with continuous records across time
+is_valid_ocean <- rowSums(is.na(sst_atl_anom[sub, , drop = FALSE])) == 0
+ocean_mask <- is_valid_ocean & !is_pacific & !is_med & !is_hudson
+```
+
+# 2. Clean data and create time series csv
+
+Transform the data to fit the IEA data format.
+For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
+
+```{r}
+# Compute EOFs via SVD (1950-2025 baseline)
+message("Computing EOFs via native SVD...")
+ 
+TARGET_MODE <- 2
+mode_idx <- TARGET_MODE
+ 
+ocean_cells <- sub[ocean_mask]
+X <- t(sst_atl_anom[ocean_cells, , drop = FALSE])   # [time, ocean_cells]
+ 
+# Area weighting by sqrt(cos(latitude))
+weights <- sqrt(cos(cell_lat[ocean_cells] * pi / 180))
+X_weighted <- X * rep(weights, each = nrow(X))
+ 
+# SVD (note: input is NOT re-centered, as in the Python code)
+sv <- svd(X_weighted, nu = min(dim(X_weighted)), nv = 0)
+ 
+# Explained variance and normalized PC (unit standard deviation)
+n_t <- nrow(X)
+eigenvalues <- sv$d^2 / (n_t - 1)
+sst_var <- eigenvalues / sum(eigenvalues) * 100
+ 
+sst_pc <- sv$u[, mode_idx] * sqrt(n_t - 1)
+ 
+# Spatial regression across the full domain -> [lon, lat] matrix
+reg_vec <- regress_spatial(sst_pc, time_sel, sst_atl_anom, time_sel)
+sst_reg_eof <- matrix(reg_vec, nrow = nlon, ncol = nlat)
+ 
+# --- Automatic polarity check ---
+trop_idx <- outer(lon >= 300 & lon <= 340, lat >= 10 & lat <= 20, "&")
+trop_atl_mean <- mean(sst_reg_eof[trop_idx], na.rm = TRUE)
+ 
+if (trop_atl_mean < 0) {
+  message(sprintf("Tropical Atlantic mean is %.4f (Negative). Flipping EOF%d polarity.",
+                  trop_atl_mean, TARGET_MODE))
+  sst_pc <- sst_pc * -1
+  sst_reg_eof <- sst_reg_eof * -1
+} else {
+  message(sprintf("Tropical Atlantic mean is %.4f (Positive). Polarity is retained.",
+                  trop_atl_mean))
+}
+ 
+# --- Cleaning: spatial smoothing & precision Pacific mask ---
+# 1. 3x3 smoothing, min 4 valid points
+sst_reg_eof <- roll_2d(sst_reg_eof, min_n = 4)
+ 
+# 2. Remove Pacific SST strictly west of the Americas
+LON <- matrix(rep(lon, times = nlat), nlon, nlat)
+LAT <- matrix(rep(lat, each  = nlon), nlon, nlat)
+ 
+is_pacific_plot <- LON >= 240 & (
+  (LAT <= -18 & LON <= 290) |
+  (LAT > -18 & LAT <= -4  & LON <= 285) |
+  (LAT > -4  & LAT <= 6   & LON <= 282) |
+  (LAT > 6   & LAT <= 9   & LON <= 279) |
+  (LAT > 9   & LAT <= 15  & LON <= 273) |
+  (LAT > 15  & LAT <= 32  & LON <= 260)
+)
+sst_reg_eof[is_pacific_plot] <- NA
+
+#Plotting Prep MAP
+
+# Lon is converted to -180..180, so add_cyclic_point() isn't needed here
+LON180 <- ifelse(LON > 180, LON - 360, LON)
+plot_df <- data.frame(
+  lon   = as.vector(LON180),
+  lat   = as.vector(LAT),
+  value = as.vector(sst_reg_eof) * 10
+)
+plot_df <- plot_df[plot_df$lon >= -105 & plot_df$lon <= 25, ]
+ 
+# contourf(..., extend = "both"): clamp so out-of-range values land in end bins
+plot_df$value <- pmin(pmax(plot_df$value, -4.5), 4.5)
+ 
+land <- ne_countries(scale = "medium", returnclass = "sf")
+ 
+lon_lab <- function(x) {
+  ifelse(x == 0, "0\u00b0", sprintf("%d\u00b0%s", abs(x), ifelse(x < 0, "W", "E")))
+}
+lat_lab <- function(y) {
+  ifelse(y == 0, "0\u00b0", sprintf("%d\u00b0%s", abs(y), ifelse(y < 0, "S", "N")))
+}
+
+#Plotting Prep Timeseries
+SATELLITE_START <- as.Date("1990-01-01")
+x_end <- as.Date("2025-12-31")
+pc_df <- data.frame(time = time_sel, pc = sst_pc)
+pc_df <- pc_df[pc_df$time >= SATELLITE_START, ]
+
+pc_df$time<-format(pc_df$time, "%Y-%m") #BT changed to year month for data prep function
+
+ 
+xticks_years <- as.Date(sprintf("%d-01-01", seq(1990, 2025, by = 5)))
+```
+
+
+```{r}
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c("NA Tripole SSTA")
+unit_names = c("Principal Component")
+extent_names = c("North Atlantic")
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(pc_df, indicator_names, unit_names, extent_names)
+```
+
+# 3. Save Formatted data as csv
+
+This will save your data to the appropriate folder.
+```{r}
+write.csv(formatted_data, file = csv_filename, row.names = F)
+```
+
+
+# 4. Create Data_Prep object
+
+Please use your formatted csv to create a "data_prep" object.
+For more info on the data_prep function see the vignette linked above.
+```{r}
+data_obj<-IEAnalyzeR::data_prep(csv_filename)
+
+# data_obj<-IEAnalyzeR::data_prep(formatted_data)
+```
+
+# 5. Save Formatted data_prep object
+
+This will save your data to the appropriate folder.
+```{r}
+saveRDS(data_obj, file = object_filename)
+```
+
+# 6. Preview Plot
+
+Use the IEAnalyzeR plotting function to preview the data.
+This will not necessarily be the final figure used in reports.
+For more info on the plot_fn_obj function go HERE
+
+```{r}
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = T, fig.width = 6)
+```
+
+# 7. Save plot
+
+This will save the plot to the correct folder.
+Adjust height & width using (height=, width=, unit="in") if needed.
+
+```{r}
+ggsave(filename = plot_filename,height=3, width=6, unit="in")
+```
+
+# Spatial Plotting
+
+```{r}
+root_name_contour<- "SST_Tripole_contour"
+
+csv_filename_contour<-here(paste0("data/intermediate", root_name_contour, ".csv")) 
+plot_filename_contour<-here(paste0("figures/plots/", root_name_contour, "_plot.png"))
+```
+
+```{r}
+#Save files
+write.csv(plot_df, file = csv_filename_contour, row.names = F)
+
+```
+
+```{r}
+# #Copy of Sang-Ki plot
+# ggplot() +
+#   geom_contour_filled(data = plot_df,
+#                       aes(lon, lat, z = value, fill = after_stat(level_mid)),
+#                       breaks = seq(-5, 5, 1)) +
+#   geom_contour(data = plot_df, aes(lon, lat, z = value),
+#                breaks = seq(-4, 4, 1), colour = "black", linewidth = 0.25) +
+#   geom_contour(data = plot_df, aes(lon, lat, z = value),
+#                breaks = 0, colour = "black", linewidth = 0.4) +
+#   geom_sf(data = land, fill = "white", colour = "gray50", linewidth = 0.3) +  # land above contours
+#   annotate("segment", x = -100, xend = 20, y = 0, yend = 0, colour = "black") +
+#   scale_fill_stepsn(colours = rev(brewer.pal(11, "RdBu")),
+#                     breaks = seq(-4, 4, 1), limits = c(-5, 5), name = NULL,
+#                     guide = guide_coloursteps(even.steps = TRUE, show.limits = FALSE)) +
+#   scale_x_continuous(breaks = seq(-100, 20, 40), labels = lon_lab) +
+#   scale_y_continuous(breaks = seq(-30, 90, 30),  labels = lat_lab) +
+#   coord_sf(xlim = c(-100, 20), ylim = c(-30, 90), expand = FALSE) +
+#   labs(title = sprintf("(a) EOF%d", TARGET_MODE), x = NULL, y = NULL) +
+#   theme_bw(base_size = 11) +
+#   theme(panel.grid = element_blank(),
+#         plot.title = element_text(face = "bold", hjust = 0),
+#         legend.position = "bottom",
+#         legend.key.width = unit(2.5, "cm"),
+#         legend.key.height = unit(0.3, "cm"))
+
+#Cut to NA domain
+ggplot() +
+  geom_contour_filled(data = plot_df,
+                      aes(lon, lat, z = value, fill = after_stat(level_mid)),
+                      breaks = seq(-5, 5, 1)) +
+  geom_contour(data = plot_df, aes(lon, lat, z = value),
+               breaks = seq(-4, 4, 1), colour = "black", linewidth = 0.25) +
+  geom_contour(data = plot_df, aes(lon, lat, z = value),
+               breaks = 0, colour = "black", linewidth = 0.4) +
+  geom_sf(data = land, fill = "gray80", colour = "gray50", linewidth = 0.3) +  # land above contours
+  annotate("segment", x = -100, xend = 20, y = 0, yend = 0, colour = "black") +
+  scale_fill_stepsn(colours = rev(brewer.pal(11, "RdBu")),
+                    breaks = seq(-4, 4, 1), limits = c(-5, 5), name = NULL,
+                    guide = guide_coloursteps(even.steps = TRUE, show.limits = FALSE)) +
+  scale_x_continuous(breaks = seq(-100, 0, 20), labels = lon_lab) +
+  scale_y_continuous(breaks = seq(0, 60, 20),  labels = lat_lab) +
+  coord_sf(xlim = c(-100, 0), ylim = c(0, 60), expand = FALSE) +
+  labs(title = "North Atlantic SST Tripole (EOF2)", x = NULL, y = NULL) +
+  theme_bw(base_size = 11) +
+  theme(panel.grid = element_blank(),
+        plot.title = element_text(face = "bold", hjust = 0),
+        legend.position = "bottom",
+        legend.key.width = unit(1.5, "cm"),
+        legend.key.height = unit(0.3, "cm"))
+```
+
+```{r}
+#Save map figure
+ggsave(filename = plot_filename_contour,height=, width=, unit="in")
+
+```
+
