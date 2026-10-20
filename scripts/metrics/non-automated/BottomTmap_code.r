@@ -29,7 +29,7 @@ import pandas as pd
 # CONFIGURATION
 # ==========================================
 
-gebco_file = 'data/intermediate/gebco_2026.nc'
+bathy_file = 'data/intermediate/gulf_bathymetry.csv'
 map_extent = [-99, -80, 18, 31]
 
 depth_min = -500
@@ -48,33 +48,42 @@ sectors = {
 }
 
 # ==========================================
-# LOAD & PROCESS GEBCO
+# LOAD & PROCESS MARMAP BATHYMETRY
 # ==========================================
 
 print("Loading bathymetry...")
-gebco = xr.open_dataset(gebco_file)
 
-# Standardize coordinate naming
-if "longitude" in gebco.coords:
-    gebco = gebco.rename({"longitude": "lon", "latitude": "lat"})
+# Read marmap bathymetry
+bathy_df = pd.read_csv(bathy_file)
 
-# Crop to bounding box
-gebco_sub = gebco.sel(
-    lon=slice(map_extent[0], map_extent[1]),
-    lat=slice(map_extent[2], map_extent[3])
+# Standardize column names
+bathy_df.columns = ["lon", "lat", "elevation"]
+
+# Crop to map extent
+bathy_df = bathy_df[
+    (bathy_df["lon"] >= map_extent[0]) &
+    (bathy_df["lon"] <= map_extent[1]) &
+    (bathy_df["lat"] >= map_extent[2]) &
+    (bathy_df["lat"] <= map_extent[3])
+].copy()
+
+# Build a properly ordered 2-D bathymetry grid
+bathy_grid = (
+    bathy_df
+    .pivot(
+        index="lat",
+        columns="lon",
+        values="elevation"
+    )
+    .sort_index()
+    .sort_index(axis=1)
 )
 
-# Coarsen resolution slightly to optimize memory transfer to R
-gebco_sub = gebco_sub.coarsen(lon=4, lat=4, boundary="trim").mean()
+lon = bathy_grid.columns.values
+lat = bathy_grid.index.values
 
-depth = gebco_sub["elevation"]
-lon = depth.lon.values
-lat = depth.lat.values
 lon_2d, lat_2d = np.meshgrid(lon, lat)
-depth_values = depth.values
-
-# Convert bathymetry grid to DataFrame for ggplot contouring
-bathy_df = depth.to_dataframe().reset_index()
+depth_values = bathy_grid.values
 
 # Mask sectors within depth corridor
 sector_records = []
@@ -98,6 +107,7 @@ for name, cfg in sectors.items():
         })
 
 sectors_df = pd.DataFrame(sector_records)
+
 print("Processing complete.")
 )")
 
