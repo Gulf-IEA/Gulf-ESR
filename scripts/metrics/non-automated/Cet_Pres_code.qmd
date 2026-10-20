@@ -1,0 +1,141 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+File created on 2026-07-23
+
+# 0. Setup
+
+Add any packages that are needed for analysis in this code chunk.
+
+```{r packages}
+library(IEAnalyzeR)
+library(here)
+library(ggplot2)
+
+library(dplyr)
+library(tidyr)
+```
+
+File Naming Setup.
+!! Auto generated-Do Not Change !!
+
+```{r}
+
+root_name<- "Cet_Pres"
+
+csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")) 
+object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
+plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
+
+
+```
+
+# 1. Read Data
+
+Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
+
+
+Data pulled from https://repository.library.noaa.gov/view/noaa/26505 & https://repository.library.noaa.gov/view/noaa/43721 manually.
+
+MM - Sperm Whale, pantropical spotted dolphins
+CC - All cats, think about how to display it
+
+```{r}
+## MM Data
+mm_df<-data.frame(time=c(2003,2004,2009,2017,2018),
+           sperm_whale=c(2542,1686,2096,1078,1307),
+           spot_dolphin=c(72901,78878,84047,27362,58725))
+
+cc_df<-data.frame(time=c(2011.5, 2017.5),
+                  east_coast=c(12180,16407),
+                  north_coast=c(7569,11543),
+                  west_coast=c(19381,20759),
+                  cont_shelf=c(48060,63280),
+                  mss=c(1104,1265),
+                  mrd=c(332,1446),
+                  atl_spot=c(12274,15929))
+
+bot_long<-pivot_longer(cc_df[,-8],cols = -c("time"))
+bot_sum<-bot_long %>% group_by(time) %>% summarise(all_bot=sum(value))
+
+
+cc_sum<-left_join(bot_sum, cc_df[,c(1,8)])
+
+#Join both
+mm_long<-pivot_longer(mm_df, cols = c(-time))
+ccsum_long<-pivot_longer(cc_sum, cols = c(-time))
+
+all_long<-rbind(mm_long, ccsum_long)
+comb_df<-pivot_wider(all_long, names_from = "name", values_from = "value")
+
+
+```
+
+# 2. Clean data and create time series csv
+
+Transform the data to fit the IEA data format.
+For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
+
+```{r}
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = c("Sperm Whale", "Pantropical Spotted Dolphin", "Bottlenose Dolphin", "Atlantic Spotted Dolphin")
+unit_names = c(rep("Abundance", 4))
+extent_names = c(rep("Large Vessel Cruise Survey", 2), rep("Aerial Survey", 2))
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(comb_df, indicator_names, unit_names, extent_names)
+```
+
+# 3. Save Formatted data as csv
+
+This will save your data to the appropriate folder.
+```{r}
+write.csv(formatted_data, file = csv_filename, row.names = F)
+```
+
+
+# 4. Create Data_Prep object
+
+Please use your formatted csv to create a "data_prep" object.
+For more info on the data_prep function see the vignette linked above.
+```{r}
+data_obj<-IEAnalyzeR::data_prep(csv_filename, trends=F)
+```
+
+# 5. Save Formatted data_prep object
+
+This will save your data to the appropriate folder.
+```{r}
+saveRDS(data_obj, file = object_filename)
+```
+
+# 6. Preview Plot
+
+Use the IEAnalyzeR plotting function to preview the data.
+This will not necessarily be the final figure used in reports.
+For more info on the plot_fn_obj function go HERE
+
+```{r}
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = F, pts = T,
+                        ylab_sublabel = c("indicator", "extent"),
+                        manual_ylab = "Abundance",
+                        manual_title = "Cetacean Presence")
+
+```
+
+# 7. Save plot
+
+This will save the plot to the correct folder.
+Adjust height & width using (height=, width=, unit="in") if needed.
+
+```{r}
+ggsave(filename = plot_filename, height = 5, unit="in")
+```

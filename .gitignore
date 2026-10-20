@@ -18,5 +18,6 @@ keys.api
 # Ignore your local scratchpad/testing folder completely
 sandbox/
 
-# ignore confidential
-/data/unformatted/confidential/
+# ignore confidential unformated data folder
+data/unformatted/confidential/
+
