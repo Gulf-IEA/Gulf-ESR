@@ -99,33 +99,6 @@
       "RemoteUrl": "https://github.com/Gulf-IEA/IEAnalyzeR",
       "RemoteSha": "6286a908985f6278f5eedc3c72d537de5b3cff7d"
     },
-    "ISOcodes": {
-      "Package": "ISOcodes",
-      "Version": "2025.05.18",
-      "Source": "Repository",
-      "Encoding": "UTF-8",
-      "Title": "Selected ISO Codes",
-      "Authors@R": "c(person(\"Christian\", \"Buchta\", role = \"aut\"), person(\"Kurt\", \"Hornik\", role = c(\"aut\", \"cre\"), email = \"Kurt.Hornik@R-project.org\", comment = c(ORCID = \"0000-0003-4198-9911\")))",
-      "Description": "ISO language, territory, currency, script and character codes. Provides ISO 639 language codes, ISO 3166 territory codes, ISO 4217 currency codes, ISO 15924 script codes, and the ISO 8859 character codes as well as the UN M.49 area codes.",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ],
-      "License": "GPL-2",
-      "LazyData": "yes",
-      "NeedsCompilation": "no",
-      "Author": "Christian Buchta [aut], Kurt Hornik [aut, cre] (ORCID: <https://orcid.org/0000-0003-4198-9911>)",
-      "Maintainer": "Kurt Hornik <Kurt.Hornik@R-project.org>",
-      "Repository": "CRAN"
-      "Author": "Brittany Troast [aut, cre], Carissa Gervasi [aut] (<https://orcid.org/0000-0001-8049-7069>), Brendan Turley [aut], Willem Klajbor [aut]",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "IEAnalyzeR",
-      "RemoteUsername": "Gulf-IEA",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "6286a908985f6278f5eedc3c72d537de5b3cff7d",
-      "NeedsCompilation": "no",
-      "Author": "Brittany Troast [aut, cre], Carissa Gervasi [aut] (<https://orcid.org/0000-0001-8049-7069>), Brendan Turley [aut], Willem Klajbor [aut]"
-    },
     "KernSmooth": {
       "Package": "KernSmooth",
       "Version": "2.23-26",
@@ -5256,10 +5229,6 @@
       "BugReports": "https://github.com/r-lib/rlang/issues",
       "Config/build/compilation-database": "true",
       "Config/Needs/website": "dplyr, tidyverse/tidytemplate",
-      "Config/roxygen2/version": "8.0.0",
-      "Config/testthat/edition": "3",
-      "Config/testthat/parallel": "true",
-      "Encoding": "UTF-8",
       "NeedsCompilation": "yes",
       "Author": "Lionel Henry [aut, cre], Hadley Wickham [aut], mikefc [cph] (Hash implementation based on Mike's xxhashlite), Yann Collet [cph] (Author of the embedded xxHash library), Posit, PBC [cph, fnd]",
       "Maintainer": "Lionel Henry <lionel@posit.co>",
@@ -6353,12 +6322,11 @@
       "Config/testthat/edition": "3",
       "Config/testthat/parallel": "true",
       "Encoding": "UTF-8",
-      "LazyData": "true",
-      "X-schema.org-keywords": "r, terra, ggplot-extension, r-spatial, rspatial, cran, cran-r, r-package, rstats, rstats-package",
-      "NeedsCompilation": "no",
-      "Author": "Diego Hernangómez [aut, cre, cph] (ORCID: <https://orcid.org/0000-0001-8457-4658>), Dewey Dunnington [ctb] (ORCID: <https://orcid.org/0000-0002-9415-4582>, for ggspatial code), ggplot2 authors [cph] (for contour code), Andrea Manica [ctb] (ORCID: <https://orcid.org/0000-0003-1895-450X>)",
-      "Maintainer": "Diego Hernangómez <diego.hernangomezherrero@gmail.com>",
-      "Repository": "CRAN"
+      "RoxygenNote": "7.3.0.9000",
+      "NeedsCompilation": "yes",
+      "Author": "Lionel Henry [aut, cre], Hadley Wickham [aut], Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Lionel Henry <lionel@posit.co>",
+      "Repository": "https://packagemanager.posit.co/cran/latest"
     },
     "tidyverse": {
       "Package": "tidyverse",
