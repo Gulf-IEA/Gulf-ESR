@@ -6,14 +6,16 @@
 # If this is your first time running this script on this system, you must install 
 # the R-to-Python bridge engine and its Python dependencies. 
 # Highlight and run (Ctrl+Enter) the two lines below MANUALLY:
-# renv::install("reticulate")
-# reticulate::py_install(c("xarray", "numpy", "netcdf4", "pandas"))
+renv::install("reticulate")
+#reticulate::py_install(c("xarray", "numpy", "netcdf4", "pandas", "scipy"))
 
 library(IEAnalyzeR)
 library(here)
 library(ggplot2)
 library(reticulate)
-reticulate::py_require("scipy")
+library(marmap)
+
+reticulate::py_require(c("xarray", "numpy", "netcdf4", "pandas", "scipy", "copernicusmarine"))
 
 # File Naming Setup.
 # !! Auto generated-Do Not Change !!
@@ -26,22 +28,67 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 # ----------------------------------------------------
 # ### 0. Process data in Python ####
 
+bathy <- marmap::getNOAA.bathy(
+  lon1 = -98,
+  lon2 = -82,
+  lat1 = 24,
+  lat2 = 32,
+  resolution = 10,
+  keep = TRUE,
+  path = "data/intermediate"
+)
+
+# Convert marmap bathymetry to a simple CSV for Python
+bathy_df <- marmap::as.xyz(bathy)
+
+write.csv(
+  bathy_df,
+  "data/intermediate/gulf_bathymetry.csv",
+  row.names = FALSE
+)
+
+# Copernicus Marine credentials
+copernicus_username <- readline("Copernicus Marine username: ")
+copernicus_password <- readline("Copernicus Marine password: ")
+
 py_run_string(R"(
 import os
 import numpy as np
 import xarray as xr
+import copernicusmarine
+
+
+copernicusmarine.subset(
+        dataset_id="cmems_mod_glo_phy_my_0.083deg_P1D-m",
+        variables=["bottomT"],
+        minimum_longitude=-97.5,
+        maximum_longitude=-82.5,
+        minimum_latitude=24,
+        maximum_latitude=31,
+        start_datetime="1993-01-01T00:00:00",
+        end_datetime="2026-05-26T00:00:00",
+        minimum_depth=0.49402499198913574,
+        maximum_depth=0.49402499198913574,
+        output_directory="data/intermediate",
+        username=r.copernicus_username,
+        password=r.copernicus_password
+    )
 
 
 # ==========================================
 # FILES
 # ==========================================
 
-gebco_file = ('data/intermediate/gebco_2026.nc')
+bathy_file = ('data/intermediate/gulf_bathymetry.csv')
 
 bt_file = ('data/intermediate/cmems_mod_glo_phy_my_0.083deg_P1D-m_bottomT_97.50W-82.50W_24.00N-31.00N_1993-01-01-2026-05-26.nc')
 
 start_date = "1993-01-01"
 end_date = "2025-12-31"
+
+ds_bt = xr.open_dataset(bt_file)
+
+bt = ds_bt["bottomT"].sel(time=slice(start_date, end_date))
 
 
 # ==========================================
@@ -78,29 +125,43 @@ depth_max = -70
 # LOAD
 # ==========================================
 
-print("Loading bottom temperature...")
-
-ds_bt = xr.open_dataset(bt_file)
-
-bt = ds_bt["bottomT"].sel(
-    time=slice(start_date,end_date)
-)
-
-
 print("Loading bathymetry...")
 
-gebco = xr.open_dataset(gebco_file)
+bathy = pd.read_csv(bathy_file)
 
-depth = gebco["elevation"].rename(
-    {"lon":"longitude",
-     "lat":"latitude"}
+bathy.columns = ["lon", "lat", "elevation"]
+
+bathy = bathy[
+    (bathy["lon"] >= -99) &
+    (bathy["lon"] <= -80) &
+    (bathy["lat"] >= 18) &
+    (bathy["lat"] <= 31)
+].copy()
+
+bathy_grid = (
+    bathy
+    .pivot(
+        index="lat",
+        columns="lon",
+        values="elevation"
+    )
+    .sort_index()
+    .sort_index(axis=1)
+)
+
+depth = xr.DataArray(
+    bathy_grid.values,
+    coords={
+        "latitude": bathy_grid.index.values,
+        "longitude": bathy_grid.columns.values
+    },
+    dims=["latitude", "longitude"]
 )
 
 depth_bt = depth.interp(
     longitude=bt.longitude,
     latitude=bt.latitude
 )
-
 
 # ==========================================
 # PROCESS

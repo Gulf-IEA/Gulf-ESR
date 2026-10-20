@@ -12,7 +12,7 @@ library(IEAnalyzeR)
 library(here)
 library(ggplot2)
 library(reticulate)
-reticulate::py_require("scipy")
+reticulate::py_require(c("xarray", "numpy", "netcdf4", "pandas","scipy"))
 
 # File Naming Setup.
 # !! Auto generated-Do Not Change !!
