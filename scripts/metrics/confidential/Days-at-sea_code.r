@@ -25,10 +25,11 @@ plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 # If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
 #   - Filename should use the syntax rootname_descriptivename
 
-### confidential Coastal Fisheries Logbook Data request an NDA on file
-setwd('~/CMP/data/cflp/')
-cflp <- readRDS('CFLPBlake.rds')
-names(cflp)
+### confidential Coastal Fisheries Logbook Data (NDA required)
+cflp_dir <- Sys.getenv("CFLP_DATA_DIR", unset = here("data", "confidential", "cflp"))
+cflp_file <- file.path(cflp_dir, "CFLPBlake.rds")
+if (!file.exists(cflp_file)) stop("Missing CFLP data file: ", cflp_file, call. = FALSE)
+cflp <- readRDS(cflp_file)
 cflp_gom <- subset(cflp, cflp$REGION == "GOM") # select only Gulf
 
 #----------------------------------------------------
