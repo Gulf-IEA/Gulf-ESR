@@ -12,8 +12,8 @@ library(readxl)
 root_name <- "ifq_metrics"
 
 csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv"))
-object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
-plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
+# object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
+# plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
 #----------------------------------------------------
 #### 1. Read Data ####
@@ -67,13 +67,63 @@ for(i in 16:19){
 # Non-CS Species Revenue  2  (SEFC)
 ### Ask Juan Agar
 
+### which rows?
+# quota, landings, entities holding share, active vessels, trips, days at sea, 
+# $$$ from CS spp (sefsc), $$$ from non-CS spp, $$$ non-CS spp non-CS trip,
+# cost recovery
+ifq_metrics <- dat[c(1:4,6:7,9:11,25),4:18] |> t() |> type.convert()
+ifq_metrics <- cbind(rownames(ifq_metrics) |> as.numeric(),
+                     ifq_metrics)
+rownames(ifq_metrics) <- NULL
+colnames(ifq_metrics) <- c("Year",
+                           "Quota allocated to CS (lbs)",
+                           "Aggregate Landings (lbs)",
+                           "Entities holding share",
+                           "Active vessels",
+                           "Trips",
+                           "Days at sea",
+                           "CS Spp Revenue (USD)",
+                           "Non-CS Spp Revenue (USD)",
+                           "Non-CS Spp Revenue from non-CS trips (USD)",
+                           "Cost recovery fee (USD)")
+
+
+### separate set of graphs for gini coefficients
+gini <- dat[c(15:19),4:18] |> t() |> type.convert()
+gini <- cbind(rownames(gini) |> as.numeric(),
+              gini)
+rownames(gini) <- NULL
+colnames(gini) <- c("Year",
+                 dat[15:19,1] |> unlist() |> as.vector())
+
+
+### combine into one data frame for plotting
+ifq_metrics <- merge(ifq_metrics, gini, by.x = "Year", by.y = "Year")
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("")
-unit_names = c("")
-extent_names = c("")
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(your_data, indicator_names, unit_names, extent_names)
+### IFQ metrics
+indicator_names = c("Quota allocated to CS (lbs)",
+                    "Aggregate Landings (lbs)",
+                    "Entities holding share",
+                    "Active vessels",
+                    "Trips",
+                    "Days at sea",
+                    "CS Spp Revenue (USD)",
+                    "Non-CS Spp Revenue (USD)",
+                    "Non-CS Spp Revenue from non-CS trips (USD)",
+                    "Cost recovery fee (USD)",
+                    'Red Grouper',
+                    'Gag',
+                    'SWG',
+                    'DWG',
+                    'TF')
+unit_names = c('lbs','lbs','Entities','Vessels','Trips','Days',
+               'USD','USD','USD','USD',
+               rep('Gini Coefficient',5))
+extent_names = rep('Gulf-wide',15)
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(ifq_metrics, indicator_names, unit_names, extent_names)
 
 
 #----------------------------------------------------
@@ -89,15 +139,51 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
-data_obj <- IEAnalyzeR::data_prep(csv_filename)
 
+### spliting the dataframe out to plot groups of plots
+
+quota_landings_obj <- IEAnalyzeR::data_prep(formatted_data[,c(1:3)])
+oth_metrics_obj <- IEAnalyzeR::data_prep(formatted_data[,c(1,4:7)])
+revenues_obj <- IEAnalyzeR::data_prep(formatted_data[,c(1,8:11)])
+gini_obj <- IEAnalyzeR::data_prep(formatted_data[,c(1,12:16)])
 
 #----------------------------------------------------
 #### 5. Save Formatted data_prep object ####
 
 #This will save your data to the appropriate folder.
   
-saveRDS(data_obj, file = object_filename)
+object_filename1 <- here(paste0("data/formatted/final_objects/", root_name, "_object1.rds"))
+object_filename2 <- here(paste0("data/formatted/final_objects/", root_name, "_object2.rds"))
+object_filename3 <- here(paste0("data/formatted/final_objects/", root_name, "_object3.rds"))
+object_filename4 <- here(paste0("data/formatted/final_objects/", root_name, "_object4.rds"))
+
+saveRDS(quota_landings_obj, file = object_filename1)
+saveRDS(oth_metrics_obj, file = object_filename2)
+saveRDS(revenues_obj, file = object_filename3)
+saveRDS(gini_obj, file = object_filename4)
+
+
+######################################################
+### the plots are broken into 4 separate groupings ###
+######################################################
+
+#----------------------------------------------------
+#### 6. Preview Plot ####
+# Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
+# For more info on the plot_fn_obj function go HERE
+
+IEAnalyzeR::plot_fn_obj(df_obj = quota_landings_obj, trend = TRUE, 
+                        sep_ylabs = T, manual_title = 'IFQ Quota and Landings',
+                        fig.width = 6, pts = T, pt_size = 2)
+
+#----------------------------------------------------
+#### 7. Save plot ####
+# This will save the plot to the correct folder.
+# Adjust height & width using (height=, width=, unit="in") if needed.
+
+plot_filename1 <- here(paste0("figures/plots/", root_name, "_plot1.png"))
+
+ggsave(filename = plot_filename1, height = 6, width = 8, unit = "in")
 
 
 #----------------------------------------------------
@@ -105,11 +191,55 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = oth_metrics_obj, trend = TRUE, 
+                        sep_ylabs = T, manual_title = 'IFQ Metrics',
+                        fig.width = 12, pts = T, pt_size = 2)
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+plot_filename2 <- here(paste0("figures/plots/", root_name, "_plot2.png"))
+
+ggsave(filename = plot_filename2, height = 5, width = 12, unit = "in")
+
+
+#----------------------------------------------------
+#### 6. Preview Plot ####
+# Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
+# For more info on the plot_fn_obj function go HERE
+
+IEAnalyzeR::plot_fn_obj(df_obj = revenues_obj, trend = TRUE, 
+                        sep_ylabs = T, manual_title = 'IFQ Revenues',
+                        fig.width = 12, pts = T, pt_size = 2)
+
+#----------------------------------------------------
+#### 7. Save plot ####
+# This will save the plot to the correct folder.
+# Adjust height & width using (height=, width=, unit="in") if needed.
+
+plot_filename3 <- here(paste0("figures/plots/", root_name, "_plot3.png"))
+
+ggsave(filename = plot_filename3, height = 5, width = 12, unit = "in")
+
+
+#----------------------------------------------------
+#### 6. Preview Plot ####
+# Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
+# For more info on the plot_fn_obj function go HERE
+
+IEAnalyzeR::plot_fn_obj(df_obj = gini_obj, trend = TRUE, 
+                        sep_ylabs = T, manual_title = 'IFQ Gini',
+                        fig.width = 12, pts = T, pt_size = 2)
+
+#----------------------------------------------------
+#### 7. Save plot ####
+# This will save the plot to the correct folder.
+# Adjust height & width using (height=, width=, unit="in") if needed.
+
+plot_filename4 <- here(paste0("figures/plots/", root_name, "_plot4.png"))
+
+ggsave(filename = plot_filename4, height = 7, width = 12, unit = "in")
+
+
