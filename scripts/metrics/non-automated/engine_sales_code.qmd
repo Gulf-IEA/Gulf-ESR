@@ -211,6 +211,582 @@ total_sales <- outboard_summary %>%
 head(total_sales)
 ```
 
+```{r}
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(ggplot2)
+
+# 1. Map each list element (HP category) to an estimated HP midpoint
+hp_midpoints <- c(
+  "Less than 4 hp"      = 2.5,
+  "4–9.9 hp"           = 7.0,
+  "10–29.9 hp"         = 20.0,
+  "30–49.9 hp"         = 40.0,
+  "50–74.9 hp"         = 62.5,
+  "75–99.9 hp"         = 87.5,
+  "100–149.9 hp"       = 125.0,
+  "150–199.9 hp"       = 175.0,
+  "200–249.9 hp"       = 225.0,
+  "250–299.9 hp"       = 275.0,
+  "300 hp and greater" = 350.0  # Conservative estimate for 300+ class
+)
+
+# 2. Combine list into a single long-format data frame
+hp_df_long <- imap_dfr(hp_data_list, ~ .x %>% 
+  mutate(hp_category = .y)) %>%
+  pivot_longer(
+    cols = c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida"),
+    names_to = "state",
+    values_to = "sales"
+  )
+
+# 3. Apply physics-based area relationship
+# Model Assumptions:
+# Speed (knots) approx = 3.5 * sqrt(HP)
+# Travel time budget = 2 hours one-way -> Radius (nm) = Speed * 2
+# Area (nm^2) = 0.5 * pi * Radius^2
+hp_analysis <- hp_df_long %>%
+  mutate(
+    hp_midpoint = hp_midpoints[hp_category],
+    
+    # Total HP sold in that bucket
+    total_hp_sold = sales * hp_midpoint,
+    
+    # Reachable Radius (nm) for a 2-hour trip at estimated cruising speed
+    est_speed_knots = 3.5 * sqrt(hp_midpoint),
+    est_radius_nm   = est_speed_knots * 2,
+    
+    # Accessible Area per engine (nm^2)
+    area_per_engine = 0.5 * pi * (est_radius_nm^2),
+    
+    # Total potential spatial footprint added by this batch of engines
+    total_potential_area = sales * area_per_engine
+  )
+
+# 4. Summarize by State and Year
+state_yearly_summary <- hp_analysis %>%
+  group_by(year, state) %>%
+  summarize(
+    total_engines_sold = sum(sales, na.rm = TRUE),
+    total_hp_added     = sum(total_hp_sold, na.rm = TRUE),
+    total_area_index   = sum(total_potential_area, na.rm = TRUE) / 1e6, # Millions nm^2
+    .groups = "drop"
+  )
+
+# 5. Summarize Gulf-wide totals per Year
+gulf_yearly_summary <- state_yearly_summary %>%
+  group_by(year) %>%
+  summarize(
+    total_hp_added   = sum(total_hp_added),
+    total_area_index = sum(total_area_index)
+  )
+```
+
+```{r}
+ggplot(state_yearly_summary, aes(x = year, y = total_area_index, color = state)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(
+    title = "Annual Potential Fishing Area Footprint Added by State",
+    subtitle = "Based on engine sales, estimated cruise speed (2-hr trip budget), and geometry",
+    x = "Year",
+    y = "Potential Area Index (Million nm²)",
+    color = "State"
+  ) +
+  theme_minimal()
+
+state_cum_summary <- state_yearly_summary %>%
+  group_by(state) %>%
+  arrange(year) %>%
+  mutate(cum_area_index = cumsum(total_area_index))
+
+ggplot(state_cum_summary, aes(x = year, y = cum_area_index, fill = state)) +
+  geom_area(alpha = 0.8) +
+  labs(
+    title = "Cumulative Added Potential Offshore Fishing Footprint (2011–Present)",
+    x = "Year",
+    y = "Cumulative Area Index (Million nm²)",
+    fill = "State"
+  ) +
+  theme_minimal()
+```
+```{r}
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(ggplot2)
+
+# --- 1. Load Midpoints & Calculate Yearly Added Area (from previous step) ---
+hp_midpoints <- c(
+  "Less than 4 hp"      = 2.5,
+  "4–9.9 hp"           = 7.0,
+  "10–29.9 hp"         = 20.0,
+  "30–49.9 hp"         = 40.0,
+  "50–74.9 hp"         = 62.5,
+  "75–99.9 hp"         = 87.5,
+  "100–149.9 hp"       = 125.0,
+  "150–199.9 hp"       = 175.0,
+  "200–249.9 hp"       = 225.0,
+  "250–299.9 hp"       = 275.0,
+  "300 hp and greater" = 350.0
+)
+
+# Parse data and compute yearly added area per state
+hp_yearly_added <- imap_dfr(hp_data_list, ~ .x %>% mutate(hp_category = .y)) %>%
+  pivot_longer(cols = c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida"),
+               names_to = "state", values_to = "sales") %>%
+  mutate(
+    hp_midpoint = hp_midpoints[hp_category],
+    est_speed_knots = 3.5 * sqrt(hp_midpoint),
+    est_radius_nm   = est_speed_knots * 2,
+    area_per_engine = 0.5 * pi * (est_radius_nm^2),
+    added_area      = sales * area_per_engine / 1e6 # Millions nm^2
+  ) %>%
+  group_by(year, state) %>%
+  summarize(added_area = sum(added_area, na.rm = TRUE), .groups = "drop")
+
+# --- 2. Calculate Active Fleet Area Footprint with Decay ---
+# Annual survival rate (e.g., 90% active year-over-year, 10% attrition)
+annual_survival_rate <- 0.90 
+
+calculate_active_fleet <- function(df, survival_rate = 0.90) {
+  df <- df %>% arrange(year)
+  years <- unique(df$year)
+  states <- unique(df$state)
+  
+  results <- list()
+  
+  for (s in states) {
+    state_data <- df %>% filter(state == s)
+    active_area <- numeric(nrow(state_data))
+    
+    current_stock <- 0
+    for (i in seq_along(state_data$year)) {
+      # Current active stock = remaining old stock * survival_rate + new engines added
+      current_stock <- (current_stock * survival_rate) + state_data$added_area[i]
+      active_area[i] <- current_stock
+    }
+    
+    state_data$active_area_index <- active_area
+    results[[s]] <- state_data
+  }
+  
+  bind_rows(results)
+}
+
+active_fleet_summary <- calculate_active_fleet(hp_yearly_added, survival_rate = 0.90)
+```
+
+```{r}
+# Plot active fleet capacity over time by state
+ggplot(active_fleet_summary, aes(x = year, y = active_area_index, color = state)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(
+    title = "Estimated Active Offshore Area Footprint (10% Annual Attrition Rate)",
+    subtitle = "Accounts for engine retirement/decommissioning over time",
+    x = "Year",
+    y = "Active Footprint Index (Million nm²)",
+    color = "State"
+  ) +
+  theme_minimal()
+```
+```{r}
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(ggplot2)
+
+# 1. Map each list element (HP category) to an estimated HP midpoint
+hp_midpoints <- c(
+  "Less than 4 hp"      = 2.5,
+  "4–9.9 hp"           = 7.0,
+  "10–29.9 hp"         = 20.0,
+  "30–49.9 hp"         = 40.0,
+  "50–74.9 hp"         = 62.5,
+  "75–99.9 hp"         = 87.5,
+  "100–149.9 hp"       = 125.0,
+  "150–199.9 hp"       = 175.0,
+  "200–249.9 hp"       = 225.0,
+  "250–299.9 hp"       = 275.0,
+  "300 hp and greater" = 350.0
+)
+
+# 2. Combine list into long format & apply physics-based area calculation
+hp_df_long <- imap_dfr(hp_data_list, ~ .x %>% mutate(hp_category = .y)) %>%
+  pivot_longer(
+    cols = c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida"),
+    names_to = "state",
+    values_to = "sales"
+  ) %>%
+  mutate(
+    # Apply 50/50 Florida split: Allocate 50% of FL sales to the Gulf Coast
+    gulf_sales = if_else(state == "Florida", sales * 0.50, sales),
+    
+    # Physics & Range Model
+    hp_midpoint     = hp_midpoints[hp_category],
+    est_speed_knots = 3.5 * sqrt(hp_midpoint),
+    est_radius_nm   = est_speed_knots * 2,         # 2-hour travel radius
+    area_per_engine = 0.5 * pi * (est_radius_nm^2), # Semi-circle accessible area (nm^2)
+    
+    # Yearly Gulf area added by category
+    added_gulf_area = gulf_sales * area_per_engine / 1e6 # Millions nm^2
+  )
+
+# 3. Aggregate yearly added area per state (Gulf Coast only)
+yearly_added_by_state <- hp_df_long %>%
+  group_by(year, state) %>%
+  summarize(
+    gulf_sales_total = sum(gulf_sales, na.rm = TRUE),
+    added_area_index = sum(added_gulf_area, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# 4. Apply 10% Annual Engine Attrition / Survival Model (90% survival rate)
+calculate_active_gulf_fleet <- function(df, survival_rate = 0.90) {
+  states <- unique(df$state)
+  results <- list()
+  
+  for (s in states) {
+    state_data <- df %>% filter(state == s) %>% arrange(year)
+    active_area <- numeric(nrow(state_data))
+    
+    current_stock <- 0
+    for (i in seq_along(state_data$year)) {
+      # Current active stock = (previous stock * survival_rate) + new engines added
+      current_stock <- (current_stock * survival_rate) + state_data$added_area_index[i]
+      active_area[i] <- current_stock
+    }
+    
+    state_data$active_area_index <- active_area
+    results[[s]] <- state_data
+  }
+  
+  bind_rows(results)
+}
+
+# Run active fleet model
+active_gulf_fleet <- calculate_active_gulf_fleet(yearly_added_by_state, survival_rate = 0.90)
+
+# Optional: Relabel Florida for clarity in plots
+active_gulf_fleet <- active_gulf_fleet %>%
+  mutate(state_label = if_else(state == "Florida", "Florida (50% Gulf)", state))
+```
+
+```{r}
+ggplot(active_gulf_fleet, aes(x = year, y = active_area_index, color = state_label)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(
+    title = "Estimated Active Gulf Offshore Area Footprint by State",
+    subtitle = "Includes 50/50 Florida Gulf split and 10% annual engine attrition rate",
+    x = "Year",
+    y = "Active Footprint Index (Million nm²)",
+    color = "State / Coast"
+  ) +
+  scale_x_continuous(breaks = seq(min(active_gulf_fleet$year), max(active_gulf_fleet$year), by = 2)) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+library(sf)
+library(ggplot2)
+library(rnaturalearth)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(ggspatial)
+library(nmfspalette)
+
+# -------------------------------------------------------------------------
+# 1. Fetch Official Gulf of Mexico Ocean Polygon via Web Service
+# -------------------------------------------------------------------------
+target_crs <- 5070 
+
+# Direct GeoJSON / WFS query to MarineRegions.org for Gulf of Mexico (IHO Sea Area ID 26)
+gulf_url <- "https://geo.vliz.be/geoserver/wfs?request=getFeature&service=wfs&version=1.1.0&typename=MarineRegions:iho&cql_filter=id=26&outputFormat=json"
+gulf_ocean_poly <- st_read(gulf_url, quiet = TRUE) %>% 
+  st_transform(crs = target_crs)
+
+# Load state boundaries
+states <- ne_states(country = "United States of America", returnclass = "sf")
+gulf_states <- states %>%
+  filter(name %in% c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida", "Georgia")) %>%
+  st_transform(crs = target_crs)
+
+# -------------------------------------------------------------------------
+# 2. Calculate Milestone Distances & Intersect directly with Ocean Polygon
+# -------------------------------------------------------------------------
+hp_midpoints <- c(
+  "Less than 4 hp"      = 2.5,   "4–9.9 hp"           = 7.0,
+  "10–29.9 hp"         = 20.0,  "30–49.9 hp"         = 40.0,
+  "50–74.9 hp"         = 62.5,  "75–99.9 hp"         = 87.5,
+  "100–149.9 hp"       = 125.0, "150–199.9 hp"       = 175.0,
+  "200–249.9 hp"       = 225.0, "250–299.9 hp"       = 275.0,
+  "300 hp and greater" = 350.0
+)
+
+hp_df <- imap_dfr(hp_data_list, ~ .x %>% mutate(hp_category = .y)) %>%
+  pivot_longer(cols = c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida"),
+               names_to = "state", values_to = "sales") %>%
+  mutate(
+    gulf_sales  = if_else(state == "Florida", sales * 0.50, sales),
+    hp_midpoint = hp_midpoints[hp_category],
+    speed_knots = 3.5 * sqrt(hp_midpoint),
+    radius_nm   = speed_knots * 2
+  )
+
+milestone_years <- c(2011, 2016, 2021, 2024)
+
+# Filter for Near-offshore & Far-offshore engines only (>= 150 HP)
+reach_milestones_offshore <- hp_df %>%
+  filter(
+    year %in% milestone_years,
+    hp_midpoint >= 175  # 150–199.9 HP class and above
+  ) %>%
+  group_by(year) %>%
+  summarize(
+    # Average reach radius specifically for the offshore-capable fleet
+    avg_reach_nm = sum(radius_nm * gulf_sales, na.rm = TRUE) / sum(gulf_sales, na.rm = TRUE)
+  ) %>%
+  arrange(desc(year))
+
+nm_to_m <- 1852
+
+# Create buffers and clip against the Official Gulf Ocean Polygon
+buffers_df <- map_dfr(1:nrow(reach_milestones), function(i) {
+  yr <- reach_milestones$year[i]
+  dist_m <- reach_milestones$avg_reach_nm[i] * nm_to_m
+  
+  # 1. Buffer land
+  buf <- st_buffer(st_union(gulf_states), dist = dist_m)
+  
+  # 2. Subtract land
+  buf_offshore <- st_difference(buf, st_union(gulf_states))
+  
+  # 3. Intersect ONLY inside official Gulf of Mexico ocean waters
+  buf_gulf_only <- st_intersection(buf_offshore, gulf_ocean_poly)
+  
+  st_sf(
+    year = as.factor(yr),
+    radius_nm = round(reach_milestones$avg_reach_nm[i], 1),
+    geometry = st_geometry(buf_gulf_only)
+  )
+})
+
+# -------------------------------------------------------------------------
+# 3. Plot Map
+# -------------------------------------------------------------------------
+ggplot() +
+  theme(panel.background = element_rect(fill = "#e0f2f1")) +
+  
+  # Draw clean buffer bands clipped strictly to official Gulf ocean boundary
+  geom_sf(data = buffers_df, aes(fill = year), color = "gray30", size = 0.2, alpha = 0.85) +
+  geom_sf(data = gulf_states, fill = "#f4f4f2", color = "gray40", size = 0.4) +
+  
+  scale_fill_nmfs(
+    palette = "complement_teal", 
+    discrete = TRUE, 
+    reverse = FALSE,
+    name = "Milestone Year\n(2-Hr Reach Radius)"
+  ) +
+  
+  # View Bounding Box
+  coord_sf(
+    xlim = c(-97.5, -81.0), 
+    ylim = c(24.5, 31.0), 
+    crs = st_crs(4326), 
+    expand = FALSE
+  ) +
+  
+  # Shifted Scale Bar & North Arrow to Bottom Right (br)
+  annotation_scale(
+    location = "br", 
+    width_hint = 0.25,
+    pad_x = unit(1, "in"), 
+    pad_y = unit(0.3, "in")
+  ) +
+  annotation_north_arrow(
+    location = "br", 
+    which_north = "true", 
+    pad_x = unit(1, "in"), 
+    pad_y = unit(0.5, "in"),
+    style = north_arrow_minimal()
+  ) +
+  
+  labs(
+    title = "Expansion of Average Offshore Reach in the Gulf",
+    subtitle = "Modeled 2-hour single-trip radius based on outboard horsepower trends",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 13),
+    panel.grid.major = element_line(color = "white", size = 0.2)
+  )
+```
+
+
+```{r}
+library(sf)
+library(ggplot2)
+library(rnaturalearth)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(ggspatial)
+library(nmfspalette)
+
+# -------------------------------------------------------------------------
+# 1. Fetch Official Gulf of Mexico Ocean Polygon via Web Service
+# -------------------------------------------------------------------------
+target_crs <- 5070 
+
+# Direct GeoJSON / WFS query to MarineRegions.org for Gulf of Mexico (IHO Sea Area ID 26)
+gulf_url <- "https://geo.vliz.be/geoserver/wfs?request=getFeature&service=wfs&version=1.1.0&typename=MarineRegions:iho&cql_filter=id=26&outputFormat=json"
+gulf_ocean_poly <- st_read(gulf_url, quiet = TRUE) %>% 
+  st_transform(crs = target_crs)
+
+# Load state boundaries individually
+states <- ne_states(country = "United States of America", returnclass = "sf")
+gulf_states <- states %>%
+  filter(name %in% c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida", "Georgia")) %>%
+  st_transform(crs = target_crs)
+
+# -------------------------------------------------------------------------
+# 2. Calculate State-Specific Milestone Distances & Generate Custom Buffers
+# -------------------------------------------------------------------------
+hp_midpoints <- c(
+  "Less than 4 hp"      = 2.5,   "4–9.9 hp"           = 7.0,
+  "10–29.9 hp"         = 20.0,  "30–49.9 hp"         = 40.0,
+  "50–74.9 hp"         = 62.5,  "75–99.9 hp"         = 87.5,
+  "100–149.9 hp"       = 125.0, "150–199.9 hp"       = 175.0,
+  "200–249.9 hp"       = 225.0, "250–299.9 hp"       = 275.0,
+  "300 hp and greater" = 350.0
+)
+
+hp_df <- imap_dfr(hp_data_list, ~ .x %>% mutate(hp_category = .y)) %>%
+  pivot_longer(cols = c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida"),
+               names_to = "state", values_to = "sales") %>%
+  mutate(
+    gulf_sales  = if_else(state == "Florida", sales * 0.50, sales),
+    hp_midpoint = hp_midpoints[hp_category],
+    speed_knots = 3.5 * sqrt(hp_midpoint),
+    radius_nm   = speed_knots * 2
+  )
+
+milestone_years <- c(2011, 2016, 2021, 2024)
+
+# GROUP BY YEAR AND STATE to isolate regional fleet profiles (>= 150 HP)
+reach_milestones_by_state <- hp_df %>%
+  filter(
+    year %in% milestone_years,
+    hp_midpoint >= 175  # 150–199.9 HP class and above (offshore-capable)
+  ) %>%
+  group_by(year, state) %>%
+  summarize(
+    avg_reach_nm = sum(radius_nm * gulf_sales, na.rm = TRUE) / sum(gulf_sales, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+nm_to_m <- 1852
+
+# Build state-varying footprint bands for each milestone year
+buffers_df <- map_dfr(milestone_years, function(yr) {
+  # Get state-specific reach radii for the given year
+  yr_data <- reach_milestones_by_state %>% filter(year == yr)
+  
+  # Buffer each state independently by its specific reach radius
+  state_buffers <- map(1:nrow(yr_data), function(j) {
+    st_name <- yr_data$state[j]
+    dist_m  <- yr_data$avg_reach_nm[j] * nm_to_m
+    
+    # Get geometry for this state
+    st_geom <- gulf_states %>% filter(name == st_name)
+    
+    # Create state-specific buffer
+    st_buffer(st_geom, dist = dist_m)
+  })
+  
+  # Union all state buffers for this milestone year into one seamless shape
+  combined_yr_buf <- st_union(do.call(c, state_buffers))
+  
+  # Subtract land area
+  buf_offshore <- st_difference(combined_yr_buf, st_union(gulf_states))
+  
+  # Intersect strictly with the official Gulf ocean polygon
+  buf_gulf_only <- st_intersection(buf_offshore, gulf_ocean_poly)
+  
+  st_sf(
+    year = as.factor(yr),
+    geometry = st_geometry(buf_gulf_only)
+  )
+}) %>% 
+  arrange(desc(year)) # Ensure largest/newest buffer renders underneath older ones
+
+# -------------------------------------------------------------------------
+# 3. Plot Map
+# -------------------------------------------------------------------------
+ggplot() +
+  theme(panel.background = element_rect(fill = "#e0f2f1")) +
+  
+  # Draw state-varying buffer bands clipped strictly to official Gulf ocean boundary
+  geom_sf(data = buffers_df, aes(fill = year), color = "gray30", size = 0.2, alpha = 0.85) +
+  geom_sf(data = gulf_states, fill = "#f4f4f2", color = "gray40", size = 0.4) +
+  
+  scale_fill_nmfs(
+    palette = "complement_teal", 
+    discrete = TRUE, 
+    reverse = FALSE,
+    name = "Milestone Year\n(Offshore Fleet Reach)"
+  ) +
+  
+  # View Bounding Box
+  coord_sf(
+    xlim = c(-97.5, -81.0), 
+    ylim = c(24.5, 31.0), 
+    crs = st_crs(4326), 
+    expand = FALSE
+  ) +
+  
+  # Shifted Scale Bar & North Arrow to Bottom Right (br)
+  annotation_scale(
+    location = "br", 
+    width_hint = 0.25,
+    pad_x = unit(1, "in"), 
+    pad_y = unit(0.3, "in")
+  ) +
+  annotation_north_arrow(
+    location = "br", 
+    which_north = "true", 
+    pad_x = unit(1, "in"), 
+    pad_y = unit(0.5, "in"),
+    style = north_arrow_minimal()
+  ) +
+  
+  labs(
+    title = "Expansion of Offshore Reach in the Gulf by State Fleet Profile",
+    subtitle = "Modeled 2-hour reach radius (≥150 HP) incorporating state-level horsepower distributions",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 13),
+    panel.grid.major = element_line(color = "white", size = 0.2)
+  )
+```
+
+
+
+
+
 
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
