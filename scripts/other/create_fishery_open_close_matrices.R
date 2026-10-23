@@ -26,8 +26,7 @@ data_path <- file.path(
 output_directory <- file.path(
   repository_root,
   "data",
-  "formatted",
-  "formatted_csvs",
+  "intermediate",
   "fishery_open_close"
 )
 
