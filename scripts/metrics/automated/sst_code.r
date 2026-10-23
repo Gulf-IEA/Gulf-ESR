@@ -16,6 +16,7 @@ library(rnaturalearthdata)
 library(scales)
 library(ncdf4)
 library(cmocean)
+library(NISTunits)
 
 # File Naming Setup.
 root_name <- "sst"
@@ -187,6 +188,12 @@ eez_yrmon <- dat_eez |>
   summarise(eez_sst_degC = mean(sst_degC, na.rm = T),
             eez_anom_degC = mean(anom_degC, na.rm = T))
 
+### convert to Degree F
+eez_yrmon <- eez_yrmon |>
+  mutate(eez_sst_degF = NISTdegCtOdegF(eez_sst_degC),
+         eez_anom_degF = eez_anom_degC*(9/5))
+
+
 # sst_merge <- merge(gulf_yrmon, eez_yrmon)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
@@ -196,13 +203,13 @@ eez_yrmon <- dat_eez |>
 # extent_names = c("Gulf-wide", 'US Gulf EEZ')
 
 indicator_names = "Sea Surface Temperature"
-unit_names = "Anomaly (°C)"
+unit_names = "Monthly Anomaly (°F)"
 extent_names = 'US Gulf EEZ'
 
 formatted_data = select(eez_yrmon, #sst_merge,
                         yrmon,
                         # gulf_anom_degC,
-                        eez_anom_degC) |>
+                        eez_anom_degF) |>
   IEAnalyzeR::convert_cleaned_data(indicator_names, unit_names, extent_names)
 
 
@@ -238,8 +245,11 @@ saveRDS(data_obj, file = object_filename)
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = T,
                         sep_ylabs = T,
                         ylab_sublabel = c('extent','unit'),
-                        fig.width = 9,
-                        lwd = .5)
+                        fig.width = 8,
+                        lwd = .5) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'))
 
 
 #----------------------------------------------------
@@ -247,7 +257,8 @@ IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = T,
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename, 
+       height = 3, width = 8, unit = "in")
 
 
 #----------------------------------------------------
@@ -279,120 +290,100 @@ replace_min_max <- function(dat, min, max){
   dat
 }
 
-### load from previously saved spot
-setwd(here("data/intermediate"))
-load('sst_comb_temp2.RData')
 
-### convert to dates
-dat_eez$time <- as.Date(dat_eez$time)
-
-# add yearmonth column --------------------------
-dat_eez$yrmon <- paste(dat_eez$time |> year(),
-                       sprintf("%02.f", dat_eez$time |> month()),
-                       sep = '-')
-
-### add seasons
-dat_eez$jday <- yday(dat_eez$time)
-
-dat_eez <- dat_eez |>
-  mutate(season = case_when(
-    month(time)==12 | month(time)<3 ~ 'win',
-    month(time)>2 & month(time)<6 ~ 'spr',
-    month(time)>5 & month(time)<9 ~ 'sum',
-    month(time)>8 & month(time)<12 ~ 'aut'
-  )) |>
-  arrange(time)
-
-### create season_yr and adjust to make december n-1 part of winter n
-dat_eez$season_yr <- ifelse(month(dat_eez$time)==12, 
-                            year(dat_eez$time)+1, 
-                            year(dat_eez$time))
-dat_eez$season_yr[which(dat_eez$season_yr==2026)] <- NA
-
-### alternative to redefine seasons as jfm, amj, jas, ond
+############################################################
+### this was not selected but saved for future reference ###
+############################################################
+# ### load from previously saved spot
+# setwd(here("data/intermediate"))
+# load('sst_comb_temp2.RData')
+# 
+# ### convert to dates
+# dat_eez$time <- as.Date(dat_eez$time)
+# 
+# # add yearmonth column --------------------------
+# dat_eez$yrmon <- paste(dat_eez$time |> year(),
+#                        sprintf("%02.f", dat_eez$time |> month()),
+#                        sep = '-')
+# 
+# ### add seasons
+# dat_eez$jday <- yday(dat_eez$time)
+# 
 # dat_eez <- dat_eez |>
 #   mutate(season = case_when(
-#     month(time)<4 ~ 'win',
-#     month(time)>3 & month(time)<7 ~ 'spr',
-#     month(time)>4 & month(time)<10 ~ 'sum',
-#     month(time)>9 ~ 'aut'
+#     month(time)==12 | month(time)<3 ~ 'win',
+#     month(time)>2 & month(time)<6 ~ 'spr',
+#     month(time)>5 & month(time)<9 ~ 'sum',
+#     month(time)>8 & month(time)<12 ~ 'aut'
 #   )) |>
 #   arrange(time)
-# dat_eez$season_yr <- year(dat_eez$time)
-
-### seasonal means
-eez_win <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='win'),
-                     mean, na.rm = T)
-eez_spr <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='spr'),
-                     mean, na.rm = T)
-eez_sum <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='sum'),
-                     mean, na.rm = T)
-eez_aut <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='aut'),
-                     mean, na.rm = T)
-
-png(here('figures/plots/sst-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
-par(mfrow = c(2,2), mar = c(3,5,2,3),
-    oma = c(0,0,3,0))
-
-plot(eez_win$season_yr, eez_win$sst_degC, 
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_win$sst_degC), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SST', main = 'Winter - DJF',asp=10)
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_win$sst_degC, n = 4)
-
-plot(eez_spr$season_yr, eez_spr$sst_degC, 
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_spr$sst_degC), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SST', main = 'Spring - MAM',asp=10)
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_spr$sst_degC, n = 4)
-
-plot(eez_sum$season_yr, eez_sum$sst_degC, 
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_sum$sst_degC), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SST', main = 'Summer - JJA',asp=10)
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_sum$sst_degC, n = 4)
-
-plot(eez_aut$season_yr, eez_aut$sst_degC,
-     typ = 'o', pch = 16, las = 1,
-     panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
-                        abline(h = mean(eez_aut$sst_degC), col = 'gray', lwd = 2),
-                        grid()),
-     xlab = '', ylab = 'SST', main = 'Fall - SON',asp=10)
-mtext('(°C)', side = 3, adj = -.1, line = .5)
-mtext('(°F)', side = 3, adj = 1.1, line = .5)
-ax_convert_c2f(eez_aut$sst_degC, n = 4)
-
-mtext('US Gulf EEZ Sea Surface Temperatures', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
-dev.off()
+# 
+# ### create season_yr and adjust to make december n-1 part of winter n
+# dat_eez$season_yr <- ifelse(month(dat_eez$time)==12, 
+#                             year(dat_eez$time)+1, 
+#                             year(dat_eez$time))
+# dat_eez$season_yr[which(dat_eez$season_yr==2026)] <- NA
+# 
+# ### seasonal means
+# eez_win <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='win'),
+#                      mean, na.rm = T)
+# eez_spr <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='spr'),
+#                      mean, na.rm = T)
+# eez_sum <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='sum'),
+#                      mean, na.rm = T)
+# eez_aut <- aggregate(sst_degC ~ season_yr, data = subset(dat_eez, season=='aut'),
+#                      mean, na.rm = T)
+# 
+# png(here('figures/plots/sst-seasonal-plot.png'), width = 9, height = 6, units = 'in', res = 300)
+# par(mfrow = c(2,2), mar = c(3,5,2,3),
+#     oma = c(0,0,3,0))
+# 
+# plot(eez_win$season_yr, eez_win$sst_degC, 
+#      typ = 'o', pch = 16, las = 1,
+#      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_win), lwd = 4, col = 'orange'),
+#                         abline(h = mean(eez_win$sst_degC), col = 'gray', lwd = 2),
+#                         grid()),
+#      xlab = '', ylab = 'SST', main = 'Winter - DJF',asp=10)
+# mtext('(°C)', side = 3, adj = -.1, line = .5)
+# mtext('(°F)', side = 3, adj = 1.1, line = .5)
+# ax_convert_c2f(eez_win$sst_degC, n = 4)
+# 
+# plot(eez_spr$season_yr, eez_spr$sst_degC, 
+#      typ = 'o', pch = 16, las = 1,
+#      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_spr), lwd = 4, col = 'orange'),
+#                         abline(h = mean(eez_spr$sst_degC), col = 'gray', lwd = 2),
+#                         grid()),
+#      xlab = '', ylab = 'SST', main = 'Spring - MAM',asp=10)
+# mtext('(°C)', side = 3, adj = -.1, line = .5)
+# mtext('(°F)', side = 3, adj = 1.1, line = .5)
+# ax_convert_c2f(eez_spr$sst_degC, n = 4)
+# 
+# plot(eez_sum$season_yr, eez_sum$sst_degC, 
+#      typ = 'o', pch = 16, las = 1,
+#      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_sum), lwd = 4, col = 'orange'),
+#                         abline(h = mean(eez_sum$sst_degC), col = 'gray', lwd = 2),
+#                         grid()),
+#      xlab = '', ylab = 'SST', main = 'Summer - JJA',asp=10)
+# mtext('(°C)', side = 3, adj = -.1, line = .5)
+# mtext('(°F)', side = 3, adj = 1.1, line = .5)
+# ax_convert_c2f(eez_sum$sst_degC, n = 4)
+# 
+# plot(eez_aut$season_yr, eez_aut$sst_degC,
+#      typ = 'o', pch = 16, las = 1,
+#      panel.first = list(abline(lm(sst_degC ~ season_yr, data = eez_aut), lwd = 4, col = 'orange'),
+#                         abline(h = mean(eez_aut$sst_degC), col = 'gray', lwd = 2),
+#                         grid()),
+#      xlab = '', ylab = 'SST', main = 'Fall - SON',asp=10)
+# mtext('(°C)', side = 3, adj = -.1, line = .5)
+# mtext('(°F)', side = 3, adj = 1.1, line = .5)
+# ax_convert_c2f(eez_aut$sst_degC, n = 4)
+# 
+# mtext('US Gulf EEZ Sea Surface Temperatures', side = 3, outer = TRUE, cex = 5/4, font = 2, line = 5/4)
+# dev.off()
 
 
 
 ### spatial plots
-
-url <- 'https://www.ncei.noaa.gov/thredds/dodsC/OisstBase/NetCDF/V2.1/AVHRR/198109/oisst-avhrr-v02r01.19810901.nc'
-
-dat <- nc_open(url)
-# anom/sst[lon,lat,zlev,time]  
-
-lon <- ncvar_get(dat, 'lon')
-lat <- ncvar_get(dat, 'lat')
-
-i_lon <- which(lon >= (360+min_lon) & lon <= (360+max_lon))
-i_lat <- which(lat <= (max_lat) & lat >= (min_lat))
-lons <- lon[i_lon]
-lats <- lat[i_lat]
 
 # define time domain  --------------------------------
 years <- 2021:2025
@@ -405,6 +396,18 @@ years <- 2021:2025
 review_code <- T ### set to F to rerun download loop
 
 if(review_code == F){
+  
+  url <- 'https://www.ncei.noaa.gov/thredds/dodsC/OisstBase/NetCDF/V2.1/AVHRR/198109/oisst-avhrr-v02r01.19810901.nc'
+  
+  dat <- nc_open(url)
+  
+  lon <- ncvar_get(dat, 'lon')
+  lat <- ncvar_get(dat, 'lat')
+  
+  i_lon <- which(lon >= (360+min_lon) & lon <= (360+max_lon))
+  i_lat <- which(lat <= (max_lat) & lat >= (min_lat))
+  lons <- lon[i_lon]
+  lats <- lat[i_lat]
   
   system.time(
     setwd(here("data/intermediate")),
@@ -482,20 +485,17 @@ for(i in unique(anom_l$time$yrmon)){
     apply(c(1,2), mean, na.rm = T)
 }
 
-yr5_trend <- apply(anom_a, c(1,2), array_lm)
-# hist(yr5_trend)
-# range(yr5_trend, na.rm = T)
-# imagePlot(yr5_trend)
+### convert to degF
+anom_af <- anom_a*(9/5)
 
-ann_25 <- apply(anom_2025$anom, c(1,2), mean, na.rm=T)
-# hist(ann_25)
-# range(ann_25, na.rm = T)
-# imagePlot(ann_25)
+# ann_25 <- apply(anom_2025$anom, c(1,2), mean, na.rm=T)
+yr5_trend <- apply(anom_af, c(1,2), array_lm)
 
 ### colors and breaks for plotting
-a_brks <- seq(-2.5,2.5,.1)
-a_cols <- cmocean('balance')(length(a_brks)-1)
-t_brks <- seq(-.033,.033,.001)
+# a_brks <- seq(-2.5,2.5,.1)
+# a_cols <- cmocean('balance')(length(a_brks)-1)
+# t_brks <- seq(-.033,.033,.001)
+t_brks <- seq(-.06,.06,.002)
 t_cols <- cmocean('balance')(length(t_brks)-1)
 
 ### shapefile for plotting
@@ -504,119 +504,124 @@ world <- ne_download(scale = 10, type = "countries",
   crop(ext(min_lon,max_lon,min_lat,max_lat))
 
 ### put into raster
+# ann_25 <- rast(t(apply(anom_2025$anom, c(1,2), mean, na.rm=T)[,ncol(yr5_trend):1]))
+# ext(ann_25) <- c(min_lon,max_lon,min_lat,max_lat)
+# crs(ann_25) <- "EPSG:4326"
+
 fyt_rast <- rast(t(yr5_trend[,ncol(yr5_trend):1]))
 ext(fyt_rast) <- c(min_lon,max_lon,min_lat,max_lat)
 crs(fyt_rast) <- "EPSG:4326"
 
-ann_25 <- rast(t(apply(anom_2025$anom, c(1,2), mean, na.rm=T)[,ncol(yr5_trend):1]))
-ext(ann_25) <- c(min_lon,max_lon,min_lat,max_lat)
-crs(ann_25) <- "EPSG:4326"
 
-
-png(here('figures/plots/sst-spatial-plot.png'), width = 4, height = 6, units = 'in', res = 300)
-par(mfrow=c(2,1))
+png(here('figures/plots/sst-spatial-plot.png'), width = 4, height = 3, units = 'in', res = 300)
+par(mfrow=c(1,1))
 plot(fyt_rast,
-     col = t_cols, range = c(-.03,.03),
+     col = t_cols, range = c(-.06,.06),
      plg = list(tick = 'out', format='g'),
-     main = '2021-2025 SST Trend (°C/month)')
+     main = '2021-2025 SST Trend (°F/month)',
+     cex.main = 1, las = 1)
 plot(world, add= T, col = 'gray')
 plot(gulf_eez['geometry'], add = T)
 
-plot(ann_25, 
-     col = t_cols, range = c(-2.5,2.5),
-     plg = list(tick = 'out', format='g'),
-     main = '2025 SST anomaly (°C)')
-plot(world, add= T, col = 'gray')
-plot(gulf_eez['geometry'], add = T)
+# plot(ann_25, 
+#      col = t_cols, range = c(-2.5,2.5),
+#      plg = list(tick = 'out', format='g'),
+#      main = '2025 SST anomaly (°C)')
+# plot(world, add= T, col = 'gray')
+# plot(gulf_eez['geometry'], add = T)
 dev.off()
 
-### make seasonal maps
 
-anom_2024$time_df <- data.frame(time = anom_2024$time)
-anom_2025$time_df <- data.frame(time = anom_2025$time)
-
-anom_2024$time_df <- anom_2024$time_df |>
-  mutate(season = case_when(
-    month(time)==12 | month(time)<3 ~ 'win',
-    month(time)>2 & month(time)<6 ~ 'spr',
-    month(time)>5 & month(time)<9 ~ 'sum',
-    month(time)>8 & month(time)<12 ~ 'aut'
-  )) |>
-  arrange(time)
-
-anom_2025$time_df <- anom_2025$time_df |>
-  mutate(season = case_when(
-    month(time)==12 | month(time)<3 ~ 'win',
-    month(time)>2 & month(time)<6 ~ 'spr',
-    month(time)>5 & month(time)<9 ~ 'sum',
-    month(time)>8 & month(time)<12 ~ 'aut'
-  )) |>
-  arrange(time)
-
-win_2025 <- anom_2025$anom[,,which(month(anom_2025$time_df$time)<3)] |>
-  abind(anom_2024$anom[,,which(month(anom_2024$time_df$time)==12)], along = 3) |>
-  apply(c(1,2), mean, na.rm = T)
-spr_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='spr')] |>
-  apply(c(1,2), mean, na.rm = T)
-sum_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='sum')] |>
-  apply(c(1,2), mean, na.rm = T)
-aut_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='aut')] |>
-  apply(c(1,2), mean, na.rm = T)
-
-tmin <- -3
-tmax <- 3
-win_2025 <- replace_min_max(win_2025, tmin, tmax)
-spr_2025 <- replace_min_max(spr_2025, tmin, tmax)
-sum_2025 <- replace_min_max(sum_2025, tmin, tmax)
-aut_2025 <- replace_min_max(aut_2025, tmin, tmax)
-
-a_brks <- seq(tmin, tmax, .1)
-a_cols <- cmocean('balance')(length(a_brks)-1)
-
-
-win_2025_rast <- rast(t(win_2025[,ncol(win_2025):1]))
-ext(win_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
-crs(win_2025_rast) <- "EPSG:4326"
-
-spr_2025_rast <- rast(t(spr_2025[,ncol(spr_2025):1]))
-ext(spr_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
-crs(spr_2025_rast) <- "EPSG:4326"
-
-sum_2025_rast <- rast(t(sum_2025[,ncol(sum_2025):1]))
-ext(sum_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
-crs(sum_2025_rast) <- "EPSG:4326"
-
-aut_2025_rast <- rast(t(aut_2025[,ncol(aut_2025):1]))
-ext(aut_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
-crs(aut_2025_rast) <- "EPSG:4326"
-
-png(here('figures/plots/sst-seasonal-spatial-plot.png'), width = 8, height = 6, units = 'in', res = 300)
-par(mfrow=c(2,2))
-plot(win_2025_rast,
-     col = a_cols, range = c(tmin, tmax),
-     plg = list(tick = 'out', format='g'),
-     main = 'DJF 2025 SST anomaly (°C)')
-plot(world, add= T, col = 'gray')
-plot(gulf_eez['geometry'], add = T)
-
-plot(spr_2025_rast, 
-     col = a_cols, range = c(tmin, tmax),
-     plg = list(tick = 'out', format='g'),
-     main = 'MAM 2025 SST anomaly (°C)')
-plot(world, add= T, col = 'gray')
-plot(gulf_eez['geometry'], add = T)
-
-plot(sum_2025_rast,
-     col = a_cols, range = c(tmin, tmax),
-     plg = list(tick = 'out', format='g'),
-     main = 'JJA 2025 SST anomaly (°C)')
-plot(world, add= T, col = 'gray')
-plot(gulf_eez['geometry'], add = T)
-
-plot(aut_2025_rast, 
-     col = a_cols, range = c(tmin, tmax),
-     plg = list(tick = 'out', format='g'),
-     main = 'SON 2025 SST anomaly (°C)')
-plot(world, add= T, col = 'gray')
-plot(gulf_eez['geometry'], add = T)
-dev.off()
+############################################################
+### this was not selected but saved for future reference ###
+############################################################
+# ### make seasonal maps
+# 
+# anom_2024$time_df <- data.frame(time = anom_2024$time)
+# anom_2025$time_df <- data.frame(time = anom_2025$time)
+# 
+# anom_2024$time_df <- anom_2024$time_df |>
+#   mutate(season = case_when(
+#     month(time)==12 | month(time)<3 ~ 'win',
+#     month(time)>2 & month(time)<6 ~ 'spr',
+#     month(time)>5 & month(time)<9 ~ 'sum',
+#     month(time)>8 & month(time)<12 ~ 'aut'
+#   )) |>
+#   arrange(time)
+# 
+# anom_2025$time_df <- anom_2025$time_df |>
+#   mutate(season = case_when(
+#     month(time)==12 | month(time)<3 ~ 'win',
+#     month(time)>2 & month(time)<6 ~ 'spr',
+#     month(time)>5 & month(time)<9 ~ 'sum',
+#     month(time)>8 & month(time)<12 ~ 'aut'
+#   )) |>
+#   arrange(time)
+# 
+# win_2025 <- anom_2025$anom[,,which(month(anom_2025$time_df$time)<3)] |>
+#   abind(anom_2024$anom[,,which(month(anom_2024$time_df$time)==12)], along = 3) |>
+#   apply(c(1,2), mean, na.rm = T)
+# spr_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='spr')] |>
+#   apply(c(1,2), mean, na.rm = T)
+# sum_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='sum')] |>
+#   apply(c(1,2), mean, na.rm = T)
+# aut_2025 <- anom_2025$anom[,,which(anom_2025$time_df$season=='aut')] |>
+#   apply(c(1,2), mean, na.rm = T)
+# 
+# tmin <- -3
+# tmax <- 3
+# win_2025 <- replace_min_max(win_2025, tmin, tmax)
+# spr_2025 <- replace_min_max(spr_2025, tmin, tmax)
+# sum_2025 <- replace_min_max(sum_2025, tmin, tmax)
+# aut_2025 <- replace_min_max(aut_2025, tmin, tmax)
+# 
+# a_brks <- seq(tmin, tmax, .1)
+# a_cols <- cmocean('balance')(length(a_brks)-1)
+# 
+# 
+# win_2025_rast <- rast(t(win_2025[,ncol(win_2025):1]))
+# ext(win_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
+# crs(win_2025_rast) <- "EPSG:4326"
+# 
+# spr_2025_rast <- rast(t(spr_2025[,ncol(spr_2025):1]))
+# ext(spr_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
+# crs(spr_2025_rast) <- "EPSG:4326"
+# 
+# sum_2025_rast <- rast(t(sum_2025[,ncol(sum_2025):1]))
+# ext(sum_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
+# crs(sum_2025_rast) <- "EPSG:4326"
+# 
+# aut_2025_rast <- rast(t(aut_2025[,ncol(aut_2025):1]))
+# ext(aut_2025_rast) <- c(min_lon,max_lon,min_lat,max_lat)
+# crs(aut_2025_rast) <- "EPSG:4326"
+# 
+# png(here('figures/plots/sst-seasonal-spatial-plot.png'), width = 8, height = 6, units = 'in', res = 300)
+# par(mfrow=c(2,2))
+# plot(win_2025_rast,
+#      col = a_cols, range = c(tmin, tmax),
+#      plg = list(tick = 'out', format='g'),
+#      main = 'DJF 2025 SST anomaly (°C)')
+# plot(world, add= T, col = 'gray')
+# plot(gulf_eez['geometry'], add = T)
+# 
+# plot(spr_2025_rast, 
+#      col = a_cols, range = c(tmin, tmax),
+#      plg = list(tick = 'out', format='g'),
+#      main = 'MAM 2025 SST anomaly (°C)')
+# plot(world, add= T, col = 'gray')
+# plot(gulf_eez['geometry'], add = T)
+# 
+# plot(sum_2025_rast,
+#      col = a_cols, range = c(tmin, tmax),
+#      plg = list(tick = 'out', format='g'),
+#      main = 'JJA 2025 SST anomaly (°C)')
+# plot(world, add= T, col = 'gray')
+# plot(gulf_eez['geometry'], add = T)
+# 
+# plot(aut_2025_rast, 
+#      col = a_cols, range = c(tmin, tmax),
+#      plg = list(tick = 'out', format='g'),
+#      main = 'SON 2025 SST anomaly (°C)')
+# plot(world, add= T, col = 'gray')
+# plot(gulf_eez['geometry'], add = T)
+# dev.off()

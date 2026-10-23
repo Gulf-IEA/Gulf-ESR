@@ -209,6 +209,27 @@
       "Maintainer": "Martin Maechler <mmaechler+Matrix@gmail.com>",
       "Repository": "CRAN"
     },
+    "NISTunits": {
+      "Package": "NISTunits",
+      "Version": "1.0.1",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Fundamental Physical Constants and Unit Conversions from NIST",
+      "Encoding": "UTF-8",
+      "Authors@R": "c(person(given = \"Jose\", family = \"Gama\", role = c(\"aut\",\"cre\"),email = \"rxprtgama@gmail.com\"))",
+      "Description": "Fundamental physical constants (Quantity, Value, Uncertainty, Unit) for  SI (International System of Units) and non-SI units, plus unit conversions Based on the data from NIST (National Institute of Standards and Technology, USA)",
+      "License": "GPL (>= 3)",
+      "Depends": [
+        "R (>= 2.7.0)"
+      ],
+      "Author": "Jose Gama [aut, cre]",
+      "Maintainer": "Jose Gama <rxprtgama@gmail.com>",
+      "Repository": "CRAN",
+      "Repository/R-Forge/Project": "nistunits",
+      "Repository/R-Forge/Revision": "4",
+      "Repository/R-Forge/DateTimeStamp": "2016-08-11 06:51:12",
+      "NeedsCompilation": "no"
+    },
     "R6": {
       "Package": "R6",
       "Version": "2.6.1",
