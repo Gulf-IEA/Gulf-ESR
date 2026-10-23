@@ -1,6 +1,6 @@
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
-packages <- c("dplyr", "tidyr", "lubridate", "httr")
+packages <- c("dplyr", "tidyr", "lubridate", "httr", "here")
 missing_packages <- packages[
   !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
 ]
