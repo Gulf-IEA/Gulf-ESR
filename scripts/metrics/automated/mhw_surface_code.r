@@ -500,7 +500,7 @@ h1dt <- hist(event_no_mean$event_no)
 mean_event_no <- matrix(event_no_mean$event_no, 52, 72)
 ### put into raster
 event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
-ext(event_rast) <- c(range(lon_lat_gulfw$lon),range(lon_lat_gulfw$lat))
+ext(event_rast) <- c(min_lon, max_lon, min_lat, max_lat)
 crs(event_rast) <- "EPSG:4326"
 plot(event_rast)
 
@@ -572,7 +572,7 @@ h1dt <- hist(event_no_mean$event_no)
 mean_event_no <- matrix(event_no_mean$event_no, 52, 72)
 ### put into raster
 event_rast2 <- rast(mean_event_no[nrow(mean_event_no):1,])
-ext(event_rast2) <- c(range(lon_lat_gulfw$lon),range(lon_lat_gulfw$lat))
+ext(event_rast2) <- c(min_lon, max_lon, min_lat, max_lat)
 crs(event_rast2) <- "EPSG:4326"
 plot(event_rast2)
 
@@ -595,13 +595,14 @@ h2dt <- hist(gridcell_lm$slope)
 mhw_slope <- matrix(gridcell_lm$slope, 52, 72)
 ### put into raster
 slope_rast2 <- rast(mhw_slope[nrow(mhw_slope):1,])
-ext(slope_rast2) <- c(range(lon_lat_gulfw$lon),range(lon_lat_gulfw$lat))
+ext(slope_rast2) <- c(min_lon, max_lon, min_lat, max_lat)
 crs(slope_rast2) <- "EPSG:4326"
 plot(slope_rast2)
 
 ### colors and breaks for plotting
-s_brks2 <- seq(-3,3,.1)
-s_cols2 <- (cmocean('balance')(length(s_brks)-1))
+# s_brks2 <- seq(-3,3,.1)
+s_brks2 <- seq(-1,1,.05)
+s_cols2 <- (cmocean('balance')(length(s_brks2)-1))
 
 
 # setwd("~/R_projects/Looking_4_CMP/figs")
