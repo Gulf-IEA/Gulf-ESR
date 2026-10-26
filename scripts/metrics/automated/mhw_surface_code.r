@@ -632,7 +632,7 @@ s_cols2 <- (cmocean('balance')(length(s_brks)-1))
 
 
 
-setwd("C:/Users/brendan.turley/Documents/R_projects/Gulf-ESR/figures/plots")
+setwd(here('figures/plots'))
 # png('mhw-surface-spatial-plot.png',
 #     width = 6, height = 10, units = 'in', res = 300)
 # par(mfrow=c(2,1))
