@@ -47,27 +47,27 @@ max_lon <- -80
 min_lat <- 18
 max_lat <- 31
 
-# ### bathymetry; not used in final product but useful for exploratory plotting
-# ### could be used if we wat to restrict MHWs to only areas to a certain depth
-# # setwd("~/data/bathy")
-# # burl <- 'etopo1.nc'
-# 
-# burl <- 'https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc'
-# bdat <- nc_open(burl)
-# # crs <- 'EPSG:4326'
-# 
-# ln <- ncvar_get(bdat, 'lon')
-# ln_i <- which(ln>=min_lon & ln<=max_lon)
-# lt <- ncvar_get(bdat, 'lat')
-# lt_i <- which(lt>=min_lat & lt<=max_lat)
-# 
-# bathy <- ncvar_get(bdat, 'z', 
+### bathymetry; not used in final product but useful for exploratory plotting
+### could be used if we wat to restrict MHWs to only areas to a certain depth
+# setwd("~/data/bathy")
+# burl <- 'etopo1.nc'
+
+burl <- 'https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc'
+bdat <- nc_open(burl)
+# crs <- 'EPSG:4326'
+
+ln <- ncvar_get(bdat, 'lon')
+ln_i <- which(ln>=min_lon & ln<=max_lon)
+lt <- ncvar_get(bdat, 'lat')
+lt_i <- which(lt>=min_lat & lt<=max_lat)
+
+bathy <- ncvar_get(bdat, 'z',
+                   start = c(ln_i[1],lt_i[1]),
+                   count = c(length(ln_i), length(lt_i)))
+# bathy <- ncvar_get(bdat, 'Band1',
 #                    start = c(ln_i[1],lt_i[1]),
 #                    count = c(length(ln_i), length(lt_i)))
-# # bathy <- ncvar_get(bdat, 'Band1', 
-# #                    start = c(ln_i[1],lt_i[1]),
-# #                    count = c(length(ln_i), length(lt_i)))
-# nc_close(bdat)
+nc_close(bdat)
 
 # load shapefile to subset  --------------------------------
 ### shapefiles downloaded from marineregions.org (future goal implement mregions2 R package for shapefile)
@@ -227,23 +227,23 @@ if(review_code == F){
   # 1. Create a time vector (e.g., layer indices 1 to n)
   t_vals <- 1:nlyr(sst_r)
   
-  # ### linear ###
-  # # 2. Run cell-level regression to get intercept and slope
-  # # regress returns a SpatRaster with 2 layers: (Intercept) and x (slope)
-  # trend_model <- regress(sst_r, t_vals, na.rm = T)
-  # 
-  # # 3. Calculate the linear trend for each layer
-  # # trend = intercept + slope * time
-  # intercept <- trend_model[[1]]
-  # slope <- trend_model[[2]]
-  # 
-  # # Generate the trend raster stack
-  # trend_stack <- intercept + slope * t_vals
-  # 
-  # # 4. Subtract the trend from the original data (Detrend)
-  # sst_rdt <- sst_r - trend_stack
-  # rm(trend_model,intercept,slope,trend_stack)
-  # 
+  ### linear ###
+  # 2. Run cell-level regression to get intercept and slope
+  # regress returns a SpatRaster with 2 layers: (Intercept) and x (slope)
+  trend_model <- regress(sst_r, t_vals, na.rm = T)
+
+  # 3. Calculate the linear trend for each layer
+  # trend = intercept + slope * time
+  intercept <- trend_model[[1]]
+  slope <- trend_model[[2]]
+
+  # Generate the trend raster stack
+  trend_stack <- intercept + slope * t_vals
+
+  # 4. Subtract the trend from the original data (Detrend)
+  sst_rdt <- sst_r - trend_stack
+  rm(trend_model,intercept,slope,trend_stack)
+
   # ### quadratic ###
   # trend_model2 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2), na.rm = T)
   # trend_stack2 <- trend_model2[[1]] + 
@@ -253,56 +253,87 @@ if(review_code == F){
   # # 4. Subtract the trend from the original data (Detrend)
   # sst_rdt2 <- sst_r - trend_stack2
   
-  
   ### cubic ###
   ### this method was chosen to follow the NEFSC lead on MHW indicator development
   ### the residual sum of squares was lower and the values were cooler compared to linear and quadratic detrending``
-  trend_model3 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2) + I(x^3), na.rm = T)
-  trend_stack3 <- trend_model3[[1]] + 
-    trend_model3[[2]] * t_vals + 
-    trend_model3[[3]] * t_vals^2 +
-    trend_model3[[4]] * t_vals^3
-  
-  # 4. Subtract the trend from the original data (Detrend)
-  sst_rdt3 <- sst_r - trend_stack3
+  # trend_model3 <- regress(sst_r, t_vals, formula = y ~ x + I(x^2) + I(x^3), na.rm = T)
+  # trend_stack3 <- trend_model3[[1]] + 
+  #   trend_model3[[2]] * t_vals + 
+  #   trend_model3[[3]] * t_vals^2 +
+  #   trend_model3[[4]] * t_vals^3
+  # 
+  # # 4. Subtract the trend from the original data (Detrend)
+  # sst_rdt3 <- sst_r - trend_stack3
   
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
-  saveRDS(sst_rdt3, 'sst_rdetrend_brick.rds')
-  sst_rdt3 <- readRDS('sst_rdetrend_brick.rds')
+  saveRDS(sst_rdt, 'sst_rdetrend_brick.rds')
+  sst_rdt <- readRDS('sst_rdetrend_brick.rds')
+  
   ### crop to US Gulf EEZ
-  ann_dt_gwide <- crop(sst_rdt3, gulf_eez) |> mask(gulf_eez)
-  cellsize_km <- cellSize(ann_dt_gwide, unit='km') |> values() |> mean()
+  ann_dt_geez <- crop(sst_rdt, gulf_eez) |> mask(gulf_eez)
+  cellsize_km <- cellSize(ann_dt_geez, unit='km') |> values() |> mean()
   ### save intermediate file
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
-  writeCDF(ann_dt_gwide, 'oisst_dt_gulf.nc',overwrite=TRUE)
-  dat <- nc_open('oisst_dt_gulf.nc')
-  data <- ncvar_get(dat, 'oisst_dt_gulf')
-  lon <- ncvar_get(dat, 'longitude')
-  lat <- ncvar_get(dat, 'latitude')
+  writeCDF(ann_dt_geez, 'oisst_dt_geez.nc',overwrite=TRUE)
+  dat <- nc_open('oisst_dt_geez.nc')
+  data <- ncvar_get(dat, 'oisst_dt_geez')
+  # lon <- ncvar_get(dat, 'longitude')
+  # lat <- ncvar_get(dat, 'latitude')
+  nc_close(dat)
   ### lon/lat grid locations for spatial plots
-  lon_lat <- expand.grid(lon = lon,lat = lat)
+  # lon_lat_eez <- expand.grid(lon = lon,lat = lat)
   ### create overall gridded mean and number of grid cells
   dat_m <- apply(data,c(1,2),mean,na.rm=T)
   ngrid <- length(which(!is.na(dat_m)))
   
   ### this is the MHW detection function
   setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
-  mhw_dt_cube <- detect3(file_in = 'oisst_dt_gulf.nc',
+  mhw_dt_cube_eez <- detect3(file_in = 'oisst_dt_geez.nc',
                          return_type = "df", 
                          # clim_period = c("1982-01-01", "2011-12-31"))
                          clim_period = c("1991-01-01", "2020-12-31")) ### more recent reference period per WMO
   ### save intermediate file
   setwd(here('data/intermediate'))
-  save(mhw_dt_cube, ngrid, cellsize_km, lon_lat,
-       file = 'mhw_dt_results.RData')
+  save(mhw_dt_cube_eez, ngrid, cellsize_km, #lon_lat_eez,
+       file = 'mhw_dt_results_eez.RData')
+  gc()
+  
+  
+  ###############################
+  ### Gulf-wide for spatial plots
+  ###############################
+  ### save intermediate file
+  setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
+  writeCDF(sst_rdt, 'oisst_dt_gulfw.nc',overwrite=TRUE)
+  dat <- nc_open('oisst_dt_gulfw.nc')
+  # data <- ncvar_get(dat, 'oisst_dt_gulfw')
+  lon <- ncvar_get(dat, 'longitude')
+  lat <- ncvar_get(dat, 'latitude')
+  nc_close(dat)
+  ### lon/lat grid locations for spatial plots
+  lon_lat_gulfw <- expand.grid(lon = lon,lat = lat)
+  
+  ### this is the MHW detection function
+  file_in <- 'oisst_dt_gulfw.nc'
+  file_out <- 'mhw_dt_results_gulfw.RData'
+  
+  setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
+  mhw_dt_cube_gulfw <- detect3(file_in = file_in,
+                         return_type = "df", 
+                         # clim_period = c("1982-01-01", "2011-12-31"))
+                         clim_period = c("1991-01-01", "2020-12-31")) ### more recent reference period per WMO
+  ### save intermediate file
+  setwd(here('data/intermediate'))
+  save(mhw_dt_cube_gulfw, lon_lat_gulfw,
+       file = file_out)
   gc()
   
 } else {
   
   setwd(here('data/intermediate'))
-  # load('mhw_results.RData')
-  load('mhw_dt_results.RData')
+  load('mhw_dt_results_eez.RData')
+  load('mhw_dt_results_gulfw.RData')
   ### ngrid, cellsize_km, lon_lat are the same between datasets, so its ok to overwrite
   
 }
@@ -339,21 +370,21 @@ if(review_code == F){
 # plot(yr_mhw_dd$year, yr_mhw_dd$intensity_cumulative, typ = 'l')
 
 ### detrended
-### annual ----------------
-yr_mhw_dt <- aggregate(cell ~ year(index_start),
-                    data = mhw_dt_cube,
-                    function(x) length(unique(x))) |>
-  setNames(c('year','cell')) |>
-  merge(expand.grid(year=1982:2025),all=T)
-yr_mhw_dt$cell[is.na(yr_mhw_dt$cell)] <- 0
-yr_mhw_dt$percent <- yr_mhw_dt$cell / ngrid
-# yr_mhw_dt$kmsq <- yr_mhw_dt$cell * cellsize_km
-### gut check
-plot(yr_mhw_dt$year, yr_mhw_dt$percent, typ = 'l')
+### annual area of MHW in Gulf ----------------
+# yr_mhw_dt <- aggregate(cell ~ year(index_start),
+#                     data = mhw_dt_cube_eez,
+#                     function(x) length(unique(x))) |>
+#   setNames(c('year','cell')) |>
+#   merge(expand.grid(year=1982:2025),all=T)
+# yr_mhw_dt$cell[is.na(yr_mhw_dt$cell)] <- 0
+# yr_mhw_dt$percent <- yr_mhw_dt$cell / ngrid
+# # yr_mhw_dt$kmsq <- yr_mhw_dt$cell * cellsize_km
+# ### gut check
+# plot(yr_mhw_dt$year, yr_mhw_dt$percent, typ = 'l')
 
 ### annual-degree days ----------------
 yr_mhw_dd_dt <- aggregate(cbind(intensity_cumulative) ~ year(index_start),
-                       data = mhw_dt_cube,
+                       data = mhw_dt_cube_eez,
                        median, na.rm=T) |>
   setNames(c('year','intensity_cumulative')) |>
   merge(expand.grid(year=1982:2025),all=T)
@@ -374,12 +405,18 @@ plot(yr_mhw_dd_dt$year, yr_mhw_dd_dt$intensity_cumulative, typ = 'l')
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("EEZ Area", 'Cumulative Intensity')
-unit_names = c("Percentage", 'Degree-Days')
-extent_names = rep('US Gulf EEZ',2)
+# indicator_names = c("EEZ Area", 'Cumulative Intensity')
+# unit_names = c("Percentage", 'Degree-Days')
+# extent_names = rep('US Gulf EEZ',2)
+# formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw_dt$year,
+                                                        # yr_mhw_dt$percent, yr_mhw_dd_dt$intensity_cumulative),
+                                                  # indicator_names, unit_names, extent_names)
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr_mhw_dt$year,
-                                                        yr_mhw_dt$percent, yr_mhw_dd_dt$intensity_cumulative),
+indicator_names = c('Cumulative Intensity')
+unit_names = c('Degree-Days')
+extent_names = c('US Gulf EEZ')
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(yr_mhw_dd_dt,
                                                   indicator_names, unit_names, extent_names)
 
 
@@ -413,16 +450,21 @@ saveRDS(data_obj, file = object_filename)
 # For more info on the plot_fn_obj function go HERE
 
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, 
-                        pts = T, #pt_size = 1.5,
-                        sep_ylabs = T, manual_title = 'Marine Heatwaves',
-                        ylab_sublabel = T, fig.width = 8)
+                        pts = T, pt_size = 1.5,
+                        manual_title = 'Marine Heatwaves',
+                        manual_ylab = 'Median Cumulative Intensity (Degree-Days)',
+                        fig.width = 7,
+                        lwd = 1, ) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'))
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename, width = 6, height = 5, unit = 'in')
+ggsave(filename = plot_filename, width = 7, height = 3.5, unit = 'in')
 
 
 
@@ -430,6 +472,196 @@ ggsave(filename = plot_filename, width = 6, height = 5, unit = 'in')
 ##############################################
 ### exploratory plots for future reference ###
 ##############################################
+
+#####################
+### spatial plots ###
+#####################
+
+### shapefile for plotting
+world <- ne_download(scale = 10, type = "countries",
+                     returnclass = 'sv') |>
+  crop(ext(min_lon,max_lon,min_lat,max_lat))
+
+### where are the MHWs?
+cell_ll <- unique(mhw_dt_cube_gulfw[, c("cell", "x", 'y')]) |>
+  setNames(c('cell','lon','lat'))
+
+event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_dt_cube_gulfw,
+                         function(x) length(unique(x))) |>
+  setNames(c('cell','year','event_no')) |> type.convert() |>
+  merge(expand.grid(cell = cell_ll$cell, year = styear:enyear),
+        by = c('cell', 'year'), all.y = TRUE)
+event_no_yr$event_no[is.na(event_no_yr$event_no)] <- 0
+event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
+  merge(cell_ll, all = T) |>
+  merge(lon_lat_gulfw, all = T)
+h1dt <- hist(event_no_mean$event_no)
+
+mean_event_no <- matrix(event_no_mean$event_no, 52, 72)
+### put into raster
+event_rast <- rast(mean_event_no[nrow(mean_event_no):1,])
+ext(event_rast) <- c(min_lon, max_lon, min_lat, max_lat)
+crs(event_rast) <- "EPSG:4326"
+plot(event_rast)
+
+### colors and breaks for plotting
+e_brks <- seq(min(h1dt$breaks),max(h1dt$breaks),.1)
+e_cols <- (cmocean('thermal')(length(e_brks)-1))
+
+
+### spatial trend
+setDT(event_no_yr)
+slopes_dt <- event_no_yr[,
+                         .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]),
+                         by = cell]
+gridcell_lm <- unique(mhw_dt_cube_gulfw[, c("cell", "x", 'y')]) |>
+  setNames(c('cell','lon','lat')) |>
+  merge(slopes_dt) |>
+  merge(lon_lat_gulfw, all = T)
+h2dt <- hist(gridcell_lm$slope*10)
+
+mhw_slope <- matrix(gridcell_lm$slope*10, 52, 72)
+### put into raster
+slope_rast <- rast(mhw_slope[nrow(mhw_slope):1,])
+ext(slope_rast) <- c(min_lon, max_lon, min_lat, max_lat)
+crs(slope_rast) <- "EPSG:4326"
+plot(slope_rast)
+
+### colors and breaks for plotting
+s_brks <- seq(-1,1,.05)
+s_cols <- (cmocean('balance')(length(s_brks)-1))
+
+
+# setwd("~/R_projects/Looking_4_CMP/figs")
+# png('mhw-surface-spatial-plot.png',
+#     width = 6, height = 10, units = 'in', res = 300)
+# par(mfrow=c(2,1))
+# 
+# plot(event_rast,
+#      col = e_cols, range = c(min(e_brks),max(e_brks)),
+#      plg = list(tick = 'out'),
+#      main = 'Marine Heatwaves (mean number per year)',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# # plot(gulf_eez, add = T)
+# 
+# plot(slope_rast,
+#      col = s_cols, range = c(min(s_brks),max(s_brks)),
+#      # breaks = s_brks,
+#      plg = list(tick = 'out'),
+#      main = 'Marine Heatwave Trend (events per decade)',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# # plot(gulf_eez, add = T)
+# 
+# dev.off()
+
+
+
+event_no_yr <- aggregate(intensity_cumulative ~ cell + year(index_start), 
+                         data = mhw_dt_cube_gulfw,
+                         mean, na.rm = T) |>
+  setNames(c('cell','year','event_no')) |> type.convert()
+event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
+  merge(cell_ll, all = T) |>
+  merge(lon_lat_gulfw, all = T)
+h1dt <- hist(event_no_mean$event_no)
+
+mean_event_no <- matrix(event_no_mean$event_no, 52, 72)
+### put into raster
+event_rast2 <- rast(mean_event_no[nrow(mean_event_no):1,])
+ext(event_rast2) <- c(min_lon, max_lon, min_lat, max_lat)
+crs(event_rast2) <- "EPSG:4326"
+plot(event_rast2)
+
+### colors and breaks for plotting
+e_brks2 <- seq(min(h1dt$breaks),max(h1dt$breaks),.1)
+e_cols2 <- (cmocean('thermal')(length(e_brks)-1))
+
+
+### spatial trend
+setDT(event_no_yr)
+slopes_dt <- event_no_yr[,
+                         .(slope = coef(lm(event_no ~ year, na.action = na.exclude))[2]),
+                         by = cell]
+gridcell_lm <- unique(mhw_dt_cube_gulfw[, c("cell", "x", 'y')]) |>
+  setNames(c('cell','lon','lat')) |>
+  merge(slopes_dt) |>
+  merge(lon_lat_gulfw, all = T)
+h2dt <- hist(gridcell_lm$slope)
+
+mhw_slope <- matrix(gridcell_lm$slope, 52, 72)
+### put into raster
+slope_rast2 <- rast(mhw_slope[nrow(mhw_slope):1,])
+ext(slope_rast2) <- c(min_lon, max_lon, min_lat, max_lat)
+crs(slope_rast2) <- "EPSG:4326"
+plot(slope_rast2)
+
+### colors and breaks for plotting
+# s_brks2 <- seq(-3,3,.1)
+s_brks2 <- seq(-1,1,.05)
+s_cols2 <- (cmocean('balance')(length(s_brks2)-1))
+
+
+# setwd("~/R_projects/Looking_4_CMP/figs")
+# png('mhw-surface-spatial-plot2.png',
+#     width = 6, height = 10, units = 'in', res = 300)
+# par(mfrow=c(2,1))
+# 
+# plot(event_rast2,
+#      col = e_cols2, range = c(min(e_brks2),max(e_brks2)),
+#      plg = list(tick = 'out'),
+#      main = 'Mean Intensity deg-days per year',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# # plot(gulf_eez, add = T)
+# 
+# plot(slope_rast2,
+#      col = s_cols2, range = c(min(s_brks2),max(s_brks2)),
+#      # breaks = s_brks2,
+#      plg = list(tick = 'out'),
+#      main = 'Cummulative Intensity Trend (degree-days/year)',
+#      mar = c(1, 2, 1, 4))
+# plot(world, add= T, col = 'gray')
+# contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# # plot(gulf_eez, add = T)
+# 
+# dev.off()
+
+
+
+setwd(here('figures/plots'))
+# png('mhw-surface-spatial-plot.png',
+#     width = 6, height = 10, units = 'in', res = 300)
+# par(mfrow=c(2,1))
+
+png('mhw-surface-spatial-plot.png',
+    width = 10, height = 6, units = 'in', res = 300)
+par(mfrow=c(1,2))
+
+plot(slope_rast,
+     col = s_cols, range = c(min(s_brks),max(s_brks)),
+     # breaks = s_brks,
+     plg = list(tick = 'out'),
+     main = 'Marine Heatwave Trend (events per decade)',
+     mar = c(1, 2, 1, 4))
+plot(world, add= T, col = 'gray')
+contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+# plot(gulf_eez, add = T)
+
+plot(slope_rast2,
+     col = s_cols2, range = c(min(s_brks2),max(s_brks2)),
+     # breaks = s_brks2,
+     plg = list(tick = 'out'),
+     main = 'Cummulative Intensity Trend (degree-days/year)',
+     mar = c(1, 2, 1, 4))
+plot(world, add= T, col = 'gray')
+contour(ln[ln_i],lt[lt_i],bathy, levels = -100, add=T, lwd = 2)
+
+dev.off()
 
 
 # ### seasonal -------------------
