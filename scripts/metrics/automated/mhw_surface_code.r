@@ -560,7 +560,7 @@ s_cols <- (cmocean('balance')(length(s_brks)-1))
 
 
 
-event_no_yr <- aggregate(intensity_cumulative_abs ~ cell + year(index_start), 
+event_no_yr <- aggregate(intensity_cumulative ~ cell + year(index_start), 
                          data = mhw_dt_cube_gulfw,
                          mean, na.rm = T) |>
   setNames(c('cell','year','event_no')) |> type.convert()
