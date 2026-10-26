@@ -13,8 +13,8 @@ library(dplyr)
 root_name <- "observer_metrics"
 
 csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv"))
-# object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
-# plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
+object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
+plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
 #----------------------------------------------------
 #### 1. Read Data ####
@@ -26,7 +26,8 @@ csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_forma
 # If intermediate data (shapefiles etc.) are needed, please put them in data>intermediate
 #   - Filename should use the syntax rootname_descriptivename
 
-rf_obs <- read_xlsx('Reef Fish Observer Program Coverage Rates by Year, Region, and Trip Gear (2007-2025).xlsx')
+rf_obs <- read_xlsx(here('data/unformatted/confidential/Reef Fish Observer Program Coverage Rates by Year, Region, and Trip Gear (2007-2025).xlsx'))
+shrimp <- read.csv(here("data/unformatted/confidential/gulf_shrimp_observer.csv"))
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
@@ -42,20 +43,17 @@ rf_obs_sub <- subset(rf_obs, REGION == "GOM") |>
   as.data.frame() |> 
   reshape(idvar = "YEAR", timevar = "GEAR", direction = "wide")
 
-#Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("BLL Trips observed",
-                    "BLL Vessels observed",
-                    "BLL Seadays Observed",
-                    "VL Trips observed",
-                    "VL Vessels observed",
-                    "VL Seadays Observed",
-                    "Total Trips observed",
-                    "Total Vessels observed",
-                    "Total Seadays Observed")
-unit_names = rep("Proporition Observed", length(indicator_names))
-extent_names = c(rep('Bottom Longline', 3), rep('Vertical Line', 3), rep('Vertical Line + Bottom Longline', 3))
+### add row in shrimp to align
+shrimp[19,] <- c(2025, NA, NA, NA)
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(rf_obs_sub, indicator_names, unit_names, extent_names)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = rep('Observer Effort',3)
+unit_names = c("Proporition Seadays Observed","Proporition Seadays Observed","Proporition Hours Observed")
+extent_names = c('Bottom Longline', 'Vertical Line', 'Shrimp')
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(rf_obs_sub[,c(1,4,7)], shrimp[,4]), 
+                                                  indicator_names, unit_names, extent_names)
 
 
 #----------------------------------------------------
@@ -71,76 +69,33 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
-bll_obj <- IEAnalyzeR::data_prep(formatted_data[,c(1,2:4)])
-vl_obj <- IEAnalyzeR::data_prep(formatted_data[,c(1,5:7)])
-total_obj <- IEAnalyzeR::data_prep(formatted_data[,c(1,8:10)])
+data_obj <- IEAnalyzeR::data_prep(formatted_data)
 
 #----------------------------------------------------
 #### 5. Save Formatted data_prep object ####
 
 #This will save your data to the appropriate folder.
 
-object_filename1 <- here(paste0("data/formatted/final_objects/", root_name, "_object1.rds"))
-object_filename2 <- here(paste0("data/formatted/final_objects/", root_name, "_object2.rds"))
-object_filename3 <- here(paste0("data/formatted/final_objects/", root_name, "_object3.rds"))
-
-saveRDS(bll_obj, file = object_filename1)
-saveRDS(vl_obj, file = object_filename2)
-saveRDS(total_obj, file = object_filename3)
-
+saveRDS(data_obj, file = object_filename)
 
 #----------------------------------------------------
 #### 6. Preview Plot ####
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = bll_obj, trend = TRUE, 
-                        manual_title = 'Bottom Longline Trips Observed',
-                        ncol = 2, fig.width = 9, pts = T, pt_size = 2)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, 
+                        manual_title = 'Fisheries Observer Effort',
+                        ylab_sublabel = c('extent','unit'),
+                        sep_ylabs = T,
+                        ncol = 2, fig.width = 10, pts = T, pt_size = 2) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'),
+        strip.text = element_text(size = 12, face = 'plain'))
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-plot_filename1 <- here(paste0("figures/plots/", root_name, "_plot1.png"))
-
-ggsave(filename = plot_filename1, height = 5, width = 9, unit = "in")
-
-
-#----------------------------------------------------
-#### 6. Preview Plot ####
-# Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
-# For more info on the plot_fn_obj function go HERE
-
-IEAnalyzeR::plot_fn_obj(df_obj = vl_obj, trend = TRUE,
-                        manual_title = 'Vertical Line Trips Observed',
-                        ncol = 2, fig.width = 9, pts = T, pt_size = 2)
-
-#----------------------------------------------------
-#### 7. Save plot ####
-# This will save the plot to the correct folder.
-# Adjust height & width using (height=, width=, unit="in") if needed.
-
-plot_filename2 <- here(paste0("figures/plots/", root_name, "_plot2.png"))
-
-ggsave(filename = plot_filename2, height = 5, width = 9, unit = "in")
-
-
-#----------------------------------------------------
-#### 6. Preview Plot ####
-# Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
-# For more info on the plot_fn_obj function go HERE
-
-IEAnalyzeR::plot_fn_obj(df_obj = total_obj, trend = TRUE,
-                        manual_title = 'Total Reef Trips Observed', 
-                        ncol = 2, fig.width = 9, pts = T, pt_size = 2)
-
-#----------------------------------------------------
-#### 7. Save plot ####
-# This will save the plot to the correct folder.
-# Adjust height & width using (height=, width=, unit="in") if needed.
-
-plot_filename3 <- here(paste0("figures/plots/", root_name, "_plot3.png"))
-
-ggsave(filename = plot_filename3, height = 5, width = 9, unit = "in")
+ggsave(filename = plot_filename, height = 5, width = 10, unit = "in")
