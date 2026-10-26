@@ -488,7 +488,10 @@ cell_ll <- unique(mhw_dt_cube_gulfw[, c("cell", "x", 'y')]) |>
 
 event_no_yr <- aggregate(event_no ~ cell + year(index_start), data = mhw_dt_cube_gulfw,
                          function(x) length(unique(x))) |>
-  setNames(c('cell','year','event_no')) |> type.convert()
+  setNames(c('cell','year','event_no')) |> type.convert() |>
+  merge(expand.grid(cell = cell_ll$cell, year = styear:enyear),
+        by = c('cell', 'year'), all.y = TRUE)
+event_no_yr$event_no[is.na(event_no_yr$event_no)] <- 0
 event_no_mean <- aggregate(event_no ~ cell, data = event_no_yr, mean, na.rm = T) |>
   merge(cell_ll, all = T) |>
   merge(lon_lat_gulfw, all = T)
