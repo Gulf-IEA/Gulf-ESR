@@ -324,7 +324,7 @@ if(review_code == F){
                          # clim_period = c("1982-01-01", "2011-12-31"))
                          clim_period = c("1991-01-01", "2020-12-31")) ### more recent reference period per WMO
   ### save intermediate file
-  setwd("~/R_projects/ESR-indicator-scratch/data/intermediate_files")
+  setwd(here('data/intermediate'))
   save(mhw_dt_cube_gulfw, lon_lat_gulfw,
        file = file_out)
   gc()
