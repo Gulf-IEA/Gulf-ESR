@@ -523,7 +523,7 @@ h2dt <- hist(gridcell_lm$slope*10)
 mhw_slope <- matrix(gridcell_lm$slope*10, 52, 72)
 ### put into raster
 slope_rast <- rast(mhw_slope[nrow(mhw_slope):1,])
-ext(slope_rast) <- c(range(lon_lat_gulfw$lon),range(lon_lat_gulfw$lat))
+ext(slope_rast) <- c(min_lon, max_lon, min_lat, max_lat)
 crs(slope_rast) <- "EPSG:4326"
 plot(slope_rast)
 
