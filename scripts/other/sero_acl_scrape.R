@@ -3,6 +3,14 @@ library(here)
 library(rvest)
 library(dplyr)
 
+### output table columns: year, species, sector, type, ACL, unit
+acls <- data.frame(year = NA,
+                   region = 'Gulf of Mexico',
+                   species = NA,
+                   sector = NA,
+                   type = NA,
+                   ACL = NA,
+                   unit = NA)
 
 ##############################
 ### recreational -------------
@@ -29,6 +37,7 @@ kgm_rec <- rec_tables[[5]]
 rg_rec <- rec_tables[[6]]
 rs_rec <- rec_tables[[7]]
 
+acls[1:nrow(cobia_rec),]
 
 ##############################
 ### commercial ---------------
