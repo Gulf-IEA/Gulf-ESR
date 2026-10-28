@@ -178,7 +178,7 @@ target_deflator_2024 <- deflator_annual %>%
   filter(LAND_YEAR == 2024) %>%
   pull(annual_deflator)
 
-dat_all <- landings_raw %>%
+dat_all <- landings_github %>%
   left_join(deflator_annual, by = "LAND_YEAR") %>%
   mutate(
     # Convert nominal dollars to constant 2024 dollars
@@ -206,6 +206,10 @@ pareto_df <- dat_all %>%
 dat_all_noshrimp <- dat_all %>%
   filter(!str_detect(COMMON_NAME, regex("SHRIMP", ignore_case = TRUE)))
 
+# Osteichthyes is a problem category and also needs to be removed. 
+dat_all_noshrimp <- dat_all_noshrimp %>%
+  filter(!str_detect(COMMON_NAME, regex("OSTEICHTHYES", ignore_case = TRUE)))
+
 pareto_df2 <- dat_all_noshrimp %>%
   arrange(desc(total_mil_lbs)) %>%
   mutate(
@@ -229,7 +233,7 @@ quick_summary <- dat_all_noshrimp %>%
   select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
 
 ggplot(data = quick_summary, aes(x=LAND_YEAR, y = total_mil_lbs)) +
-  geom_line(color = "blue", size = 1) +
+  geom_line(color = "blue", linewidth = 1) +
   scale_y_continuous(labels = comma_format()) +
   scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
   labs(
@@ -316,7 +320,7 @@ Now we want to dig into this trend to see what is going on and see if we need to
 top_species_list <- dat_all_noshrimp_nomenh %>%
   group_by(COMMON_NAME) %>%
   summarise(grand_total_lbs = sum(total_mil_lbs, na.rm = TRUE)) %>%
-  slice_max(grand_total_lbs, n = 20) %>%
+  slice_max(grand_total_lbs, n = 10) %>%
   pull(COMMON_NAME)
 
 # Lumping smaller volume species into "OTHER" to simplify visualizations
@@ -328,6 +332,16 @@ dat_analyzed <- dat_all_noshrimp_nomenh %>%
       "OTHER / ALL ELSE"
     )
   )
+
+pareto_df3 <- dat_all_noshrimp_nomenh %>%
+  group_by(COMMON_NAME, LAND_YEAR) %>% 
+  arrange(desc(total_mil_lbs)) %>%
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(total_mil_lbs),
+    CUM_PCT = (CUM_LBS / sum(total_mil_lbs)) * 100
+  )
+
 
 # ------------------------------------------------------------------------------
 # 2. Plot 1: Stacked Area Chart (Composition of Landings Over Time)
@@ -439,8 +453,161 @@ decade_summary <- dat_all_noshrimp_nomenh %>%
 print(decade_summary)
 ```
 
+Let's bring in Mandy's file and see if we can exclude species that way
 
-OSTEICHTHYES is a problem category. It spikes because 
+```{r}
+ref_file = read.csv(here("data/intermediate/landings_ref_MKedits.csv"))
+
+exclude_species <- ref_file %>%
+  filter(excl == 1) %>%
+  pull(spp) %>%     
+  trimws()
+
+# 2. Filter master dataframe (case-insensitive and whitespace-trimmed)
+dat_all_clean <- dat_all_noshrimp_nomenh %>%
+  filter(!toupper(trimws(COMMON_NAME)) %in% toupper(exclude_species)) 
+```
+
+```{r}
+
+# ------------------------------------------------------------------------------
+# 1. Identify Top Species Overall (Ranked by Total Volume)
+# ------------------------------------------------------------------------------
+top_species_list <- dat_all_clean %>%
+  group_by(COMMON_NAME) %>%
+  summarise(grand_total_lbs = sum(total_mil_lbs, na.rm = TRUE)) %>%
+  slice_max(grand_total_lbs, n = 20) %>%
+  pull(COMMON_NAME)
+
+# Lumping smaller volume species into "OTHER" to simplify visualizations
+dat_analyzed <- dat_all_clean %>%
+  mutate(
+    species_group = if_else(
+      COMMON_NAME %in% top_species_list, 
+      COMMON_NAME, 
+      "OTHER / ALL ELSE"
+    )
+  )
+
+pareto_df3 <- dat_all_clean %>%
+  group_by(COMMON_NAME, LAND_YEAR) %>% 
+  arrange(desc(total_mil_lbs)) %>%
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(total_mil_lbs),
+    CUM_PCT = (CUM_LBS / sum(total_mil_lbs)) * 100
+  )
+
+
+# ------------------------------------------------------------------------------
+# 2. Plot 1: Stacked Area Chart (Composition of Landings Over Time)
+# ------------------------------------------------------------------------------
+# Shows which specific fisheries expanded during the 1960s/1990s peaks 
+# and contracted during the 1980s and post-1995 periods.
+
+annual_by_species <- dat_analyzed %>%
+  group_by(LAND_YEAR, species_group) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE),
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(annual_by_species, aes(x = LAND_YEAR, y = total_mil_lbs, fill = species_group)) +
+  geom_area(alpha = 0.85, color = "white", linewidth = 0.2) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
+  scale_fill_viridis_d(option = "turbo") +
+  labs(
+    title = "Gulf Commercial Landings Breakdown by Top Species (No Shrimp / Menhaden)",
+    subtitle = "Tracking species-level drivers behind historical peaks and declines",
+    x = "Year",
+    y = "Live Landings (Millions of Pounds)",
+    fill = "Species"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold", size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
+
+# ------------------------------------------------------------------------------
+# 3. Plot 2: Faceted Line Plot of Top Species (Individual Trends)
+# ------------------------------------------------------------------------------
+# Allows clear inspection of isolated species dynamics (e.g., Red Drum closures, 
+# Mullet roe fishery shifts, Blue Crab, Oyster collapses/spikes).
+
+ggplot(
+  annual_by_species %>% filter(species_group != "OTHER / ALL ELSE"), 
+  aes(x = LAND_YEAR, y = total_mil_lbs, color = species_group)
+) +
+  geom_line(linewidth = 1, show.legend = FALSE) +
+  facet_wrap(~ species_group, scales = "free_y", ncol = 3) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 10)) +
+  scale_y_continuous(labels = comma_format()) +
+  labs(
+    title = "Historical Trajectories of Key Drivers",
+    subtitle = "Free Y-axis scale to highlight distinct historical patterns per species",
+    x = "Year",
+    y = "Millions of Pounds"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.background = element_rect(fill = "grey92"),
+    strip.text = element_text(face = "bold")
+  )
+
+# ------------------------------------------------------------------------------
+# 4. Plot 3: Volume vs. Inflation-Adjusted Value Trajectory
+# ------------------------------------------------------------------------------
+# Explores if total revenue dropped along with volume, or if high-value species 
+# replaced high-volume species over time.
+
+summary_combined <- dat_all_clean %>%
+  group_by(LAND_YEAR) %>%
+  summarise(
+    Pounds = sum(total_mil_lbs, na.rm = TRUE),
+    `Value (2024 USD)` = sum(total_mil_dollars_2024, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(cols = c(Pounds, `Value (2024 USD)`), names_to = "metric", values_to = "value")
+
+ggplot(summary_combined, aes(x = LAND_YEAR, y = value, color = metric)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ metric, scales = "free_y", ncol = 1) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
+  scale_y_continuous(labels = comma_format()) +
+  labs(
+    title = "Gulf Commercial Landings: Volume vs. Inflation-Adjusted Real Value",
+    subtitle = "Comparing overall biomass harvest (lbs) against landed value ($ USD 2024)",
+    x = "Year",
+    y = "Millions ($ or Lbs)",
+    color = "Metric"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold", size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+
+# ------------------------------------------------------------------------------
+# 5. Decade Summary Table for Narrative Context
+# ------------------------------------------------------------------------------
+decade_summary <- dat_all_clean %>%
+  mutate(decade = floor(LAND_YEAR / 10) * 10) %>%
+  group_by(decade, COMMON_NAME) %>%
+  summarise(decade_lbs = sum(total_mil_lbs, na.rm = TRUE), .groups = "drop_last") %>%
+  slice_max(order_by = decade_lbs, n = 3) %>%
+  mutate(rank = row_number()) %>%
+  pivot_wider(names_from = rank, values_from = c(COMMON_NAME, decade_lbs))
+
+print(decade_summary)
+``` 
 
 
 
