@@ -35,13 +35,17 @@ File Naming Setup.
 
 root_name<- "com_landings"
 
-csv_filename1<-here(paste0("data/formatted/formatted_csvs/", root_name, "all_assessed_formatted.csv")) 
-object_filename1<-here(paste0("data/formatted/final_objects/", root_name, "all_assessed_object.rds"))
-plot_filename1<-here(paste0("figures/plots/", root_name, "all_assessed_plot.png"))
+csv_filename1<-here(paste0("data/formatted/formatted_csvs/", root_name, "managed_formatted.csv")) 
+object_filename1<-here(paste0("data/formatted/final_objects/", root_name, "managed_object.rds"))
+plot_filename1<-here(paste0("figures/plots/", root_name, "managed_plot.png"))
 
-csv_filename2<-here(paste0("data/formatted/formatted_csvs/", root_name, "all_unassessed_formatted.csv")) 
-object_filename2<-here(paste0("data/formatted/final_objects/", root_name, "all_unassessed_object.rds"))
-plot_filename2<-here(paste0("figures/plots/", root_name, "all_unassessed_plot.png"))
+csv_filename2<-here(paste0("data/formatted/formatted_csvs/", root_name, "unmanaged_formatted.csv")) 
+object_filename2<-here(paste0("data/formatted/final_objects/", root_name, "unmanaged_object.rds"))
+plot_filename2<-here(paste0("figures/plots/", root_name, "unmanaged_plot.png"))
+
+csv_filename3<-here(paste0("data/formatted/formatted_csvs/", root_name, "long_series_formatted.csv")) 
+object_filename3<-here(paste0("data/formatted/final_objects/", root_name, "long_series_object.rds"))
+plot_filename3<-here(paste0("figures/plots/", root_name, "long_series_plot.png"))
 
 ```
 
@@ -51,6 +55,8 @@ Pull data from its source: Manual data: data/unformatted data.
 Automated data: Add script for data call (API, package, etc.).
 Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo.
 If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
+
+Pull data from Oracle using Carissa's account. If you have an account you will need to change the username info. Pulling data from 1950 onward because the data prior to 1950 look weird.
 
 ```{r}
 Sys.setenv(TZ = "UTC", ORA_SDTZ = "UTC")
@@ -72,7 +78,7 @@ con <- dbConnect(dbDriver("Oracle"),
 query <- "SELECT LAND_YEAR, SPECIES_ITIS, COMMON_NAME, FLAG_FMP_SPP, SUM(LIVE_POUNDS) AS TOTAL_LIVE_POUNDS, SUM(DOLLARS) AS TOTAL_DOLLARS, COUNT(*) AS RECORD_COUNT 
           FROM SEDAT.COM_LAND_EXTRACTION_MV@secdw_dblk.SFSC.NOAA.GOV
           WHERE LIVE_POUNDS > 0
-            AND LAND_YEAR >= 1972
+            AND LAND_YEAR >= 1950
             AND REGION IN ('GOM', 'GOM INTL')
           GROUP BY
             LAND_YEAR, SPECIES_ITIS, COMMON_NAME, FLAG_FMP_SPP
@@ -85,13 +91,13 @@ query <- "SELECT LAND_YEAR, SPECIES_ITIS, COMMON_NAME, FLAG_FMP_SPP, SUM(LIVE_PO
 landings_raw <- dbGetQuery(con, query)
 ```
 
-Quick check to ensure none of the data is confidential
+Quick check to see how much of the data is confidential. Can we just remove confidential rows?
 
 ```{r}
 query2 <- "SELECT LAND_YEAR, COMMON_NAME, COUNT(DISTINCT DEALER_ID) AS UNIQUE_DEALERS, SUM(LIVE_POUNDS) AS TOTAL_LIVE_LBS 
           FROM SEDAT.COM_LAND_EXTRACTION_MV@secdw_dblk.SFSC.NOAA.GOV
           WHERE LIVE_POUNDS > 0
-            AND LAND_YEAR >= 1972
+            AND LAND_YEAR >= 1950
             AND REGION IN ('GOM', 'GOM INTL')
           GROUP BY LAND_YEAR, COMMON_NAME
           HAVING COUNT(DISTINCT DEALER_ID) < 3 AND COUNT(DISTINCT DEALER_ID) > 0"
@@ -102,14 +108,459 @@ conf_check <- dbGetQuery(con, query2)
 unique(conf_check$COMMON_NAME)
 ```
 
-There are 4,867 confidential entries.
+There are 4,867 confidential entries (23% of the dataset)
 They all look like broad categories or freshwater fish.
 We can safely ignore them.
+
+Before we move on, let's save a working file so we don't have to pull from Oracle again.
+We will use the conf_check dataset to ensure none of the confidential data are included.
+
+```{r}
+# 1. Exclude the confidential strata identified in conf_check
+landings_github <- landings_raw %>%
+  # Anti-join matches on year, species name, and total live pounds to remove confidential rows
+  anti_join(
+    conf_check, 
+    by = c("LAND_YEAR", "COMMON_NAME")
+  ) 
+
+# 2. Save compressed CSV file for GitHub repository
+write_csv(landings_github, here("data/intermediate/all_commercial_landings_1950_2025_nonconf_raw.csv"))
+
+cat("Confidential rows successfully removed!\n")
+cat("Original rows:", nrow(landings_raw), "\n")
+cat("Cleaned dataset rows:", nrow(landings_github), "\n")
+```
 
 ```{r}
 #Always close the connection when you're done
 dbDisconnect(con)
 ```
+###############################################################################################
+
+# 2. Clean data and create time series csv
+
+Transform the data to fit the IEA data format.
+For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
+
+Start from here if you are just using the saved dataset.
+
+Load the full landings dataset with confidential data removed
+```{r}
+# Load data
+landings_github = read_csv(here("data/intermediate/all_commercial_landings_1950_2025_nonconf_raw.csv"))
+```
+
+
+################
+### Figure 1. Landings of all species in the Gulf 1950 - present
+
+First account for inflation in the value column. Convert pounds and dollars to millions. 
+```{r}
+# Load the GDP deflator dataset and aggregate to annual average deflators
+deflator_annual <- read_csv(here("data/intermediate/gdp_deflator_interpolated.csv")) %>%
+  mutate(LAND_YEAR = as.numeric(format(as.Date(date), "%Y"))) %>%
+  group_by(LAND_YEAR) %>%
+  summarise(annual_deflator = mean(gdp_deflator_dollar, na.rm = TRUE), .groups = "drop")
+
+# Define target baseline deflator (2024 dollars)
+target_deflator_2024 <- deflator_annual %>%
+  filter(LAND_YEAR == 2024) %>%
+  pull(annual_deflator)
+
+dat_all <- landings_raw %>%
+  left_join(deflator_annual, by = "LAND_YEAR") %>%
+  mutate(
+    # Convert nominal dollars to constant 2024 dollars
+    TOTAL_DOLLARS_2024 = TOTAL_DOLLARS * (target_deflator_2024 / annual_deflator),
+    total_mil_lbs = TOTAL_LIVE_POUNDS / 1e6,
+    total_mil_dollars_2024 = TOTAL_DOLLARS_2024 / 1e6
+  )
+```
+
+
+Next we want to examine which species make up the bulk of the landings each year.
+Let's run a Pareto distribution & sensitivity analysis on the rest of the species. Calculates the cumulative percentage of total unmanaged marine finfish volume accounted for by each species, ranks them from highest to lowest, and tests if the time series trend changes when using top 5, top 10, top 15, or top 25 species. Trying to remove species was like playing constant whack a mole. Random things just kept popping up. So a better approach was to make a whitelist of known major commercial marine finfish that are not managed. 
+
+```{r}
+# Cumulative Landings Pareto Analysis
+pareto_df <- dat_all %>%
+  arrange(desc(total_mil_lbs)) %>%
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(total_mil_lbs),
+    CUM_PCT = (CUM_LBS / sum(total_mil_lbs)) * 100
+  )
+
+# Shrimp need to be removed. According to the commercial landings reference file, this dataset is not the best one for assessing shrimp trends
+dat_all_noshrimp <- dat_all %>%
+  filter(!str_detect(COMMON_NAME, regex("SHRIMP", ignore_case = TRUE)))
+
+pareto_df2 <- dat_all_noshrimp %>%
+  arrange(desc(total_mil_lbs)) %>%
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(total_mil_lbs),
+    CUM_PCT = (CUM_LBS / sum(total_mil_lbs)) * 100
+  )
+
+```     
+
+
+Ok first a quick plot of everything. Then we will dig into some of the species trends
+```{r}
+quick_summary <- dat_all_noshrimp %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
+
+ggplot(data = quick_summary, aes(x=LAND_YEAR, y = total_mil_lbs)) +
+  geom_line(color = "blue", size = 1) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
+  labs(
+    title = "Gulf Commercial Landings No Shrimp (1972–Present)",
+    x = "Year",
+    y = "Live Landings (Millions of Pounds)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold", size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+
+Now menhaden vs. everything else
+```{r}
+
+dat_all_noshrimp_nomenh <- dat_all_noshrimp %>%
+  filter(!str_detect(COMMON_NAME, regex("MENHADEN", ignore_case = TRUE)))
+write_csv(dat_all_noshrimp_nomenh, "noshrimp_nomenhaden.csv")
+
+dat_all_menhaden <- dat_all_noshrimp %>%
+  filter(str_detect(COMMON_NAME, regex("MENHADEN", ignore_case = TRUE)))
+
+quick_summary_nomenh <- dat_all_noshrimp_nomenh %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
+
+quick_summary_menhaden <- dat_all_menhaden %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
+
+ggplot(data = quick_summary_nomenh, aes(x=LAND_YEAR, y = total_mil_lbs)) +
+  geom_line(color = "blue", size = 1) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
+  labs(
+    title = "Gulf Commercial Landings No Shrimp No Menhaden (1972–Present)",
+    x = "Year",
+    y = "Live Landings (Millions of Pounds)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold", size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+ggplot(data = quick_summary_menhaden, aes(x=LAND_YEAR, y = total_mil_lbs)) +
+  geom_line(color = "blue", size = 1) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
+  labs(
+    title = "Gulf Commercial Landings Menhaden (1972–Present)",
+    x = "Year",
+    y = "Live Landings (Millions of Pounds)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold", size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+
+Now we want to dig into this trend to see what is going on and see if we need to exclude any more species for the final plot.
+
+```{r}
+
+# ------------------------------------------------------------------------------
+# 1. Identify Top Species Overall (Ranked by Total Volume)
+# ------------------------------------------------------------------------------
+top_species_list <- dat_all_noshrimp_nomenh %>%
+  group_by(COMMON_NAME) %>%
+  summarise(grand_total_lbs = sum(total_mil_lbs, na.rm = TRUE)) %>%
+  slice_max(grand_total_lbs, n = 20) %>%
+  pull(COMMON_NAME)
+
+# Lumping smaller volume species into "OTHER" to simplify visualizations
+dat_analyzed <- dat_all_noshrimp_nomenh %>%
+  mutate(
+    species_group = if_else(
+      COMMON_NAME %in% top_species_list, 
+      COMMON_NAME, 
+      "OTHER / ALL ELSE"
+    )
+  )
+
+# ------------------------------------------------------------------------------
+# 2. Plot 1: Stacked Area Chart (Composition of Landings Over Time)
+# ------------------------------------------------------------------------------
+# Shows which specific fisheries expanded during the 1960s/1990s peaks 
+# and contracted during the 1980s and post-1995 periods.
+
+annual_by_species <- dat_analyzed %>%
+  group_by(LAND_YEAR, species_group) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE),
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(annual_by_species, aes(x = LAND_YEAR, y = total_mil_lbs, fill = species_group)) +
+  geom_area(alpha = 0.85, color = "white", linewidth = 0.2) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
+  scale_fill_viridis_d(option = "turbo") +
+  labs(
+    title = "Gulf Commercial Landings Breakdown by Top Species (No Shrimp / Menhaden)",
+    subtitle = "Tracking species-level drivers behind historical peaks and declines",
+    x = "Year",
+    y = "Live Landings (Millions of Pounds)",
+    fill = "Species"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold", size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
+
+# ------------------------------------------------------------------------------
+# 3. Plot 2: Faceted Line Plot of Top Species (Individual Trends)
+# ------------------------------------------------------------------------------
+# Allows clear inspection of isolated species dynamics (e.g., Red Drum closures, 
+# Mullet roe fishery shifts, Blue Crab, Oyster collapses/spikes).
+
+ggplot(
+  annual_by_species %>% filter(species_group != "OTHER / ALL ELSE"), 
+  aes(x = LAND_YEAR, y = total_mil_lbs, color = species_group)
+) +
+  geom_line(linewidth = 1, show.legend = FALSE) +
+  facet_wrap(~ species_group, scales = "free_y", ncol = 3) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 10)) +
+  scale_y_continuous(labels = comma_format()) +
+  labs(
+    title = "Historical Trajectories of Key Drivers",
+    subtitle = "Free Y-axis scale to highlight distinct historical patterns per species",
+    x = "Year",
+    y = "Millions of Pounds"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.background = element_rect(fill = "grey92"),
+    strip.text = element_text(face = "bold")
+  )
+
+# ------------------------------------------------------------------------------
+# 4. Plot 3: Volume vs. Inflation-Adjusted Value Trajectory
+# ------------------------------------------------------------------------------
+# Explores if total revenue dropped along with volume, or if high-value species 
+# replaced high-volume species over time.
+
+summary_combined <- dat_all_noshrimp_nomenh %>%
+  group_by(LAND_YEAR) %>%
+  summarise(
+    Pounds = sum(total_mil_lbs, na.rm = TRUE),
+    `Value (2024 USD)` = sum(total_mil_dollars_2024, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(cols = c(Pounds, `Value (2024 USD)`), names_to = "metric", values_to = "value")
+
+ggplot(summary_combined, aes(x = LAND_YEAR, y = value, color = metric)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ metric, scales = "free_y", ncol = 1) +
+  scale_x_continuous(breaks = seq(1950, 2025, by = 5)) +
+  scale_y_continuous(labels = comma_format()) +
+  labs(
+    title = "Gulf Commercial Landings: Volume vs. Inflation-Adjusted Real Value",
+    subtitle = "Comparing overall biomass harvest (lbs) against landed value ($ USD 2024)",
+    x = "Year",
+    y = "Millions ($ or Lbs)",
+    color = "Metric"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold", size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+
+# ------------------------------------------------------------------------------
+# 5. Decade Summary Table for Narrative Context
+# ------------------------------------------------------------------------------
+decade_summary <- dat_all_noshrimp_nomenh %>%
+  mutate(decade = floor(LAND_YEAR / 10) * 10) %>%
+  group_by(decade, COMMON_NAME) %>%
+  summarise(decade_lbs = sum(total_mil_lbs, na.rm = TRUE), .groups = "drop_last") %>%
+  slice_max(order_by = decade_lbs, n = 3) %>%
+  mutate(rank = row_number()) %>%
+  pivot_wider(names_from = rank, values_from = c(COMMON_NAME, decade_lbs))
+
+print(decade_summary)
+```
+
+
+OSTEICHTHYES is a problem category. It spikes because 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Define Regex Exclusion Patterns
+# Non-finfish / Invertebrates (Shrimp, Crabs, Oysters, Lobsters, Shellfish, Jellyfish, Corals, etc.)
+non_finfish_pattern <- "SHRIMP|CRAB|OYSTER|LOBSTER|CRAYFISH|PROCAMBARUS|CLAM|SCALLOP|OCTOPUS|SQUID|JELLYFISH|SPONGE|DOLLAR|TURTLE|TURBINIDAE|CONCH|CORAL|SEAWEED|ANIMALIA|BRYOPSIDALES|FORAMS|NUDIBRANCHS|CRUSTACEANS|SQUIDS|OCTOPUSES|SPONGES|CLAMS|SCALLOPS|HERMIT|STARFISH|SNAIL|ALGAE|WHELK|ANEMONE|NASSARIUS|CERITHIDEA|TEGULA|LIBINIA|MITHRACULUS|HIPPOSPONGIA|CHITONS|CORALLIMORPHARIA|CORALLINACEAE|DICOTYLEDONS|ULOTRICHALES|NASSA|STARS,|TURBAN"
+
+# Freshwater / Estuarine Non-Target Species (Catfish, Buffalo, Carp, Gar, Bowfin, etc.)
+freshwater_pattern <- "CATFISH|BUFFALO|CARP|BOWFIN|GAR|TILAPIA|SUNFISH|LARGEMOUTH|DRUM, FRESHWATER|SHAD, GIZZARD|BULLHEAD|PICKEREL|SUCKER|PADDLEFISH|SHAD, AMERICAN"
+
+# HMS / Pelagic Sharks & Tunas / Industrial Menhaden
+hms_menhaden_pattern <- "MENHADEN|TUNA|SWORDFISH|SHARK|MARLIN|SAILFISH|SPEARFISH"
+
+# Generic Broad Family Aggregates (Catch-all dealer codes)
+aggregate_pattern <- "^OSTEICHTHYES$|^GROUPERS$|^SNAPPERS$|^MACKERELS$|^TILEFISHES$|^JACKS$|^TRIGGERFISHES$|^AMBERJACKS$|^DRUMS$|^FISHES$|MACKERELS, KING AND CERO"
+
+# Combine all patterns into one regular expression
+all_exclusions <- paste(non_finfish_pattern, freshwater_pattern, hms_menhaden_pattern, aggregate_pattern, sep = "|")
+
+# 3. Filter and Recalculate True Clean Marine Finfish Pareto Rankings
+pareto_df2 <- pareto_df %>%
+  # Filter out non-target entries
+  filter(!str_detect(COMMON_NAME, regex(all_exclusions, ignore_case = TRUE))) %>%
+  # Sort by total pounds descending
+  arrange(desc(TOTAL_LBS)) %>%
+  # Recalculate Rank, Cumulative Pounds, and Cumulative Percentage
+  mutate(
+    RANK = row_number(),
+    CUM_LBS = cumsum(TOTAL_LBS),
+    CUM_PCT = (CUM_LBS / sum(TOTAL_LBS)) * 100
+  )
+
+
+# Sensitivity Analysis: Plot trajectories using Top 5, Top 10, Top 15, vs Top 25
+top10_spp  <- pareto_df2 %>% filter(RANK <= 10) %>% pull(COMMON_NAME)
+top20_spp <- pareto_df2 %>% filter(RANK <= 20) %>% pull(COMMON_NAME)
+top30_spp <- pareto_df2 %>% filter(RANK <= 30) %>% pull(COMMON_NAME)
+top40_spp <- pareto_df2 %>% filter(RANK <= 40) %>% pull(COMMON_NAME)
+
+sensitivity_df <- unmanaged_all %>%
+  filter(COMMON_NAME %in% top40_spp) %>%
+  mutate(
+    Cutoff = case_when(
+      COMMON_NAME %in% top10_spp ~ "Top 10 Species",
+      COMMON_NAME %in% top20_spp ~ "Top 20 Species",
+      COMMON_NAME %in% top30_spp ~ "Top 30 Species",
+      TRUE ~ "Top 40 Species"
+    )
+  ) %>%
+  group_by(LAND_YEAR, Cutoff) %>%
+  summarise(TOTAL_LIVE_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE), .groups = "drop")
+
+# Plot sensitivity curves
+ggplot(sensitivity_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_LBS / 1e6, color = Cutoff)) +
+  geom_line(linewidth = 1.1) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = seq(1972, 2025, by = 5)) +
+  labs(
+    title = "Sensitivity of Unmanaged Finfish Trajectory to Taxonomic Scope",
+    subtitle = "Testing cumulative volume thresholds (Top 10 vs 20 vs 30 vs 40 species)",
+    x = "Year",
+    y = "Live Landings (Millions of Pounds)",
+    color = "Inclusion Threshold"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom", plot.title = element_text(face = "bold"))
+```
+
+
+
+
+
+```{r}
+dat_summarized <- dat_all %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), 
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
+
+write_csv(dat_summarized, here("data/intermediate/all_com_landings.csv"))
+```
+
+
+
 
 Now we need to subset the giant dataset to what we need and save the intermediate files.
 First, some checks to see how the broad and unidentified categories are distributed.
@@ -142,38 +593,14 @@ print(head(aggregate_taxa, 30))
 ```
 
 
-Before we move on, let's save a working file so we don't have to pull from Oracle again.
-We will use the conf_check dataset to ensure none of the confidential data are included.
 
-```{r}
-# 1. Exclude the confidential strata identified in conf_check
-landings_github <- landings_raw %>%
-  # Anti-join matches on year, species name, and total live pounds to remove confidential rows
-  anti_join(
-    conf_check, 
-    by = c("LAND_YEAR", "COMMON_NAME")
-  )
 
-# 2. Save compressed CSV file for GitHub repository
-write_csv(landings_github, here("data/intermediate/gom_commercial_landings_1972_2025_clean.csv"))
 
-cat("Confidential rows successfully removed!\n")
-cat("Original rows:", nrow(landings_raw), "\n")
-cat("Cleaned dataset rows:", nrow(landings_github), "\n")
-```
-###############################################################################################
 
-# 2. Clean data and create time series csv
 
-Transform the data to fit the IEA data format.
-For more info on IEA data format go to the IEAnalyzeR vignette [HERE](https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 
-Start from here if you are just using the saved dataset.
 
-```{r}
-# Load data
-landings_github = read_csv(here("data/intermediate/gom_commercial_landings_1972_2025_clean.csv"))
-```
+
 
 ```{r}
 # Filter & Prepare Clean Working Data
@@ -536,14 +963,21 @@ indicator_names = rep("Commercial landings", 2)
 unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
 extent_names = c("Assessed finfish", "Assessed finfish")
 
-formatted_assessed_finfish = IEAnalyzeR::convert_cleaned_data(assessed_finfish, indicator_names, unit_names, extent_names)
+formatted_managed_finfish = IEAnalyzeR::convert_cleaned_data(managed_finfish, indicator_names, unit_names, extent_names)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Commercial landings", 4)
 unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)", "Whole weight (million lbs)", "Real value (2024 $ million)")
 extent_names = c("Unmanaged food fish", "Unmanaged food fish", "Unmanaged bait/forage fish", "Unmanaged bait/forage fish")
 
-formatted_unassessed_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, indicator_names, unit_names, extent_names)
+formatted_unmanaged_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, indicator_names, unit_names, extent_names)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = rep("Commercial landings", 2)
+unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
+extent_names = c("All species", "All species")
+
+formatted_all = IEAnalyzeR::convert_cleaned_data(dat_all, indicator_names, unit_names, extent_names)
 
 ```
 
@@ -552,8 +986,9 @@ formatted_unassessed_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, i
 This will save your data to the appropriate folder.
 
 ```{r}
-write.csv(formatted_assessed_finfish, file = csv_filename1, row.names = F)
-write.csv(formatted_unassessed_all, file = csv_filename2, row.names = F)
+write.csv(formatted_managed_finfish, file = csv_filename1, row.names = F)
+write.csv(formatted_unmanaged_all, file = csv_filename2, row.names = F)
+write.csv(formatted_all, file = csv_filename3, row.names = F)
 ```
 
 # 4. Create Data_Prep object
@@ -564,6 +999,7 @@ For more info on the data_prep function see the vignette linked above.
 ```{r}
 data_obj1<-IEAnalyzeR::data_prep(csv_filename1, subind = "unit")
 data_obj2<-IEAnalyzeR::data_prep(csv_filename2, subind = "unit")
+data_obj3<-IEAnalyzeR::data_prep(csv_filename3, subind = "unit")
 ```
 
 # 5. Save Formatted data_prep object
@@ -573,6 +1009,7 @@ This will save your data to the appropriate folder.
 ```{r}
 saveRDS(data_obj1, file = object_filename1)
 saveRDS(data_obj2, file = object_filename2)
+saveRDS(data_obj3, file = object_filename3)
 ```
 
 # 6. Preview Plot
@@ -585,8 +1022,11 @@ For more info on the plot_fn_obj function go HERE
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Managed Finfish")
 ggsave(filename = plot_filename1)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 12)
-ggsave(filename = plot_filename2, width = 12)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 8)
+ggsave(filename = plot_filename2, width = 8)
+
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj3, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of All Species")
+ggsave(filename = plot_filename3)
 ```
 
 

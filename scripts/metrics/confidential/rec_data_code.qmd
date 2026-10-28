@@ -41,6 +41,10 @@ csv_filename2<-here(paste0("data/formatted/formatted_csvs/", root_name, "rec_unm
 object_filename2<-here(paste0("data/formatted/final_objects/", root_name, "rec_unmanaged_spp_object.rds"))
 plot_filename2<-here(paste0("figures/plots/", root_name, "rec_unmanaged_spp_plot.png"))
 
+csv_filename3<-here(paste0("data/formatted/formatted_csvs/", root_name, "long_series_formatted.csv")) 
+object_filename3<-here(paste0("data/formatted/final_objects/", root_name, "long_series_object.rds"))
+plot_filename3<-here(paste0("figures/plots/", root_name, "long_series_plot.png"))
+
 ```
 
 # 1. Read Data (SKIP IF YOU DO NOT NEED TO PULL FROM ORACLE)
@@ -343,6 +347,26 @@ write_csv(dat_unmanaged, here("data/intermediate/rec_unmanaged_species_landings_
 write_csv(unmanaged_summary, here("data/intermediate/rec_gulf_unmanaged_species_landings_1981_present.csv"))
 ```
 
+Finally, clean total landings for all species
+
+```{r}
+dat_all <- clean_data %>%
+  filter(
+         YEAR < 2026)
+
+dat_all <- dat_all %>% 
+  group_by(YEAR) %>%
+   mutate(
+    land_mil_lbs = LBSEST_SECWWT / 1e6,
+  ) %>% 
+  summarise(
+    total_mil_lbs = sum(land_mil_lbs, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  select(YEAR, total_mil_lbs)
+
+write_csv(dat_all, here("data/intermediate/gulf_all_species_rec_landings_1981_present.csv"))
+```
 
 
 ```{r}
@@ -359,6 +383,13 @@ unit_names = c("Whole weight (million lbs)", "Whole weight (million lbs)")
 extent_names = c("Unmanaged food fish", "Unmanaged bait/forage fish")
 
 formatted_unmanaged_finfish = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, indicator_names, unit_names, extent_names)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = "Recreational landings"
+unit_names = "Whole weight (million lbs)"
+extent_names = "Managed finfish"
+
+formatted_all_finfish = IEAnalyzeR::convert_cleaned_data(dat_all, indicator_names, unit_names, extent_names)
 ```
 
 # 3. Save Formatted data as csv
@@ -367,6 +398,7 @@ This will save your data to the appropriate folder.
 ```{r}
 write.csv(formatted_assessed_finfish, file = csv_filename1, row.names = F)
 write.csv(formatted_unmanaged_finfish, file = csv_filename2, row.names = F)
+write.csv(formatted_all_finfish, file = csv_filename3, row.names = F)
 ```
 
 
@@ -377,6 +409,7 @@ For more info on the data_prep function see the vignette linked above.
 ```{r}
 data_obj1<-IEAnalyzeR::data_prep(csv_filename1)
 data_obj2<-IEAnalyzeR::data_prep(csv_filename2, subind = "extent")
+data_obj3<-IEAnalyzeR::data_prep(csv_filename3)
 ```
 
 # 5. Save Formatted data_prep object
@@ -385,6 +418,7 @@ This will save your data to the appropriate folder.
 ```{r}
 saveRDS(data_obj1, file = object_filename1)
 saveRDS(data_obj2, file = object_filename2)
+saveRDS(data_obj3, file = object_filename3)
 ```
 
 # 6. Preview Plot
@@ -394,9 +428,14 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Recreational Landings of Managed Finfish")
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Recreational Landings of Managed Finfish", fig.width = 10)
+ggsave(filename = plot_filename1, width = 10)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Recreational Landings of Unmanaged Finfish", ylab_sublabel = c("extent", "unit"))
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Recreational Landings of Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 10)
+ggsave(filename = plot_filename2, width = 10)
+
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj3, trend = TRUE, sep_ylabs = TRUE, manual_title = "Recreational Landings of All Species", fig.width = 10)
+ggsave(filename = plot_filename3, width = 10)
 ```
 
 # 7. Save plot
@@ -405,7 +444,9 @@ This will save the plot to the correct folder.
 Adjust height & width using (height=, width=, unit="in") if needed.
 
 ```{r}
-ggsave(filename = plot_filename1)
 
-ggsave(filename = plot_filename2)
+
+
+
+
 ```
