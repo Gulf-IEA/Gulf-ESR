@@ -136,6 +136,16 @@ cat("Cleaned dataset rows:", nrow(landings_github), "\n")
 #Always close the connection when you're done
 dbDisconnect(con)
 ```
+
+
+Ok we now have the landings_github file that has the annual data for all species with confidential data included. We will save it to github as a .rds file since it is too big to save as a csv
+
+```{r}
+saveRDS(landings_github, here("data/intermediate/all_commercial_landings_1950_2025_nonconf_raw.rds"))
+```
+
+
+
 ###############################################################################################
 
 # 2. Clean data and create time series csv
@@ -148,7 +158,7 @@ Start from here if you are just using the saved dataset.
 Load the full landings dataset with confidential data removed
 ```{r}
 # Load data
-landings_github = read_csv(here("data/intermediate/all_commercial_landings_1950_2025_nonconf_raw.csv"))
+landings_github = readRDS(here("data/intermediate/all_commercial_landings_1950_2025_nonconf_raw.rds"))
 ```
 
 
