@@ -71,7 +71,29 @@ str(matrix_dat2)
 
 #view plot        
 par(mar = c(5, 11, 4, 2))
-plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "nmds")
+plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "pca", PC = 1)
+
+mtext("Year", side = 1, line = 3, cex = 1.1, font = 2)
+
+title(main = "Traffic Light Plot of Reef Fish Abundance", line = 1.5, cex.main = 1.2)
+
+# Traffic light colors typically range from low/green to high/red (or vice versa)
+# Standard traffic light palette:
+tl_cols <-  c("#FF000099", "#FF000030", "#0000FF50", "#0000FF99")
+tl_cols <-  c("#0000FF99", "#0000FF50", "#FF000030", "#FF000099")
+
+
+legend(
+  "topright",
+  inset = c(0, -0.1),          # Shift into the top margin if needed
+  legend = c("Low", "Average-Low", "Average-High", "High"),
+  fill = rev(tl_cols),          # Match the color order of your splits
+  border = "black",
+  bty = "n",                    # "n" removes the box around the legend
+  horiz = TRUE,                 # Displays horizontally
+  xpd = TRUE,                   # Allows drawing outside the plot region
+  cex = 0.85
+)
 ```
 
 save plot
@@ -83,6 +105,27 @@ png(filename = plot_filename,
     res = 300)           
 par(mar = c(5, 11, 4, 2))
 plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "nmds")
+mtext("Year", side = 1, line = 3, cex = 1.1, font = 2)
+
+title(main = "Traffic Light Plot of Reef Fish Abundance", line = 1.5, cex.main = 1.2)
+
+# Traffic light colors typically range from low/green to high/red (or vice versa)
+# Standard traffic light palette:
+tl_cols <-  c("#FF000099", "#FF000030", "#0000FF50", "#0000FF99")
+tl_cols <-  c("#0000FF99", "#0000FF50", "#FF000030", "#FF000099")
+
+
+legend(
+  "topright",
+  inset = c(0, -0.1),          # Shift into the top margin if needed
+  legend = c("Low", "Average-Low", "Average-High", "High"),
+  fill = rev(tl_cols),          # Match the color order of your splits
+  border = "black",
+  bty = "n",                    # "n" removes the box around the legend
+  horiz = TRUE,                 # Displays horizontally
+  xpd = TRUE,                   # Allows drawing outside the plot region
+  cex = 0.85
+)
 dev.off()
 ```
 
@@ -110,5 +153,42 @@ bstick(clust_out, ng = 9)
 regimes <- cutree(clust_out, k = 2)
 shift_year <- names(regimes)[which(diff(regimes) != 0) + 1]
 print(paste("The mathematical regime shift occurred in:", shift_year))
+```
+
+
+```{r}
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+# indicator_names = rep("Outboard Engine Sales Trends", ncol(outboard_summary)-1)
+# unit_names = c("<50 hp", "50-150 hp", "150-300 hp", "<300 hp")
+# extent_names = c("Inshore", "Nearshore", "Near-offshore", "Far-offshore")
+
+indicator_names = rep("Reef Fish Relative Abundance Indices", ncol(matrix_dat2)-1)
+unit_names = rep("Relative abundance", ncol(matrix_dat2)-1)
+extent_names = colnames(matrix_dat2)[-1]
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(matrix_dat2, indicator_names, unit_names, extent_names)
+```
+
+# 3. Save Formatted data as csv
+
+This will save your data to the appropriate folder.
+```{r}
+write.csv(formatted_data, file = csv_filename, row.names = F)
+```
+
+
+# 4. Create Data_Prep object
+
+Please use your formatted csv to create a "data_prep" object.
+For more info on the data_prep function see the vignette linked above.
+```{r}
+data_obj<-IEAnalyzeR::data_prep(csv_filename, subind = "extent")
+```
+
+# 5. Save Formatted data_prep object
+
+This will save your data to the appropriate folder.
+```{r}
+saveRDS(data_obj, file = object_filename)
 ```
 
