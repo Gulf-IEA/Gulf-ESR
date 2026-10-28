@@ -1,63 +1,183 @@
+
+### to do
+# sum subsectors into annual estimates
+# check IFQ data for CS species
+
+
 library(rvest)
 library(janitor)
+
+
+##############################
+### commercial ---------------
+##############################
 
 url <- "https://www.fisheries.noaa.gov/southeast/commercial-fishing/gulf-america-historical-commercial-landings-and-annual-catch-limit"
 
 webpage <- read_html(url) 
 
 # Select the table using CSS selector 
-table_head <- html_nodes(webpage, "h2") 
-table_node <- html_nodes(webpage, "table") 
+table_head <- html_elements(webpage, "h2") 
+# table_node <- html_elements(webpage, "table") 
+tables <- html_table(webpage, header = T) |>
+  lapply(function(x) x |> clean_names() |> data.frame())
 
-labs <- table_head[2:12]
+### clean up spp list
+labs <- table_head[2:(length(tables)+1)] |>
+  html_text2() |>
+  lapply(function(x) strsplit(x, "\\(")[[1]][1]) |> trimws()
+labs <- gsub("[*]", "", labs)
 
-# colist <- c("spp", "Year", "Total.Reported", "Total.Reported.", "ACL", "ACL.", "ACL..")
-colist <- c("spp", "year", "total_reported", "acl", "acl_percent" )
-dall <- data.frame()
+colist <- c("spp", "year",'sector', "total_reported", "acl", "acl_percent" )
+dat <- data.frame()
 
-for (i in 1:length(table_node))  { 
-  spp <- strsplit(substr(as.character(labs[i]), 5, 50), "<")[[1]][1]
-  spp <- strsplit(spp, "\\(")[[1]][1]
-  tab <- html_table(table_node)[[i]] 
-  ### need to add a condition that if the first row is empty, try the second row for headers
-  if(all(tab[1,]=='')) {
-    irow <- 2
-  } else {
-    irow <- 1
+for (i in 1:length(labs))  { 
+  d1 <- tables[[i]] 
+  if(names(d1)[1]== "x") {
+    d1 <- d1 |> row_to_names(row_number = 1) |> 
+      clean_names() |> data.frame()
   }
-  # if (i == 10) { 
-    # tab <- tab |> row_to_names(row_number = 2) #|> clean_names()
-    # }
-  # if (i != 10) {
-    # tab <- tab |> row_to_names(row_number = 1) #|> clean_names()
-    # }
-  tab <- tab |> row_to_names(row_number = irow) |> clean_names()
-  d1 <- data.frame(tab)
-  d1$year <- substr(d1$year, 1, 4)
+  # tab <- html_table(table_node)[[i]]
+  # ### need to add a condition that if the first row is empty, try the second row for headers
+  # if(all(tab[1,]=='')) {
+  #   irow <- 2
+  # } else {
+  #   irow <- 1
+  # }
+  # d1 <- tab |> row_to_names(row_number = irow) |> 
+  #   clean_names() |> data.frame()
+  d1$year <- substr(d1$year, 1, 4) |> as.numeric()
   d1 <- d1[which(!is.na(as.numeric(d1$year))), ]
-  d1$spp <- spp
+  d1$spp <- labs[i]
+  d1$sector <- "commercial"
   cols <- unlist(sapply(colist, function(x) which(x == names(d1))))
   d2 <- d1[cols]
-  # names(d2)[3] <- "Total.Landings"
-  # names(d2)[5] <- "ACL."
-  # d2$Total.Landings <- as.numeric(gsub(",", "", d2$Total.Landings))
-  # d2$ACL <- as.numeric(gsub(",", "", d2$ACL))
-  names(d2)[3] <- "total_landings"
-  d2$total_landings <- as.numeric(gsub(",", "", d2$total_landings))
-  d2$acl <- as.numeric(gsub(",", "", d2$acl))
-  dall <- rbind(dall, d2)
+  names(d2)[which(names(d2)=='total_reported')] <- "total_landings"
+  d2$total_landings <- gsub(",", "", d2$total_landings)
+  d2$acl <- gsub(",", "", d2$acl)
+  dat <- rbind(dat, d2) |> type.convert(as.is = T)
+  rm(d1, d2)
 }
 
-dall$spp <- gsub("[*]", "", dall$spp)
 
-dat <- dall
-dat$Year <- as.numeric(dat$Year)
-dat
-dat$spp <- substr(dat$spp, 1, (nchar(dat$spp) - 1))
 
-dat1 <- dat[which(dat$Year <= 2011), ]
-dat1 <- dat1[which(!is.na(dat1$ACL)), ]
-dat <- dat[which(dat$Year > 2011), ]
+##############################
+### recreational -------------
+##############################
+
+url <- "https://www.fisheries.noaa.gov/southeast/recreational-fishing-data/gulf-america-historical-recreational-landings-and-annual-catch"
+
+webpage <- read_html(url) 
+
+# Select the table using CSS selector 
+table_head <- html_elements(webpage, "h3") 
+# table_node <- html_elements(webpage, "table") 
+tables <- html_table(webpage, header = T) |>
+  lapply(function(x) x |> clean_names() |> data.frame())
+
+### clean up spp list
+labs <- table_head |>
+  html_text2() #|>
+#   lapply(function(x) strsplit(x, "\\(")[[1]][1]) |> trimws()
+# labs <- gsub("[*]", "", labs)
+
+# colist <- c("spp", "Year", "Total.Reported", "Total.Reported.", "ACL", "ACL.", "ACL..")
+colist <- c("spp", "year",'sector', "total_reported", "acl", "acl_percent" )
+# dat <- data.frame()
+
+for (i in 1:length(labs))  { 
+  d1 <- tables[[i]] 
+  if(names(d1)[1]!= "year") {
+    d1 <- d1 |> row_to_names(row_number = 1) |> 
+      clean_names() |> data.frame()
+  }
+  # tab <- html_table(table_node)[[i]] 
+  # ### need to add a condition that if the first row is empty, try the second row for headers
+  # if(tab[1,1]!='Year') {
+  #   irow <- 2
+  # } else {
+  #   irow <- 1
+  # }
+  # d1 <- tab |> row_to_names(row_number = irow) |> 
+  #   clean_names() |> data.frame()
+  d1$year <- substr(d1$year, 1, 4) |> as.numeric()
+  d1 <- d1[which(!is.na(as.numeric(d1$year))), ]
+  d1$spp <- labs[i]
+  d1$sector <- "recreational"
+  cols <- unlist(sapply(colist, function(x) which(x == names(d1))))
+  d2 <- d1[cols]
+  names(d2)[which(names(d2)=='total_reported')] <- "total_landings"
+  d2$total_landings <- as.numeric(gsub(",", "", d2$total_landings))
+  d2$acl <- as.numeric(gsub(",", "", d2$acl))
+  dat <- rbind(dat, d2) |> type.convert(as.is = T)
+  rm(d1, d2)
+}
+
+
+
+##############################
+### stock acls ---------------
+##############################
+
+url <- "https://www.fisheries.noaa.gov/southeast/commercial-fishing/gulf-mexico-historical-stock-landings-and-annual-catch-limit"
+
+webpage <- read_html(url) 
+
+# Select the table using CSS selector 
+table_head <- html_elements(webpage, "h2") 
+# table_node <- html_elements(webpage, "table") 
+tables <- html_table(webpage, header = T) |>
+  lapply(function(x) x |> clean_names() |> data.frame())
+
+### clean up spp list
+labs <- table_head[2:length(table_head)] |>
+  html_text2() #|>
+#   lapply(function(x) strsplit(x, "\\(")[[1]][1]) |> trimws()
+labs <- gsub("[*]", "", labs)
+
+# colist <- c("spp", "Year", "Total.Reported", "Total.Reported.", "ACL", "ACL.", "ACL..")
+colist <- c("spp", "year",'sector' ,"total_landings", "acl", "acl_percent" )
+# dat <- data.frame()
+
+for (i in 1:length(labs))  { 
+  d1 <- tables[[i]] 
+  if(names(d1)[1]!= "year") {
+    d1 <- d1 |> row_to_names(row_number = 1) |> 
+      clean_names() |> data.frame()
+  }
+  # tab <- html_table(table_node)[[i]] 
+  # ### need to add a condition that if the first row is empty, try the second row for headers
+  # if(tab[1,1]!='Year') {
+  #   irow <- 2
+  # } else {
+  #   irow <- 1
+  # }
+  # d1 <- tab |> row_to_names(row_number = irow) |> 
+  #   clean_names() |> data.frame()
+  d1$year <- substr(d1$year, 1, 4) |> as.numeric()
+  d1 <- d1[which(!is.na(as.numeric(d1$year))), ]
+  d1$spp <- labs[i]
+  d1$sector <- "total stock"
+  cols <- unlist(sapply(colist, function(x) which(x == names(d1))))
+  d2 <- d1[cols]
+  # names(d2)[3] <- "total_landings"
+  d2$total_landings <- as.numeric(gsub(",", "", d2$total_landings))
+  d2$acl <- as.numeric(gsub(",", "", d2$acl))
+  dat <- rbind(dat, d2) |> type.convert(as.is = TRUE)
+  rm(d1, d2)
+}
+
+
+dat$spp[grep('cobia', dat$spp, ignore.case = T)] <- 'Cobia'
+dat$spp[grep('shallow', dat$spp, ignore.case = T)] <- 'Shallow Water Grouper'
+dat$spp[grep('King Mackerel', dat$spp, ignore.case = T)] <- 'King Mackerel'
+
+
+
+
+
+
+### Mandy's old code
 
 lis <- c("Gag Grouper", "Red Grouper", "Deep Water Grouper", "Shallow Waters Grouper", "Red Snapper")
 
