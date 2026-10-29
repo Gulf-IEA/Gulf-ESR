@@ -245,7 +245,7 @@ dat$spp[grep('shallow', dat$spp, ignore.case = T)] <- 'Shallow Water Grouper'
 dat$spp[grep('King Mackerel', dat$spp, ignore.case = T)] <- 'King Mackerel'
 
 names(dat) <- c("spp", "year", "sector", "total_landings_lbs", "acl_lbs", "acl_percent")
-
+dat$acl_percent <- dat$total_landings_lbs/dat$acl_lbs*100
 
 write.csv(dat, here('data', 'intermediate', 'sero_acl_pull.csv'), row.names = F)
 
@@ -299,9 +299,13 @@ dev.off()
 
 ### total acls
 
-tot_acls <- data.frame(year = colnames(rec_acls_wc),
-                       rec = apply(rec_acls_wc,2,sum)/1e6,
-                       com = apply(com_acls_wc,2,sum)/1e6)
+tot_acls <- merge(
+  data.frame(year = colnames(rec_acls_wc),
+             rec = apply(rec_acls_wc, 2, sum)/1e6),
+  data.frame(year = colnames(com_acls_wc),
+             com = apply(com_acls_wc, 2, sum)/1e6),
+  by = 'year'
+)
 
 png(here('figures', 'plots', 'acl_totals_tmp.png'), width = 4, height = 4, units = 'in', res = 300, pointsize = 11)
 par(mfrow=c(2,1), mar = c(4,4,1.5,1))
