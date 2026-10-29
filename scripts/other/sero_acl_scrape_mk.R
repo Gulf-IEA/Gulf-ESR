@@ -171,8 +171,10 @@ for (i in 1:length(labs))  {
       summarize(total_landings = sum(as.numeric(gsub(",", "", total_landings)), na.rm = T),
                 acl = sum(as.numeric(gsub(",", "", acl)), na.rm = T)) |>
       mutate(acl_percent = total_landings / acl * 100) |>
+      ### private-angler landings are missing since 2018
+      mutate(total_landings = ifelse(year >= 2018, NA_real_, total_landings),
+             acl_percent = ifelse(year >= 2018, NA_real_, acl_percent)) |>
       mutate(spp = "Red Snapper", .before = year) |> as.data.frame()
-    ### landings and acl percent are missing private angler data since 2018
   }
   ### Greater Amberjack changed to different fishing year 2018 Aug-July,
   ### so summed the second 2017, which is 2017/2018 FYr to 2018
