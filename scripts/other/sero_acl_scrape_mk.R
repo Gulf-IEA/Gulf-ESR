@@ -3,7 +3,7 @@
 # sum subsectors into annual estimates
 # check IFQ data for CS species
 
-
+library(here)
 library(rvest)
 library(janitor)
 
@@ -31,7 +31,11 @@ labs <- gsub("[*]", "", labs)
 colist <- c("spp", "year",'sector', "total_reported", "acl", "acl_percent" )
 dat <- data.frame()
 
-for (i in 1:length(labs))  { 
+### do king mackerel separate
+kgm <- grep('king mackerel',labs, ignore.case = T)
+spp_ls <- seq(1,length(labs))[-kgm]
+
+for (i in spp_ls){ 
   d1 <- tables[[i]] 
   if(names(d1)[1]== "x") {
     d1 <- d1 |> row_to_names(row_number = 1) |> 
@@ -59,6 +63,55 @@ for (i in 1:length(labs))  {
   rm(d1, d2)
 }
 
+### king mackerel
+# for (i in kgm){ 
+### hand line
+  d1 <- tables[[kgm[1]]] 
+  if(names(d1)[1]== "x") {
+    d1 <- d1 |> row_to_names(row_number = 1) |> 
+      clean_names() |> data.frame()
+  }
+  d1$year <- substr(d1$year, 1, 4) |> as.numeric()
+  d1 <- d1[which(!is.na(as.numeric(d1$year))), ]
+  # d1$spp <- labs[i]
+  d1$sector <- "hl"
+  d1$total_landings <- gsub(",", "", d1$total_reported) |> as.numeric()
+  d1$acl <- gsub(",", "", d1$acl) |> as.numeric()
+  # d1$acl_percent <- as.numeric(d1$acl_percent)
+  
+  d1 <- d1 |>
+    group_by(year, sector) |>
+    summarize(total_landings = sum(total_landings, na.rm = T),
+              acl = max(acl, na.rm = T)) |>
+              # acl_percent = max(acl_percent, na.rm = T)) |>
+    as.data.frame()
+  
+  ### gillnet
+  d2 <- tables[[kgm[2]]] 
+  if(names(d2)[1]== "x") {
+    d2 <- d2 |> row_to_names(row_number = 1) |> 
+      clean_names() |> data.frame()
+  }
+  d2$year <- substr(d2$year, 1, 4) |> as.numeric()
+  d2 <- d2[which(!is.na(as.numeric(d2$year))), ]
+  # d2$spp <- labs[i]
+  d2$sector <- "gn"
+  d2$total_landings <- gsub(",", "", d2$total_reported) |> as.numeric()
+  d2$acl <- gsub(",", "", d2$acl) |> as.numeric()
+  
+  d2 <- select(d2, year, sector, total_landings, acl)
+  
+  dt <- rbind(d1, d2) |>
+    group_by(year) |>
+    summarize(total_landings = sum(total_landings, na.rm = T),
+              acl = sum(acl, na.rm = T)) |>
+    mutate(acl_percent = total_landings / acl * 100) |>
+    mutate(spp = "King Mackerel", .before = year) |>
+    mutate(sector = 'commercial', .after = year)
+
+  dat <- rbind(dat, dt) |> type.convert(as.is = T)
+  rm(d1, d2, dt)
+# }
 
 
 ##############################
@@ -109,6 +162,18 @@ for (i in 1:length(labs))  {
   names(d2)[which(names(d2)=='total_reported')] <- "total_landings"
   d2$total_landings <- as.numeric(gsub(",", "", d2$total_landings))
   d2$acl <- as.numeric(gsub(",", "", d2$acl))
+  
+  ### red snapper needs summation across private and for-hire sectors
+  if(d2$spp[1] == "Red Snapper") {
+    d2 <- d2 |>
+      group_by(year, sector) |>
+      summarize(total_landings = sum(as.numeric(gsub(",", "", total_landings)), na.rm = T),
+                acl = sum(as.numeric(gsub(",", "", acl)), na.rm = T)) |>
+      mutate(acl_percent = total_landings / acl * 100) |>
+      mutate(spp = "Red Snapper", .before = year) |> as.data.frame()
+    ### landings and acl percent are missing private angler data since 2018
+  }
+  
   dat <- rbind(dat, d2) |> type.convert(as.is = T)
   rm(d1, d2)
 }
@@ -171,6 +236,70 @@ for (i in 1:length(labs))  {
 dat$spp[grep('cobia', dat$spp, ignore.case = T)] <- 'Cobia'
 dat$spp[grep('shallow', dat$spp, ignore.case = T)] <- 'Shallow Water Grouper'
 dat$spp[grep('King Mackerel', dat$spp, ignore.case = T)] <- 'King Mackerel'
+
+
+
+### question: how to deal with units (as reported, gw, ww) when aggregating?
+### question: King mackerel are on separate fishing year, should they be treated separately?
+### question: do we include cobia?
+# *The Florida East Coast Zone (east coast of Florida and Atlantic side of the 
+# Florida Keys) is part of the Gulf of Mexico stock and is jointly managed with 
+# the South Atlantic Fishery Management Council.
+
+com_acls <- subset(dat, sector == 'commercial', select = c('year','spp','acl')) |>
+  reshape(idvar = 'spp', timevar = 'year', direction = 'wide') #rows as spp and columns as year
+rec_acls <- subset(dat, sector == 'recreational', select = c('year','spp','acl')) |>
+  reshape(idvar = 'spp', timevar = 'year', direction = 'wide')
+rownames(com_acls) <- com_acls$spp
+rownames(rec_acls) <- rec_acls$spp
+names(com_acls) <- gsub('acl.', '', names(com_acls))
+names(rec_acls) <- gsub('acl.', '', names(rec_acls))
+
+### with cobia 2015-2024; without cobia 2011 (rec) and 2012 (com)
+# with cobia
+rec_acls_wc <- rec_acls[,c(11:2)]
+com_acls_wc <- com_acls[,c(11:2)]
+
+### function that computes the percent different between previous value and current value returns a vector
+pct_change_na <- function(x) {
+  n <- length(x)
+  r <- c(NA, (x[2:n] - x[1:(n - 1)]) / x[1:(n - 1)] * 100)
+  return(r)
+}
+
+rec_acls_wc_pct <- t(apply(rec_acls_wc, 1, pct_change_na))
+rec_acl_ind <- apply(rec_acls_wc_pct, 2, function (x) rbind(mean(x), sd(x)))
+com_acls_wc_pct <- t(apply(com_acls_wc, 1, pct_change_na))
+com_acl_ind <- apply(com_acls_wc_pct, 2, function (x) rbind(mean(x), sd(x)))
+
+png(here('figures', 'plots', 'acl_percent_change_tmp.png'), width = 7, height = 4, units = 'in', res = 300, pointsize = 11)
+par(mfrow=c(2,2), mar = c(4,4,1.5,1))
+plot(colnames(rec_acl_ind), rec_acl_ind[1,], type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Percent Change in ACL', main = 'Recreational ACL Percent Change')
+plot(colnames(rec_acl_ind), rec_acl_ind[2,], type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Percent Change SD in ACL', main = 'Recreational ACL Percent Change SD')
+plot(colnames(com_acl_ind), com_acl_ind[1,], type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Percent Change in ACL', main = 'Commerical ACL Percent Change')
+plot(colnames(com_acl_ind), com_acl_ind[2,], type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Percent Change SD in ACL', main = 'Commerical ACL Percent Change SD')
+dev.off()
+
+
+### total acls
+
+tot_acls <- data.frame(year = colnames(rec_acls_wc),
+                       rec = apply(rec_acls_wc,2,sum)/1e6,
+                       com = apply(com_acls_wc,2,sum)/1e6)
+
+png(here('figures', 'plots', 'acl_totals_tmp.png'), width = 4, height = 4, units = 'in', res = 300, pointsize = 11)
+par(mfrow=c(2,1), mar = c(4,4,1.5,1))
+plot(tot_acls$year, tot_acls$rec, type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Total ACL (million lbs)', main = 'Recreational ACL',
+     ylim = c(range(tot_acls$rec, tot_acls$com)))
+plot(tot_acls$year, tot_acls$com, type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Total ACL (million lbs)', main = 'Commercial ACL',
+     ylim = c(range(tot_acls$rec, tot_acls$com)))
+dev.off()
 
 
 
