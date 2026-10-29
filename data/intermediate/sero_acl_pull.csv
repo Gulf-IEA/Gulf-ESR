@@ -1,0 +1,482 @@
+"spp","year","sector","total_landings_lbs","acl_lbs","acl_percent"
+"Cobia",2024,"commercial",8277,81696,10.1314629847239
+"Cobia",2023,"commercial",11066,81696,13.5453388170779
+"Cobia",2022,"commercial",22458,70000,32.0828571428571
+"Cobia",2021,"commercial",19750,70000,28.2142857142857
+"Cobia",2020,"commercial",19101,70000,27.2871428571429
+"Cobia",2019,"commercial",32642,70000,46.6314285714286
+"Cobia",2018,"commercial",31408,70000,44.8685714285714
+"Cobia",2017,"commercial",38682,70000,55.26
+"Cobia",2016,"commercial",46395,70000,66.2785714285714
+"Cobia",2015,"commercial",59747,70000,85.3528571428571
+"Deep Water Grouper",2024,"commercial",460130,1070000,43.0028037383178
+"Deep Water Grouper",2023,"commercial",625777,1070000,58.4838317757009
+"Deep Water Grouper",2022,"commercial",580824,1070000,54.2826168224299
+"Deep Water Grouper",2021,"commercial",831911,1070000,77.7486915887851
+"Deep Water Grouper",2020,"commercial",823372,1070000,76.9506542056075
+"Deep Water Grouper",2019,"commercial",996660,1070000,93.1457943925234
+"Deep Water Grouper",2018,"commercial",863320,1070000,80.6841121495327
+"Deep Water Grouper",2017,"commercial",860936,1070000,80.4613084112149
+"Deep Water Grouper",2016,"commercial",889965,1070000,83.1742990654206
+"Deep Water Grouper",2015,"commercial",955250,1150000,83.0652173913043
+"Deep Water Grouper",2014,"commercial",1081145,1160000,93.2021551724138
+"Deep Water Grouper",2013,"commercial",920034,1170000,78.6353846153846
+"Deep Water Grouper",2012,"commercial",966100,1170000,82.5726495726496
+"Deep Water Grouper",2011,"commercial",778728,NA,NA
+"Deep Water Grouper",2010,"commercial",606223,NA,NA
+"Deep Water Grouper",2009,"commercial",1126189,NA,NA
+"Deep Water Grouper",2008,"commercial",1108590,NA,NA
+"Deep Water Grouper",2007,"commercial",1157187,NA,NA
+"Deep Water Grouper",2006,"commercial",1072690,NA,NA
+"Deep Water Grouper",2005,"commercial",1141141,NA,NA
+"Deep Water Grouper",2004,"commercial",1249664,NA,NA
+"Gag Grouper",2024,"commercial",138229,155000,89.18
+"Gag Grouper",2023,"commercial",234579,258000,90.9220930232558
+"Gag Grouper",2022,"commercial",693616,1217000,56.9939194741167
+"Gag Grouper",2021,"commercial",562849,1217000,46.2488907148726
+"Gag Grouper",2020,"commercial",475714,1217000,39.0890714872638
+"Gag Grouper",2019,"commercial",532015,1217000,43.715283483977
+"Gag Grouper",2018,"commercial",492934,1217000,40.504026294166
+"Gag Grouper",2017,"commercial",492095,1217000,40.4350862777321
+"Gag Grouper",2016,"commercial",910996,1217000,74.8558751027116
+"Gag Grouper",2015,"commercial",542774,1217000,44.5993426458505
+"Gag Grouper",2014,"commercial",586377,1100000,53.307
+"Gag Grouper",2013,"commercial",575335,956000,60.1814853556485
+"Gag Grouper",2012,"commercial",523138,788000,66.3880710659898
+"Gag Grouper",2011,"commercial",318663,1760000,18.1058522727273
+"Gag Grouper",2010,"commercial",496826,1710000,29.0541520467836
+"Gag Grouper",2009,"commercial",715814,1660000,43.1213253012048
+"Gray Triggerfish",2024,"commercial",53389,95949,55.6431020646385
+"Gray Triggerfish",2023,"commercial",52839,95949,55.0698808742144
+"Gray Triggerfish",2022,"commercial",44822,95949,46.7144003585238
+"Gray Triggerfish",2021,"commercial",44692,95949,46.5789117135145
+"Gray Triggerfish",2020,"commercial",52597,64100,82.0546021840874
+"Gray Triggerfish",2019,"commercial",62487,64100,97.4836193447738
+"Gray Triggerfish",2018,"commercial",64702,64100,100.939157566303
+"Gray Triggerfish",2017,"commercial",62647,64100,97.7332293291732
+"Gray Triggerfish",2016,"commercial",59147,64100,92.2730109204368
+"Gray Triggerfish",2015,"commercial",47496,64100,74.0967238689548
+"Gray Triggerfish",2014,"commercial",40664,64100,63.4383775351014
+"Gray Triggerfish",2013,"commercial",63086,64100,98.418096723869
+"Gray Triggerfish",2012,"commercial",72778,64100,113.538221528861
+"Gray Triggerfish",2011,"commercial",105251,138000,76.2688405797101
+"Gray Triggerfish",2010,"commercial",55661,138000,40.3340579710145
+"Gray Triggerfish",2009,"commercial",78117,122000,64.0303278688525
+"Gray Triggerfish",2008,"commercial",76717,105000,73.0638095238095
+"Greater Amberjack",2024,"commercial",52262,101000,51.7445544554455
+"Greater Amberjack",2023,"commercial",136281,101000,134.931683168317
+"Greater Amberjack",2022,"commercial",277968,484380,57.3863495602626
+"Greater Amberjack",2021,"commercial",324100,484380,66.9102770552046
+"Greater Amberjack",2020,"commercial",300100,484380,61.9554894917214
+"Greater Amberjack",2019,"commercial",356840,402030,88.7595453075641
+"Greater Amberjack",2018,"commercial",325844,319140,102.10064548474
+"Greater Amberjack",2017,"commercial",453726,464400,97.7015503875969
+"Greater Amberjack",2016,"commercial",437102,464400,94.1218776916451
+"Greater Amberjack",2015,"commercial",461013,481000,95.8446985446985
+"Greater Amberjack",2014,"commercial",481883,481000,100.183575883576
+"Greater Amberjack",2013,"commercial",457879,481000,95.1931392931393
+"Greater Amberjack",2012,"commercial",308334,481000,64.1027027027027
+"Greater Amberjack",2011,"commercial",508871,NA,NA
+"Greater Amberjack",2010,"commercial",534095,NA,NA
+"Greater Amberjack",2009,"commercial",601446,NA,NA
+"Greater Amberjack",2008,"commercial",440936,NA,NA
+"Red Grouper",2024,"commercial",2527545,2940000,85.9709183673469
+"Red Grouper",2023,"commercial",2498024,2940000,84.9668027210884
+"Red Grouper",2022,"commercial",2428938,3160000,76.8651265822785
+"Red Grouper",2021,"commercial",2950691,3160000,93.3762974683544
+"Red Grouper",2020,"commercial",2368322,3160000,74.9468987341772
+"Red Grouper",2019,"commercial",2037046,3160000,64.4634810126582
+"Red Grouper",2018,"commercial",2363280,8190000,28.8556776556777
+"Red Grouper",2017,"commercial",3328271,8190000,40.6382295482295
+"Red Grouper",2016,"commercial",4497582,8190000,54.9155311355311
+"Red Grouper",2015,"commercial",4798007,6030000,79.5689386401327
+"Red Grouper",2014,"commercial",5601905,6030000,92.9005804311774
+"Red Grouper",2013,"commercial",4599001,6030000,76.2686733001658
+"Red Grouper",2012,"commercial",5219133,5680000,91.8861443661972
+"Red Grouper",2011,"commercial",4783668,5680000,84.2195070422535
+"Red Grouper",2010,"commercial",2910970,5870000,49.5906303236797
+"Red Grouper",2009,"commercial",3698227,5870000,63.0021635434412
+"Red Grouper",2008,"commercial",4748224,NA,NA
+"Red Grouper",2007,"commercial",3650777,NA,NA
+"Red Grouper",2006,"commercial",5109824,NA,NA
+"Red Grouper",2005,"commercial",5380603,NA,NA
+"Red Grouper",2004,"commercial",5635577,NA,NA
+"Red Snapper",2024,"commercial",7457692,7498784,99.4520178204893
+"Red Snapper",2023,"commercial",7414281,7498784,98.873110627003
+"Red Snapper",2022,"commercial",6843047,7701000,88.8592001038826
+"Red Snapper",2021,"commercial",6894004,7701000,89.5208933904688
+"Red Snapper",2020,"commercial",7625612,7701000,99.0210621997143
+"Red Snapper",2019,"commercial",7658140,7701000,99.4434489027399
+"Red Snapper",2018,"commercial",6977131,7007000,99.5737262737263
+"Red Snapper",2017,"commercial",6978662,7007000,99.5955758527187
+"Red Snapper",2016,"commercial",6723822,6768000,99.3472517730496
+"Red Snapper",2015,"commercial",7184210,7293000,98.5082956259427
+"Red Snapper",2014,"commercial",5567822,5610000,99.2481639928699
+"Red Snapper",2013,"commercial",5448543,5610000,97.1219786096257
+"Red Snapper",2012,"commercial",4036398,4121000,97.9470516864839
+"Red Snapper",2011,"commercial",3594551,NA,NA
+"Red Snapper",2010,"commercial",3392208,NA,NA
+"Red Snapper",2009,"commercial",2483565,NA,NA
+"Red Snapper",2008,"commercial",2483602,NA,NA
+"Red Snapper",2007,"commercial",3182730,NA,NA
+"Shallow Water Grouper",2024,"commercial",103326,547000,18.8895795246801
+"Shallow Water Grouper",2023,"commercial",149012,547000,27.2416819012797
+"Shallow Water Grouper",2022,"commercial",146698,547000,26.818647166362
+"Shallow Water Grouper",2021,"commercial",155928,547000,28.5060329067642
+"Shallow Water Grouper",2020,"commercial",144454,547000,26.4084095063985
+"Shallow Water Grouper",2019,"commercial",140083,547000,25.609323583181
+"Shallow Water Grouper",2018,"commercial",178293,547000,32.5946983546618
+"Shallow Water Grouper",2017,"commercial",200009,547000,36.5647166361974
+"Shallow Water Grouper",2016,"commercial",335238,547000,61.2866544789762
+"Shallow Water Grouper",2015,"commercial",238427,547000,43.5881170018282
+"Shallow Water Grouper",2014,"commercial",230248,545000,42.2473394495413
+"Shallow Water Grouper",2013,"commercial",300735,540000,55.6916666666667
+"Shallow Water Grouper",2012,"commercial",298102,531000,56.139736346516
+"Shallow Water Grouper",2011,"commercial",187026,410000,45.6160975609756
+"Shallow Water Grouper",2010,"commercial",176773,410000,43.1153658536585
+"Shallow Water Grouper",2009,"commercial",4701806,410000,1146.78195121951
+"Shallow Water Grouper",2008,"commercial",6355425,NA,NA
+"Shallow Water Grouper",2007,"commercial",5210701,NA,NA
+"Shallow Water Grouper",2006,"commercial",6749318,NA,NA
+"Shallow Water Grouper",2005,"commercial",8180353,NA,NA
+"Shallow Water Grouper",2004,"commercial",8877842,NA,NA
+"Tilefish",2024,"commercial",262338,606000,43.290099009901
+"Tilefish",2023,"commercial",313820,606000,51.7854785478548
+"Tilefish",2022,"commercial",384139,606000,63.3892739273927
+"Tilefish",2021,"commercial",484043,606000,79.8750825082508
+"Tilefish",2020,"commercial",348844,606000,57.5650165016502
+"Tilefish",2019,"commercial",422926,606000,69.7897689768977
+"Tilefish",2018,"commercial",386138,606000,63.7191419141914
+"Tilefish",2017,"commercial",484895,606000,80.0156765676568
+"Tilefish",2016,"commercial",429003,606000,70.7925742574257
+"Tilefish",2015,"commercial",537512,606000,88.6983498349835
+"Tilefish",2014,"commercial",517268,606000,85.3577557755776
+"Tilefish",2013,"commercial",440091,606000,72.6222772277228
+"Tilefish",2012,"commercial",451121,606000,74.4424092409241
+"Tilefish",2011,"commercial",386134,NA,NA
+"Tilefish",2010,"commercial",249708,NA,NA
+"Tilefish",2009,"commercial",550667,NA,NA
+"Tilefish",2008,"commercial",499499,NA,NA
+"Tilefish",2007,"commercial",422181,NA,NA
+"Tilefish",2006,"commercial",423910,NA,NA
+"Tilefish",2005,"commercial",628531,NA,NA
+"Tilefish",2004,"commercial",610843,NA,NA
+"King Mackerel",2012,"commercial",3678050,3808000,96.5874474789916
+"King Mackerel",2013,"commercial",3317974,3456000,96.0061921296296
+"King Mackerel",2014,"commercial",3899926,3456000,112.845081018519
+"King Mackerel",2015,"commercial",3735457,3456000,108.086140046296
+"King Mackerel",2016,"commercial",2902360,2950000,98.3850847457627
+"King Mackerel",2017,"commercial",3032173,2840000,106.766654929577
+"King Mackerel",2018,"commercial",2809639,2790000,100.703906810036
+"King Mackerel",2019,"commercial",2658942,2740000,97.0416788321168
+"King Mackerel",2020,"commercial",2500382,2740000,91.2548175182482
+"King Mackerel",2021,"commercial",1784196,2740000,65.1166423357664
+"King Mackerel",2022,"commercial",1187173,2835928,41.8618878899605
+"King Mackerel",2023,"commercial",1118750,3128544,35.7594459275625
+"King Mackerel",2024,"commercial",1668837,3196800,52.2033596096096
+"Cobia",2024,"recreational",235367,885040,26.5939392569827
+"Cobia",2023,"recreational",586126,885040,66.2259332911507
+"Cobia",2022,"recreational",988721,885040,111.714837747446
+"Cobia",2021,"recreational",236419,860000,27.4905813953488
+"Cobia",2020,"recreational",302235,860000,35.1436046511628
+"Cobia",2019,"recreational",190981,860000,22.2070930232558
+"Cobia",2018,"recreational",564857,860000,65.6810465116279
+"Cobia",2017,"recreational",297007,860000,34.5356976744186
+"Cobia",2016,"recreational",447026,860000,51.9797674418605
+"Cobia",2015,"recreational",425266,830000,51.2368674698795
+"Gag Grouper",2024,"recreational",252367,163376,154.470056801489
+"Gag Grouper",2023,"recreational",336182,211588,158.885191976861
+"Gag Grouper",2022,"recreational",581419,1903000,30.5527588018917
+"Gag Grouper",2021,"recreational",1280823,1903000,67.305465055176
+"Gag Grouper",2020,"recreational",909703,1903000,47.8036258539149
+"Gag Grouper",2019,"recreational",859828,1903000,45.1827640567525
+"Gag Grouper",2018,"recreational",1008468,1903000,52.9935890698896
+"Gag Grouper",2017,"recreational",832960,1903000,43.7708880714661
+"Gag Grouper",2016,"recreational",796430,1903000,41.8512874408828
+"Gag Grouper",2015,"recreational",823940,1903000,43.2968996321598
+"Gag Grouper",2014,"recreational",862101,1720000,50.1221511627907
+"Gag Grouper",2013,"recreational",1435421,1495000,96.0147826086957
+"Gag Grouper",2012,"recreational",938547,1232000,76.180762987013
+"Gag Grouper",2011,"recreational",660287,964000,68.4945020746888
+"Gag Grouper",2010,"recreational",1664257,2640000,63.0400378787879
+"Gray Triggerfish",2024,"recreational",194587,360951,53.9095334269749
+"Gray Triggerfish",2023,"recreational",306196,360951,84.8303509340603
+"Gray Triggerfish",2022,"recreational",307494,360951,85.189956531496
+"Gray Triggerfish",2021,"recreational",375973,360951,104.161783732418
+"Gray Triggerfish",2020,"recreational",390712,241200,161.986733001658
+"Gray Triggerfish",2019,"recreational",310868,241200,128.883913764511
+"Gray Triggerfish",2018,"recreational",461900,241200,191.500829187396
+"Gray Triggerfish",2017,"recreational",62731,241200,26.0078772802653
+"Gray Triggerfish",2016,"recreational",432641,241200,179.370232172471
+"Gray Triggerfish",2015,"recreational",94174,241200,39.0439469320066
+"Gray Triggerfish",2014,"recreational",217891,241200,90.3362354892206
+"Gray Triggerfish",2013,"recreational",453251,241200,187.915008291874
+"Gray Triggerfish",2012,"recreational",277720,241200,115.14096185738
+"Gray Triggerfish",2011,"recreational",461549,457000,100.995404814004
+"Gray Triggerfish",2010,"recreational",296360,457000,64.8490153172867
+"Greater Amberjack",2024,"recreational",883667,404000,218.729455445545
+"Greater Amberjack",2023,"recreational",793241,404000,196.346782178218
+"Greater Amberjack",2022,"recreational",323403,404000,80.0502475247525
+"Greater Amberjack",2021,"recreational",490421,1309620,37.4475802141079
+"Greater Amberjack",2020,"recreational",936630,1309620,71.5192193155266
+"Greater Amberjack",2019,"recreational",627639,1309620,47.9252760342695
+"Greater Amberjack",2018,"recreational",1567917,1949830,80.4130103650062
+"Greater Amberjack",2017,"recreational",794202,1255600,63.2527875119465
+"Greater Amberjack",2016,"recreational",1962559,1255600,156.304475947754
+"Greater Amberjack",2015,"recreational",1352930,1299000,104.151655119323
+"Greater Amberjack",2014,"recreational",912254,1299000,70.2274056966898
+"Greater Amberjack",2013,"recreational",1534462,1299000,118.126404926867
+"Greater Amberjack",2012,"recreational",1322788,1299000,101.831254811393
+"Greater Amberjack",2011,"recreational",1032063,1368000,75.443201754386
+"Greater Amberjack",2010,"recreational",1316291,1368000,96.2201023391813
+"King Mackerel",2024,"recreational",1482305,6609600,22.4265462357783
+"King Mackerel",2023,"recreational",1688196,6609600,25.5415758896151
+"King Mackerel",2022,"recreational",1368074,6609600,20.6982873396272
+"King Mackerel",2021,"recreational",1022994,5810000,17.6074698795181
+"King Mackerel",2020,"recreational",1729718,5810000,29.7713941480207
+"King Mackerel",2019,"recreational",1622334,5810000,27.9231325301205
+"King Mackerel",2018,"recreational",2279432,5920000,38.5039189189189
+"King Mackerel",2017,"recreational",2344872,6040000,38.8223841059603
+"King Mackerel",2016,"recreational",2778688,6260000,44.3879872204473
+"King Mackerel",2015,"recreational",2353611,7344000,32.0480800653595
+"King Mackerel",2014,"recreational",4615150,7344000,62.8424564270153
+"King Mackerel",2013,"recreational",2807447,7344000,38.22776416122
+"King Mackerel",2012,"recreational",4102846,8092000,50.7024962926347
+"King Mackerel",2011,"recreational",2806173,8092000,34.6783613445378
+"Red Grouper",2024,"recreational",2071720,2020000,102.560396039604
+"Red Grouper",2023,"recreational",2525327,2020000,125.016188118812
+"Red Grouper",2022,"recreational",2719962,2020000,134.651584158416
+"Red Grouper",2021,"recreational",1717615,1e+06,171.7615
+"Red Grouper",2020,"recreational",775929,1e+06,77.5929
+"Red Grouper",2019,"recreational",764985,1e+06,76.4985
+"Red Grouper",2018,"recreational",872045,2580001,33.8001806976044
+"Red Grouper",2017,"recreational",807085,2580000,31.2823643410853
+"Red Grouper",2016,"recreational",1403236,2580000,54.388992248062
+"Red Grouper",2015,"recreational",1847573,1900000,97.2406842105263
+"Red Grouper",2014,"recreational",1600475,1900000,84.2355263157895
+"Red Grouper",2013,"recreational",2377111,1900000,125.111105263158
+"Red Grouper",2012,"recreational",1752930,1900000,92.2594736842105
+"Red Grouper",2011,"recreational",643745,1850000,34.797027027027
+"Red Grouper",2010,"recreational",635680,1850000,34.3610810810811
+"Red Snapper",2010,"recreational",2238908,3403000,65.7921833676168
+"Red Snapper",2011,"recreational",4602553,3866000,119.052069322297
+"Red Snapper",2012,"recreational",5802491,3959000,146.56456175802
+"Red Snapper",2013,"recreational",9702901,5390000,180.016716141002
+"Red Snapper",2014,"recreational",3835365,5390000,71.1570500927644
+"Red Snapper",2015,"recreational",5960151,7007000,85.0599543313829
+"Red Snapper",2016,"recreational",7436450,7192000,103.398915461624
+"Red Snapper",2017,"recreational",8862770,6733000,131.631813456112
+"Red Snapper",2018,"recreational",2486702,6733000,36.9330461904055
+"Red Snapper",2019,"recreational",2558734,7399000,34.5821597513177
+"Red Snapper",2020,"recreational",2408134,7399000,32.5467495607515
+"Red Snapper",2021,"recreational",2853410,7399000,38.5648060548723
+"Red Snapper",2022,"recreational",2836877,7399000,38.341356940127
+"Red Snapper",2023,"recreational",2981285,7991873,37.3039586590027
+"Red Snapper",2024,"recreational",2228863,7991873,27.889119359129
+"Cobia",2024,"total stock",1559308,1738800,89.6772486772487
+"Cobia",2023,"total stock",1026218,1738800,59.0187485622268
+"Cobia",2022,"total stock",1442104,1638000,88.0405372405372
+"Cobia",2021,"total stock",486212,1660000,29.2898795180723
+"Cobia",2020,"total stock",450942,1660000,27.1651807228916
+"Cobia",2019,"total stock",632555,1660000,38.1057228915663
+"Cobia",2018,"total stock",536244,1660000,32.3038554216867
+"Cobia",2017,"total stock",714501,1660000,43.0422289156626
+"Cobia",2016,"total stock",962016,1660000,57.9527710843373
+"Cobia",2015,"total stock",879640,1610000,54.6360248447205
+"Cobia",2014,"total stock",1001541,1460000,68.598698630137
+"Cobia",2013,"total stock",1293609,1460000,88.6033561643836
+"Cobia",2012,"total stock",976608,1460000,66.8909589041096
+"Cobia",2011,"total stock",1752756,NA,NA
+"Cobia",2010,"total stock",1400089,NA,NA
+"Cobia",2009,"total stock",1058344,NA,NA
+"Cobia",2008,"total stock",1380849,NA,NA
+"Cobia",2007,"total stock",1758610,NA,NA
+"Cobia",2006,"total stock",1654585,NA,NA
+"Cobia",2005,"total stock",1548621,NA,NA
+"Cobia",2004,"total stock",2191636,NA,NA
+"Cobia",2003,"total stock",2171859,NA,NA
+"Cobia",2002,"total stock",1332960,NA,NA
+"Cobia",2001,"total stock",1647764,NA,NA
+"Cobia",2000,"total stock",1638379,NA,NA
+"Cubera Snapper",2024,"total stock",5958,5065,117.630799605133
+"Cubera Snapper",2023,"total stock",2625,5065,51.8262586377098
+"Cubera Snapper",2022,"total stock",3364,5065,66.4165844027641
+"Cubera Snapper",2021,"total stock",8681,5065,171.391905231984
+"Cubera Snapper",2020,"total stock",2804,5065,55.360315893386
+"Cubera Snapper",2019,"total stock",2005,5065,39.5853899308983
+"Cubera Snapper",2018,"total stock",1912,5065,37.7492596248766
+"Cubera Snapper",2017,"total stock",2881,5065,56.8805528134255
+"Cubera Snapper",2016,"total stock",1747,5065,34.4916090819348
+"Cubera Snapper",2015,"total stock",1374,5065,27.1273445212241
+"Cubera Snapper",2014,"total stock",2005,5065,39.5853899308983
+"Cubera Snapper",2013,"total stock",3098,5065,61.1648568608095
+"Cubera Snapper",2012,"total stock",1550,5065,30.6021717670286
+"Deep Water Grouper",2024,"total stock",476147,1105000,43.0902262443439
+"Deep Water Grouper",2023,"total stock",657124,1105000,59.4682352941176
+"Deep Water Grouper",2022,"total stock",617681,1105000,55.8987330316742
+"Deep Water Grouper",2021,"total stock",827750,1105000,74.9095022624434
+"Deep Water Grouper",2020,"total stock",856674,1105000,77.5270588235294
+"Deep Water Grouper",2019,"total stock",1077550,1105000,97.5158371040724
+"Deep Water Grouper",2018,"total stock",949123,1105000,85.8934841628959
+"Deep Water Grouper",2017,"total stock",873360,1105000,79.0371040723982
+"Deep Water Grouper",2016,"total stock",913813,1105000,82.6980090497738
+"Deep Water Grouper",2015,"total stock",984418,1189000,82.7937762825904
+"Deep Water Grouper",2014,"total stock",1193061,1198000,99.5877295492487
+"Deep Water Grouper",2013,"total stock",1035806,1207000,85.816570008285
+"Deep Water Grouper",2012,"total stock",1024901,1216000,84.2846217105263
+"Gray Snapper",2024,"total stock",4910644,5728000,85.7305167597765
+"Gray Snapper",2023,"total stock",1385568,2230000,62.1330941704036
+"Gray Snapper",2022,"total stock",1394047,2230000,62.5133183856502
+"Gray Snapper",2021,"total stock",2056389,2230000,92.2147533632287
+"Gray Snapper",2020,"total stock",1382150,2240000,61.703125
+"Gray Snapper",2019,"total stock",1859597,2420000,76.8428512396694
+"Gray Snapper",2018,"total stock",1711867,2420000,70.738305785124
+"Gray Snapper",2017,"total stock",1958882,2420000,80.9455371900826
+"Gray Snapper",2016,"total stock",2343151,2420000,96.8244214876033
+"Gray Snapper",2015,"total stock",1957013,2420000,80.868305785124
+"Gray Snapper",2014,"total stock",2195269,2420000,90.7135950413223
+"Gray Snapper",2013,"total stock",1979830,2420000,81.8111570247934
+"Gray Snapper",2012,"total stock",1483711,2420000,61.3103719008264
+"Hogfish",2024,"total stock",87772,150400,58.3590425531915
+"Hogfish",2023,"total stock",128441,150400,85.3996010638298
+"Hogfish",2022,"total stock",43190,150400,28.7167553191489
+"Hogfish",2021,"total stock",90661,150400,60.279920212766
+"Hogfish",2020,"total stock",57438,141300,40.6496815286624
+"Hogfish",2019,"total stock",66916,129500,51.6725868725869
+"Hogfish",2018,"total stock",77343,219000,35.3164383561644
+"Hogfish",2017,"total stock",110548,219000,50.4785388127854
+"Hogfish",2016,"total stock",281626,208000,135.397115384615
+"Hogfish",2015,"total stock",192845,208000,92.7139423076923
+"Hogfish",2014,"total stock",195731,208000,94.1014423076923
+"Hogfish",2013,"total stock",242633,208000,116.650480769231
+"Hogfish",2012,"total stock",293117,208000,140.921634615385
+"Jacks",2024,"total stock",193604,312000,62.0525641025641
+"Jacks",2023,"total stock",227487,312000,72.9125
+"Jacks",2022,"total stock",266437,312000,85.3964743589744
+"Jacks",2021,"total stock",514670,312000,164.958333333333
+"Jacks",2020,"total stock",193766,312000,62.1044871794872
+"Jacks",2019,"total stock",391186,312000,125.380128205128
+"Jacks",2018,"total stock",168294,312000,53.9403846153846
+"Jacks",2017,"total stock",207425,312000,66.4823717948718
+"Jacks",2016,"total stock",241876,312000,77.524358974359
+"Jacks",2015,"total stock",132661,312000,42.5195512820513
+"Jacks",2014,"total stock",201029,312000,64.4323717948718
+"Jacks",2013,"total stock",340651,312000,109.183012820513
+"Jacks",2012,"total stock",299872,312000,96.1128205128205
+"Lane Snapper",2024,"total stock",1371194,1088873,125.927817109984
+"Lane Snapper",2023,"total stock",1142132,1028973,110.997275924636
+"Lane Snapper",2022,"total stock",1129760,1028973,109.794912014212
+"Lane Snapper",2021,"total stock",405712,1028973,39.428828550409
+"Lane Snapper",2020,"total stock",358638,301000,119.148837209302
+"Lane Snapper",2019,"total stock",382740,301000,127.156146179402
+"Lane Snapper",2018,"total stock",339317,301000,112.729900332226
+"Lane Snapper",2017,"total stock",579013,301000,192.363122923588
+"Lane Snapper",2016,"total stock",301411,301000,100.136544850498
+"Lane Snapper",2015,"total stock",279718,301000,92.9295681063123
+"Lane Snapper",2014,"total stock",264893,301000,88.0043189368771
+"Lane Snapper",2013,"total stock",249325,301000,82.8322259136213
+"Lane Snapper",2012,"total stock",178161,301000,59.1897009966777
+"Mid-water Snapper",2024,"total stock",95059,166000,57.2644578313253
+"Mid-water Snapper",2023,"total stock",137923,166000,83.0861445783133
+"Mid-water Snapper",2022,"total stock",123574,166000,74.4421686746988
+"Mid-water Snapper",2021,"total stock",216644,166000,130.50843373494
+"Mid-water Snapper",2020,"total stock",166760,166000,100.457831325301
+"Mid-water Snapper",2019,"total stock",56523,166000,34.05
+"Mid-water Snapper",2018,"total stock",102769,166000,61.9090361445783
+"Mid-water Snapper",2017,"total stock",49720,166000,29.9518072289157
+"Mid-water Snapper",2016,"total stock",107358,166000,64.6734939759036
+"Mid-water Snapper",2015,"total stock",54649,166000,32.9210843373494
+"Mid-water Snapper",2014,"total stock",91810,166000,55.3072289156627
+"Mid-water Snapper",2013,"total stock",66904,166000,40.3036144578313
+"Mid-water Snapper",2012,"total stock",133377,166000,80.3475903614458
+"Mutton Snapper",2024,"total stock",128638,143694,89.5221790749788
+"Mutton Snapper",2023,"total stock",120226,143694,83.6680724316951
+"Mutton Snapper",2022,"total stock",83101,143694,57.831920609072
+"Mutton Snapper",2021,"total stock",64859,143694,45.1368881094548
+"Mutton Snapper",2020,"total stock",65082,143694,45.2920790012109
+"Mutton Snapper",2019,"total stock",63284,139392,45.4000229568411
+"Mutton Snapper",2018,"total stock",154877,134424,115.215288936499
+"Mutton Snapper",2017,"total stock",128689,203000,63.3935960591133
+"Mutton Snapper",2016,"total stock",81858,203000,40.3241379310345
+"Mutton Snapper",2015,"total stock",125409,203000,61.7778325123153
+"Mutton Snapper",2014,"total stock",134422,203000,66.2177339901478
+"Mutton Snapper",2013,"total stock",112774,203000,55.5536945812808
+"Mutton Snapper",2012,"total stock",95851,203000,47.2172413793103
+"Shallow Water Grouper",2024,"total stock",195906,710000,27.5923943661972
+"Shallow Water Grouper",2023,"total stock",277525,710000,39.0880281690141
+"Shallow Water Grouper",2022,"total stock",285230,710000,40.1732394366197
+"Shallow Water Grouper",2021,"total stock",352459,710000,49.6421126760563
+"Shallow Water Grouper",2020,"total stock",253482,710000,35.7016901408451
+"Shallow Water Grouper",2019,"total stock",329122,710000,46.3552112676056
+"Shallow Water Grouper",2018,"total stock",294705,710000,41.5077464788732
+"Shallow Water Grouper",2017,"total stock",315465,710000,44.4316901408451
+"Shallow Water Grouper",2016,"total stock",438361,710000,61.740985915493
+"Shallow Water Grouper",2015,"total stock",376317,710000,53.0023943661972
+"Shallow Water Grouper",2014,"total stock",309887,707000,43.8312588401697
+"Shallow Water Grouper",2013,"total stock",496053,7e+05,70.8647142857143
+"Shallow Water Grouper",2012,"total stock",432942,688000,62.9276162790698
+"Tilefish",2024,"total stock",275047,608000,45.2379934210526
+"Tilefish",2023,"total stock",341890,608000,56.2319078947368
+"Tilefish",2022,"total stock",403843,608000,66.4215460526316
+"Tilefish",2021,"total stock",554805,608000,91.250822368421
+"Tilefish",2020,"total stock",392082,608000,64.4871710526316
+"Tilefish",2019,"total stock",426978,608000,70.2266447368421
+"Tilefish",2018,"total stock",399683,608000,65.7373355263158
+"Tilefish",2017,"total stock",487650,608000,80.2055921052632
+"Tilefish",2016,"total stock",456266,608000,75.04375
+"Tilefish",2015,"total stock",779248,608000,128.165789473684
+"Tilefish",2014,"total stock",543089,608000,89.3238486842105
+"Tilefish",2013,"total stock",562917,608000,92.5850328947368
+"Tilefish",2012,"total stock",459017,608000,75.4962171052632
+"Spanish Mackerel",2024,"total stock",1483739,11300000,13.1304336283186
+"Spanish Mackerel",2023,"total stock",1484572,11300000,13.1378053097345
+"Spanish Mackerel",2022,"total stock",2375586,11300000,21.0228849557522
+"Spanish Mackerel",2021,"total stock",1795354,11300000,15.8880884955752
+"Spanish Mackerel",2020,"total stock",2407182,11300000,21.3024955752212
+"Spanish Mackerel",2019,"total stock",4240978,11300000,37.5307787610619
+"Spanish Mackerel",2018,"total stock",2987829,11300000,26.4409646017699
+"Spanish Mackerel",2017,"total stock",2884438,11300000,25.526
+"Spanish Mackerel",2016,"total stock",3701690,11300000,32.7583185840708
+"Spanish Mackerel",2015,"total stock",3836011,11800000,32.5085677966102
+"Spanish Mackerel",2014,"total stock",2870530,12700000,22.6025984251969
+"Spanish Mackerel",2013,"total stock",6696915,5150000,130.037184466019
+"Spanish Mackerel",2012,"total stock",4992325,5150000,96.9383495145631
+"Spanish Mackerel",2011,"total stock",4025064,9100000,44.2314725274725
+"Spanish Mackerel",2010,"total stock",4212919,9100000,46.2958131868132
+"Spanish Mackerel",2009,"total stock",2832579,9100000,31.1272417582418
+"Spanish Mackerel",2008,"total stock",4885588,9100000,53.6877802197802
+"Spanish Mackerel",2007,"total stock",3627536,9100000,39.863032967033
+"Spanish Mackerel",2006,"total stock",4379359,9100000,48.1248241758242
+"Spanish Mackerel",2005,"total stock",2816665,9100000,30.9523626373626
+"Spanish Mackerel",2004,"total stock",4651766,9100000,51.1183076923077
+"Spanish Mackerel",2003,"total stock",3683961,9100000,40.4830879120879
+"Spanish Mackerel",2002,"total stock",4916331,9100000,54.0256153846154
+"Spanish Mackerel",2001,"total stock",4263102,9100000,46.8472747252747
+"Spanish Mackerel",2000,"total stock",3842018,9100000,42.219978021978
+"Vermilion Snapper",2024,"total stock",3714018,5452500,68.1158734525447
+"Vermilion Snapper",2023,"total stock",3866286,5452500,70.9085006877579
+"Vermilion Snapper",2022,"total stock",2351164,3110000,75.6001286173634
+"Vermilion Snapper",2021,"total stock",2582422,3110000,83.036077170418
+"Vermilion Snapper",2020,"total stock",1888747,3110000,60.7314147909968
+"Vermilion Snapper",2019,"total stock",2616896,3110000,84.1445659163987
+"Vermilion Snapper",2018,"total stock",3190695,3110000,102.594694533762
+"Vermilion Snapper",2017,"total stock",3120219,3420000,91.2344736842105
+"Vermilion Snapper",2016,"total stock",2587288,3420000,75.6516959064327
+"Vermilion Snapper",2015,"total stock",2239521,3420000,65.4830701754386
+"Vermilion Snapper",2014,"total stock",2906173,3420000,84.9758187134503
+"Vermilion Snapper",2013,"total stock",2537191,3420000,74.1868713450292
+"Vermilion Snapper",2012,"total stock",3197412,3420000,93.4915789473684
+"Yellowtail Snapper",2024,"total stock",143164,901125,15.8872520460535
+"Yellowtail Snapper",2023,"total stock",266562,901125,29.5810237203496
+"Yellowtail Snapper",2022,"total stock",320307,901125,35.5452351227632
+"Yellowtail Snapper",2021,"total stock",281222,901125,31.2078790400888
+"Yellowtail Snapper",2020,"total stock",292625,901125,32.4732972673048
+"Yellowtail Snapper",2019,"total stock",296393,901125,32.8914412539881
+"Yellowtail Snapper",2018,"total stock",563906,901125,62.577999722569
+"Yellowtail Snapper",2017,"total stock",631558,901125,70.0855042308226
+"Yellowtail Snapper",2016,"total stock",679485,901125,75.4040782355389
+"Yellowtail Snapper",2016,"total stock",344934,901125,38.278152309613
+"Yellowtail Snapper",2015,"total stock",582320,901125,64.6214454154529
+"Yellowtail Snapper",2014,"total stock",488504,901125,54.2104591482869
+"Yellowtail Snapper",2013,"total stock",741103,901125,82.241975308642
+"Yellowtail Snapper",2012,"total stock",635991,725000,87.7228965517241
