@@ -154,15 +154,23 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, facet_scales = 'fixed',
-                        manual_title = NA)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, 
+                        manual_title = NA,
+                        facet_scales = 'fixed',
+                        ncol = 1,
+                        fig.width = 8,
+                        lwd = .5) +
+  scale_x_continuous(breaks = seq(1940,2025,10)) +
+  theme(axis.title = element_text(size = 20, face = 'plain'),
+        axis.text = element_text(size = 20, face = 'plain'),
+        strip.text = element_text(size = 20, face = "plain"))
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename, height = 8, width = 7, unit="in")
+ggsave(filename = plot_filename, height = 10, width = 8, unit="in")
 
 
 
@@ -170,24 +178,24 @@ ggsave(filename = plot_filename, height = 8, width = 7, unit="in")
 #----------------------------------------------------
 ### combined plot
 
-png(here('figures/plots/artificial_structure-combined-plot.png'), width = 7, height = 4, units = 'in', res = 300)
-par(mar = c(4,4,1,1))
-
-plot(formatted_data$indicator[3:nrow(formatted_data)],
-     formatted_data$`Total Artificial Structures`[3:nrow(formatted_data)],
-     typ = 'l', lwd = 2, las = 1,
-     xlab = 'Year', ylab = 'Number of Structures')
-points(formatted_data$indicator[3:nrow(formatted_data)],
-       formatted_data$`ONG rigs`[3:nrow(formatted_data)],
-       typ = 'l', lwd = 2, col = 'orangered')
-points(formatted_data$indicator[3:nrow(formatted_data)],
-       formatted_data$`Artificial reefs`[3:nrow(formatted_data)],
-       typ = 'l', lwd = 2, col = 'purple3')
-legend('topleft', c('Total Structures','ONG Rigs','Artificial Reefs'),
-       lty = 1, lwd = 2, col = c(1, 'orangered','purple3'),
-       bty = 'n')
-
-dev.off()
+# png(here('figures/plots/artificial_structure-combined-plot.png'), width = 7, height = 4, units = 'in', res = 300)
+# par(mar = c(4,4,1,1))
+# 
+# plot(formatted_data$indicator[3:nrow(formatted_data)],
+#      formatted_data$`Total Artificial Structures`[3:nrow(formatted_data)],
+#      typ = 'l', lwd = 2, las = 1,
+#      xlab = 'Year', ylab = 'Number of Structures')
+# points(formatted_data$indicator[3:nrow(formatted_data)],
+#        formatted_data$`ONG rigs`[3:nrow(formatted_data)],
+#        typ = 'l', lwd = 2, col = 'orangered')
+# points(formatted_data$indicator[3:nrow(formatted_data)],
+#        formatted_data$`Artificial reefs`[3:nrow(formatted_data)],
+#        typ = 'l', lwd = 2, col = 'purple3')
+# legend('topleft', c('Total Structures','ONG Rigs','Artificial Reefs'),
+#        lty = 1, lwd = 2, col = c(1, 'orangered','purple3'),
+#        bty = 'n')
+# 
+# dev.off()
 
 ### maps
 
@@ -274,14 +282,14 @@ plot(plat_rm_per, col = map.pal('plasma',20),
      box = T, zebra = F)
 plot(world, add= T, col = 'gray')
 
-plot(plt_rmr, col = map.pal('plasma',11),
-     main = 'Median Year of Removal (past decade)',
-     font.main = 1,
-     type='classes',
-     ext = c(-98, -80, 24.5, 30.5),
-     mar = c(1,3,1,4),
-     box = T, zebra = F)
-plot(world, add= T, col = 'gray')
+# plot(plt_rmr, col = map.pal('plasma',11),
+#      main = 'Median Year of Removal (past decade)',
+#      font.main = 1,
+#      type='classes',
+#      ext = c(-98, -80, 24.5, 30.5),
+#      mar = c(1,3,1,4),
+#      box = T, zebra = F)
+# plot(world, add= T, col = 'gray')
 
 dev.off()
 
