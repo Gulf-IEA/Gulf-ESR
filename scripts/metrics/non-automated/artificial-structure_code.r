@@ -161,9 +161,9 @@ IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE,
                         fig.width = 8,
                         lwd = .5) +
   scale_x_continuous(breaks = seq(1940,2025,10)) +
-  theme(axis.title = element_text(size = 12, face = 'plain'),
-        axis.text = element_text(size = 11, face = 'plain'),
-        strip.text = element_text(size = 12, face = "plain"))
+  theme(axis.title = element_text(size = 20, face = 'plain'),
+        axis.text = element_text(size = 20, face = 'plain'),
+        strip.text = element_text(size = 20, face = "plain"))
 
 #----------------------------------------------------
 #### 7. Save plot ####
