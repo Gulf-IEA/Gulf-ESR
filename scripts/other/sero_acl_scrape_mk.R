@@ -241,6 +241,7 @@ dat$spp[grep('King Mackerel', dat$spp, ignore.case = T)] <- 'King Mackerel'
 
 ### question: how to deal with units (as reported, gw, ww) when aggregating?
 ### question: King mackerel are on separate fishing year, should they be treated separately?
+### question: do we also want the total stock ACLs as a separate group of graphs?
 ### question: do we include cobia?
 # *The Florida East Coast Zone (east coast of Florida and Atlantic side of the 
 # Florida Keys) is part of the Gulf of Mexico stock and is jointly managed with 
