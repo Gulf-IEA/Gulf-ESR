@@ -99,8 +99,8 @@ legend(
 save plot
 ```{r}
 png(filename = plot_filename, 
-    width = 10,           
-    height = 7,           
+    width = 8,           
+    height = 5,           
     units = "in", 
     res = 300)           
 par(mar = c(5, 11, 4, 2))
