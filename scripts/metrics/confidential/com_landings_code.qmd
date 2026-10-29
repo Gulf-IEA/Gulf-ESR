@@ -1165,6 +1165,8 @@ indicator_names = rep("Commercial landings", 2)
 unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
 extent_names = c("Assessed finfish", "Assessed finfish")
 
+managed_finfish = managed_finfish %>% 
+  filter(LAND_YEAR >= 1990)
 formatted_managed_finfish = IEAnalyzeR::convert_cleaned_data(managed_finfish, indicator_names, unit_names, extent_names)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
@@ -1172,6 +1174,8 @@ indicator_names = rep("Commercial landings", 4)
 unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)", "Whole weight (million lbs)", "Real value (2024 $ million)")
 extent_names = c("Unmanaged food fish", "Unmanaged food fish", "Unmanaged bait/forage fish", "Unmanaged bait/forage fish")
 
+unmanaged_summary = unmanaged_summary %>% 
+  filter(LAND_YEAR >= 1990)
 formatted_unmanaged_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, indicator_names, unit_names, extent_names)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
