@@ -47,6 +47,10 @@ csv_filename3<-here(paste0("data/formatted/formatted_csvs/", root_name, "long_se
 object_filename3<-here(paste0("data/formatted/final_objects/", root_name, "long_series_object.rds"))
 plot_filename3<-here(paste0("figures/plots/", root_name, "long_series_plot.png"))
 
+csv_filename4<-here(paste0("data/formatted/formatted_csvs/", root_name, "long_cat_formatted.csv")) 
+object_filename4<-here(paste0("data/formatted/final_objects/", root_name, "long_cat_object.rds"))
+plot_filename4<-here(paste0("figures/plots/", root_name, "long_cat_plot.png"))
+
 ```
 
 # 1. Read Data - SKIP THIS SECTION UNLESS YOU NEED TO PULL DATA FROM ORACLE AGAIN
@@ -189,8 +193,7 @@ dat_all <- landings_github %>%
 ```
 
 
-Next we want to examine which species make up the bulk of the landings each year.
-Let's run a Pareto distribution & sensitivity analysis on the rest of the species. Calculates the cumulative percentage of total unmanaged marine finfish volume accounted for by each species, ranks them from highest to lowest, and tests if the time series trend changes when using top 5, top 10, top 15, or top 25 species. Trying to remove species was like playing constant whack a mole. Random things just kept popping up. So a better approach was to make a whitelist of known major commercial marine finfish that are not managed. 
+Remove what we know we need to remove (shrimp and osteichthyes)
 
 ```{r}
 # Cumulative Landings Pareto Analysis
@@ -255,7 +258,6 @@ Now menhaden vs. everything else
 
 dat_all_noshrimp_nomenh <- dat_all_noshrimp %>%
   filter(!str_detect(COMMON_NAME, regex("MENHADEN", ignore_case = TRUE)))
-write_csv(dat_all_noshrimp_nomenh, "noshrimp_nomenhaden.csv")
 
 dat_all_menhaden <- dat_all_noshrimp %>%
   filter(str_detect(COMMON_NAME, regex("MENHADEN", ignore_case = TRUE)))
@@ -308,6 +310,150 @@ ggplot(data = quick_summary_menhaden, aes(x=LAND_YEAR, y = total_mil_lbs)) +
     plot.title = element_text(face = "bold", size = 13),
     axis.text.x = element_text(angle = 45, hjust = 1)) 
 ```
+
+Figure will be a plot of landings for all species (no shrimp and no menhaden)
+```{r}
+# 2. Summarize annual totals into 4 distinct columns
+all_summary <- dat_all_noshrimp_nomenh %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    total_mil_lbs     = sum(total_mil_lbs, na.rm = TRUE),
+    total_mil_dollars = sum(total_mil_dollars_2024, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
+```
+
+
+
+Had Gemini give me code to add a column to the dataset to group all of the species into categories
+
+```{r}
+#Add refined category column with marine split into pelagic vs. demersal
+df_categorized <- dat_all_noshrimp_nomenh %>%
+  mutate(
+    # Clean whitespace and enforce uppercase for robust matching
+    spp_clean = toupper(trimws(COMMON_NAME)),
+    
+    category = case_when(
+      # --- INVERTEBRATES ---
+      grepl("CRAB|SHRIMP|LOBSTER|OYSTER|CLAM|SCALLOP|SQUID|OCTOPUS|CONCH|SPONGE|JELLYFISH|GASTROPOD|MOLLUSK|SHELLFISH", spp_clean) ~ "invertebrate",
+      
+      # --- FRESHWATER ---
+      grepl("CATFISH, (BLUE|CHANNEL|FLATHEAD)|CATFISHES, (BLUE|CHANNEL|FLATHEAD)|BULLHEAD|BOWFIN|BUFFALOFISH|CARP|GAR(,| )|BASS, (LARGEMOUTH|SMALLMOUTH|SPOTTED)|CRAPPIE|SUNFISH|BLUEGILL|WARMOUTH|TILAPIA|PICKEREL|DRUM, FRESHWATER|PERCH, YELLOW|ALLIGATOR|SHINER|MINNOW|FRESHWATER", spp_clean) ~ "freshwater",
+      
+      # --- COASTAL / ANADROMOUS / ESTUARINE ---
+      grepl("STURGEON|SHAD, (AMERICAN|ALABAMA|GIZZARD|THREADFIN)|HERRING, (SKIPJACK|ALEWIFE)|EEL, AMERICAN|MULLET|CROAKER, ATLANTIC|SPOT(,| )|DRUM, (BLACK|RED)|SEATROUT|SHEEPSHEAD|FLOUNDER|MENHADEN|KILLIFISH", spp_clean) ~ "coastal",
+      
+      # --- OTHER (Unidentified / Generic mixed aggregates) ---
+      grepl("UNCLASSIFIED|UNIDENTIFIED|UNKNOWN|OTHER|MISCELLANEOUS|PROCAMBARUS|FINFISH, OTHER", spp_clean) ~ "other",
+      
+      # --- MARINE PELAGIC (Coastal & Oceanic Pelagics, Tunas, Billfish, Jacks, Mackerels) ---
+      grepl("TUNA|MACKEREL|WAHOO|DOLPHIN|BILLFISH|MARLIN|SAILFISH|SWORDFISH|COBIA|BARRACUDA|RUNNER, BLUE|JACK, CREVALLE|JACK, ALMACO|JACK, YELLOW|JACK, BLACK|JACK, HORSE-EYE|AMBERJACK|RUDDERFISH|POMPANO|LOOKDOWN|FLYINGFISH|NEEDLEFISH|BALLYHOO|SCAD|BLUEFISH", spp_clean) ~ "marine_pelagic",
+      
+      # --- MARINE DEMERSAL (Reef Fish, Demersal, Soft-Bottom Marine Finfish, Sharks/Rays) ---
+      # Covers Snappers, Groupers, Tilefish, Sea Bass, Grunts, Porgies, Triggerfish, Hogfish, Flounders/Soles (marine), Hakes, etc.
+      TRUE ~ "marine_demersal"
+    )
+  ) %>%
+  select(-spp_clean)
+
+# 3. Check distribution across categories
+print(table(df_categorized$category, useNA = "always"))
+
+target_cats = c("coastal", "invertebrate", "marine_demersal", "marine_pelagic")
+
+# 4. View a sample of each group to verify assignments
+df_categorized %>%
+  distinct(COMMON_NAME, category) %>%
+  group_by(category) %>%
+  slice_head(n = 15) %>%
+  print(n = 70) 
+
+unique(df_categorized$category)
+
+top_species_list <- df_categorized %>%
+  group_by(COMMON_NAME, category) %>%
+  summarise(grand_total_lbs = sum(total_mil_lbs, na.rm = TRUE)) 
+
+```
+
+Plot annual landings for each category
+```{r}
+annual_landings <- df_categorized %>%
+  filter(!is.na(LAND_YEAR), !is.na(TOTAL_LIVE_POUNDS)) %>%
+  filter(category %in% target_cats) %>%
+  group_by(LAND_YEAR, category) %>%
+  summarize(
+    total_landings_lbs = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
+    total_mil_lbs = total_landings_lbs / 1e6,
+    .groups = "drop"
+  )
+
+p_facet <- ggplot(annual_landings, aes(x = LAND_YEAR, y = total_mil_lbs, color = category)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.2, alpha = 0.7) +
+  facet_wrap(~category, scales = "free_y", ncol = 2) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    title = "Annual Commercial Landings by Broad Fishery Category",
+    subtitle = "Gulf of America (1950–2025)",
+    x = "Year",
+    y = "Total Landings (Million lbs)"
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "none",
+    strip.background = element_rect(fill = "grey92", color = "grey50"),
+    strip.text = element_text(face = "bold", size = 11),
+    panel.grid.minor = element_blank()
+  )
+
+print(p_facet)
+
+# Reorder categories so high-volume groups form the base
+annual_landings <- annual_landings %>%
+  mutate(category = factor(category, levels = c("coastal", "invertebrate", 
+                                                "marine_demersal", "marine_pelagic", 
+                                                "freshwater", "other"))) %>% 
+  filter(category %in% c("coastal", "invertebrate", "marine_demersal", "marine_pelagic")) 
+
+p_area <- ggplot(annual_landings, aes(x = LAND_YEAR, y = total_mil_lbs, fill = category)) +
+  geom_area(alpha = 0.85, color = "white", linewidth = 0.2) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_fill_brewer(palette = "Spectral") +
+  labs(
+    title = "Total Annual Commercial Landings by Fishery Category",
+    subtitle = "Stacked landings in millions of live pounds (1950–2025)",
+    x = "Year",
+    y = "Total Commercial Landings (Million lbs)",
+    fill = "Category"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+print(p_area)
+```
+Another figure will be landings by category
+```{r}
+all_cat_summary <- annual_landings %>% 
+  group_by(LAND_YEAR) %>%
+  summarise(
+    Coastal     = sum(total_mil_lbs[category == "coastal"], na.rm = TRUE),
+    Invertebrate     = sum(total_mil_lbs[category == "invertebrate"], na.rm = TRUE),
+    Marine.demersal     = sum(total_mil_lbs[category == "marine_demersal"], na.rm = TRUE),
+    Marine.pelagic     = sum(total_mil_lbs[category == "marine_pelagic"], na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  select(LAND_YEAR, Coastal, Invertebrate, Marine.demersal, Marine.pelagic)
+```
+
+
+
 
 
 Now we want to dig into this trend to see what is going on and see if we need to exclude any more species for the final plot.
@@ -476,7 +622,7 @@ dat_all_clean <- dat_all_noshrimp_nomenh %>%
 top_species_list <- dat_all_clean %>%
   group_by(COMMON_NAME) %>%
   summarise(grand_total_lbs = sum(total_mil_lbs, na.rm = TRUE)) %>%
-  slice_max(grand_total_lbs, n = 20) %>%
+  slice_max(grand_total_lbs, n = 10) %>%
   pull(COMMON_NAME)
 
 # Lumping smaller volume species into "OTHER" to simplify visualizations
@@ -739,44 +885,11 @@ write_csv(dat_summarized, here("data/intermediate/all_com_landings.csv"))
 
 
 
-Now we need to subset the giant dataset to what we need and save the intermediate files.
-First, some checks to see how the broad and unidentified categories are distributed.
-
-```{r}
-unique(landings_raw$COMMON_NAME)
-
-# Refined filter to target ONLY true aggregate/unclassified categories
-aggregate_taxa <- landings_raw %>%
-  filter(
-    # 1. Matches explicit unclassified keywords
-    str_detect(COMMON_NAME, regex("UNCLASSIFIED|UNIDENTIFIED|OTHER|GENUS|FAMILY|NOS|SPEC", ignore_case = TRUE)) |
-    # 2. Exact single-word family names (e.g., "GROUPERS" or "SNAPPER" alone)
-    str_to_upper(trimws(COMMON_NAME)) %in% c("GROUPER", "GROUPERS", "SNAPPER", "SNAPPERS", 
-                                            "JACK", "JACKS", "MACKEREL", "MACKERELS", 
-                                            "TILEFISH", "TILEFISHES", "GRUNT", "GRUNTS",
-                                            "FISH", "FINFISH", "FISHES")
-  ) %>%
-  group_by(SPECIES_ITIS, COMMON_NAME, FLAG_FMP_SPP) %>%
-  summarise(
-    TOTAL_LIVE_LBS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
-    MIN_YEAR = min(LAND_YEAR),
-    MAX_YEAR = max(LAND_YEAR),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(TOTAL_LIVE_LBS))
-
-# Print the true broad/aggregate categories
-print(head(aggregate_taxa, 30))
-```
 
 
 
 
-
-
-
-
-
+##### Managed species
 
 
 ```{r}
@@ -860,94 +973,6 @@ managed_finfish <- dat_managed %>%
 write_csv(dat_managed, here("data/intermediate/managed_species_landings_by_species.csv"))
 write_csv(managed_finfish, here("data/intermediate/gulf_managed_species_com_landings_1972_present.csv"))
 ```
-
-
-
-Ok so the broad categories are not included as managed species according to the FLAG_FMP_SPP column. If we ignore them, we might ignore a lot of landings.
-
-This plot is to check if we really need to include those uncategorized broad groups. How much of the total landings do they account for?
-
-```{r}
-# First need to try to figure out how many broad groups exist. Theoretically all the broad groups should have single words for the species name. 
-broad_groups = clean_data %>% 
-  filter(
-    # Matches "unclassified" or "unknown" (case-insensitive)
-    str_detect(COMMON_NAME, regex("unclassified|unknown", ignore_case = TRUE)) |
-    # Matches single words (no spaces)
-    !str_detect(COMMON_NAME, "\\s")) %>% 
-  distinct(COMMON_NAME) %>% 
-  arrange(COMMON_NAME)
-
-write_csv(broad_groups, here("data/intermediate/gulf_broad_groups_commercial_list.csv"))
-
-# Now let's pull out all the broad groups that may contain our federally managed species. 
-gulf_council_aggregates <- c(
-  "AMBERJACKS",
-  "DRUMS",
-  "GROUPERS",
-  "JACKS",
-  "MACKERELS",
-  "SNAPPERS",
-  "TILEFISHES",
-  "TRIGGERFISHES",
-  "MACKERELS, KING AND CERO"
-)
-
-#check
-test = clean_data %>% 
-  filter(COMMON_NAME %in% gulf_council_aggregates) %>% 
-  distinct(COMMON_NAME)
-
-
-# See how much of the landings are in these broad groups
-plot1_council_df <- clean_data %>%
-  mutate(
-    Category = case_when(
-      COMMON_NAME %in% gmfmc_finfish_official ~ "Species-Specific Managed Landings",
-      COMMON_NAME %in% gulf_council_aggregates ~ "Unclassified Managed Family Groups",
-      TRUE ~ "Other / Unmanaged"
-    )
-  ) %>%
-  filter(Category != "Other / Unmanaged") %>%
-  group_by(LAND_YEAR, Category) %>%
-  summarise(
-    TOTAL_LIVE_POUNDS = sum(TOTAL_LIVE_POUNDS, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Plot
-ggplot(plot1_council_df, aes(x = LAND_YEAR, y = TOTAL_LIVE_POUNDS / 1e6, fill = Category)) +
-  geom_area(alpha = 0.85, color = "black", linewidth = 0.3) +
-  scale_fill_manual(values = c(
-    "Species-Specific Managed Landings" = "#2c7fb8", 
-    "Unclassified Managed Family Groups" = "#fe9929"
-  )) +
-  scale_y_continuous(labels = comma_format()) +
-  scale_x_continuous(breaks = seq(1972, 2025, by = 5)) +
-  labs(
-    title = "Gulf Commercial Managed Finfish Extraction (1972–Present)",
-    x = "Year",
-    y = "Live Landings (Millions of Pounds)",
-    fill = "Reporting & Management Strata"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "bottom",
-    legend.box = "vertical",
-    panel.grid.minor = element_blank(),
-    plot.title = element_text(face = "bold", size = 13),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-```
-
-
-Ok so there is a fairly substantial number of landings earlier in the time series for those broad groups. Options:
-
-1. Ignore the broad groups (potentially underestimate landings early in the time series)
-2. Cut the time series to 1986, the first full year that the FL trip ticket program was active and species were being reported more consistently.
-3. Add the broad category data to the species specific data, possibly overestimating landings
-4. Add uncertainty to the graph using upper and lower bounds, with the upper bound being the species-specific landings plus broad group landings and the lower bound being just the species specific landings. 
-
 
 
 
@@ -1152,9 +1177,16 @@ formatted_unmanaged_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, in
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Commercial landings", 2)
 unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
-extent_names = c("All species", "All species")
+extent_names = c("All species except shrimp & menhaden", "All species except shrimp & menhaden")
 
-formatted_all = IEAnalyzeR::convert_cleaned_data(dat_all, indicator_names, unit_names, extent_names)
+formatted_all = IEAnalyzeR::convert_cleaned_data(all_summary, indicator_names, unit_names, extent_names)
+
+#Define header components for the data rows (ignore year). Fill in the blanks here.
+indicator_names = rep("Commercial landings", 4)
+unit_names = rep("Whole weight (million lbs)", 4)
+extent_names = c("Coastal", "Invertebrate", "Marine Demersal", "Marine Pelagic")
+
+formatted_all_cat = IEAnalyzeR::convert_cleaned_data(all_cat_summary, indicator_names, unit_names, extent_names)
 
 ```
 
@@ -1166,6 +1198,7 @@ This will save your data to the appropriate folder.
 write.csv(formatted_managed_finfish, file = csv_filename1, row.names = F)
 write.csv(formatted_unmanaged_all, file = csv_filename2, row.names = F)
 write.csv(formatted_all, file = csv_filename3, row.names = F)
+write.csv(formatted_all_cat, file = csv_filename4, row.names = F)
 ```
 
 # 4. Create Data_Prep object
@@ -1177,6 +1210,7 @@ For more info on the data_prep function see the vignette linked above.
 data_obj1<-IEAnalyzeR::data_prep(csv_filename1, subind = "unit")
 data_obj2<-IEAnalyzeR::data_prep(csv_filename2, subind = "unit")
 data_obj3<-IEAnalyzeR::data_prep(csv_filename3, subind = "unit")
+data_obj4<-IEAnalyzeR::data_prep(csv_filename4, subind = "extent")
 ```
 
 # 5. Save Formatted data_prep object
@@ -1187,6 +1221,7 @@ This will save your data to the appropriate folder.
 saveRDS(data_obj1, file = object_filename1)
 saveRDS(data_obj2, file = object_filename2)
 saveRDS(data_obj3, file = object_filename3)
+saveRDS(data_obj4, file = object_filename4)
 ```
 
 # 6. Preview Plot
@@ -1199,324 +1234,14 @@ For more info on the plot_fn_obj function go HERE
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Managed Finfish")
 ggsave(filename = plot_filename1)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 8)
-ggsave(filename = plot_filename2, width = 8)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 12, xbreaks_by = 10)
+ggsave(filename = plot_filename2, width = 12, height = 6)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj3, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of All Species")
-ggsave(filename = plot_filename3)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj3, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of All Species", fig.width = 8, xbreaks_by = 10)
+ggsave(filename = plot_filename3, width = 8)
+
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj4, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings of All Species by Category", fig.width = 8, xbreaks_by = 10)
+ggsave(filename = plot_filename4, width = 8, height = 6)
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Ignore everything below this...
-
-
-
-
-
-```{r}
-dat_assessed = read.csv(here("data/intermediate/gulf_15_target_assessed_species_1972_present.csv"))
-head(dat_assessed)
-
-dat_assessed$total_mil_lbs = dat_assessed$total_live_lbs / 1e6
-dat_assessed$total_mil_dollars = dat_assessed$total_dollars / 1e6
-
-assessed_finfish = dat_assessed %>% 
-  group_by(LAND_YEAR) %>%
-  summarize(total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), total_mil_dollars  = sum(total_mil_dollars, na.rm = TRUE), .groups = "drop") %>% 
-  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
-
-
-
-dat_unassessed_summary = read.csv(here("data/intermediate/gulf_unassessed_reef_fish_guilds_1972_present.csv"))
-head(dat_unassessed_summary)
-
-dat_unassessed_summary$total_mil_lbs = dat_unassessed_summary$total_live_lbs / 1e6
-dat_unassessed_summary$total_mil_dollars = dat_unassessed_summary$total_dollars / 1e6
-
-unassessed_finfish_all = dat_unassessed_summary %>% 
-  group_by(LAND_YEAR) %>%
-  summarize(total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), total_mil_dollars  = sum(total_mil_dollars, na.rm = TRUE), .groups = "drop") %>% 
-  select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
-```
-
-
-
-
-```{r}
-# Now the unassessed species
-
-# Keywords for reef fish families 
-reef_family_keywords <- "PORGY|GRUNT|SNAPPER|GROUPER|SEA BASS|SEABASS|TRIGGERFISH|JACK|WRASSE|PARROTFISH|TILEFISH|HOGFISH|HIND|CONEY|GRAYSBY|TOMTATE|PINFISH"
-
-# Filter and assign Guilds to Unassessed Reef Fish
-unassessed_reef_fish <- clean_data %>%
-  filter(
-    fmp_status == "Managed",
-    # Must match a reef family keyword
-    str_detect(toupper(COMMON_NAME), reef_family_keywords),
-    # Must NOT be one of the 15 target species
-    !tolower(COMMON_NAME) %in% target_species_exact
-  ) %>%
-  mutate(
-    guild = case_when(
-      str_detect(toupper(COMMON_NAME), "SNAPPER|GROUPER|HIND|CONEY|GRAYSBY") ~ "Snappers & Groupers",
-      str_detect(toupper(COMMON_NAME), "PORGY|GRUNT|TOMTATE|PINFISH") ~ "Porgies & Grunts",
-      str_detect(toupper(COMMON_NAME), "JACK|RUNNER") ~ "Jacks",
-      TRUE ~ "Other Reef Fish"
-    )
-  ) %>% 
-  group_by(LAND_YEAR, COMMON_NAME, guild) %>%
-  summarize(
-    total_live_lbs = sum(LIVE_POUNDS, na.rm = TRUE),
-    total_dollars  = sum(DOLLARS, na.rm = TRUE),
-    n_dealers      = n_distinct(DEALER_ID, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  mutate(is_confidential = n_dealers < 3)
-
-unassessed_reef_fish2 = unassessed_reef_fish %>% 
-  filter(is_confidential != TRUE)
-
-# Save unassessed reef fish not confidential
-write_csv(unassessed_reef_fish2, here("data/intermediate/gulf_unassessed_reef_fish_1972_present.csv"))
-
-print(unique(unassessed_reef_fish$COMMON_NAME))
-
-
-unassessed_reef_summary <- clean_data %>%
-  filter(
-    fmp_status == "Managed",
-    # Must match a reef family keyword
-    str_detect(toupper(COMMON_NAME), reef_family_keywords),
-    # Must NOT be one of the 15 target species
-    !tolower(COMMON_NAME) %in% target_species_exact
-  ) %>%
-  mutate(
-    guild = case_when(
-      str_detect(toupper(COMMON_NAME), "SNAPPER|GROUPER|HIND|CONEY|GRAYSBY") ~ "Snappers & Groupers",
-      str_detect(toupper(COMMON_NAME), "PORGY|GRUNT|TOMTATE|PINFISH") ~ "Porgies & Grunts",
-      str_detect(toupper(COMMON_NAME), "JACK|RUNNER") ~ "Jacks",
-      TRUE ~ "Other Reef Fish"
-    )
-  ) %>%
-  group_by(LAND_YEAR, guild) %>%
-  summarize(
-    total_live_lbs = sum(LIVE_POUNDS, na.rm = TRUE),
-    total_dollars  = sum(DOLLARS, na.rm = TRUE),
-    n_dealers      = n_distinct(DEALER_ID, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  mutate(is_confidential = n_dealers < 3)
-
-unassessed_reef_summary = unassessed_reef_summary %>% 
-  filter(is_confidential != TRUE)
-
-# Save unassessed reef summary
-write_csv(unassessed_reef_summary, here("data/intermediate/gulf_unassessed_reef_fish_guilds_1972_present.csv"))
-```
-
-```{r}
-# OPTIONAL: Free up RAM by deleting the 40-million row raw dataset
-rm(landings_raw, clean_data)
-gc()
-```
-
-
-
-
-
-# 3. Save Formatted data as csv
-
-This will save your data to the appropriate folder.
-
-```{r}
-write.csv(formatted_assessed_finfish, file = csv_filename1, row.names = F)
-write.csv(formatted_unassessed_all, file = csv_filename2, row.names = F)
-```
-
-# 4. Create Data_Prep object
-
-Please use your formatted csv to create a "data_prep" object.
-For more info on the data_prep function see the vignette linked above.
-
-```{r}
-data_obj1<-IEAnalyzeR::data_prep(csv_filename1, subind = "unit")
-data_obj2<-IEAnalyzeR::data_prep(csv_filename2, subind = "unit")
-```
-
-# 5. Save Formatted data_prep object
-
-This will save your data to the appropriate folder.
-
-```{r}
-saveRDS(data_obj1, file = object_filename1)
-saveRDS(data_obj2, file = object_filename2)
-```
-
-# 6. Preview Plot
-
-Use the IEAnalyzeR plotting function to preview the data.
-This will not necessarily be the final figure used in reports.
-For more info on the plot_fn_obj function go HERE
-
-```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Assessed Finfish")
-ggsave(filename = plot_filename1)
-
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Unassessed Finfish")
-ggsave(filename = plot_filename2)
-```
-
-------------------------------------------------------------------------
-
-Now that we have overall trends, we want to break down by species.
-Starting with the assessed species.
-
-```{r}
-dat_assessed = read.csv(here("data/intermediate/gulf_15_target_assessed_species_1972_present.csv"))
-head(dat_assessed)
-
-dat_assessed$total_mil_lbs = dat_assessed$total_live_lbs / 1e6
-dat_assessed$total_mil_dollars = dat_assessed$total_dollars / 1e6
-
-assessed_finfish_species = dat_assessed %>% 
-  group_by(LAND_YEAR, COMMON_NAME) %>%
-  summarize(total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), total_mil_dollars  = sum(total_mil_dollars, na.rm = TRUE), .groups = "drop") %>% 
-  select(LAND_YEAR, COMMON_NAME, total_mil_lbs, total_mil_dollars)
-
-
-for (i in unique(assessed_finfish_species$COMMON_NAME)) {
-  
-  species_data = assessed_finfish_species %>% 
-    filter(COMMON_NAME == i) %>% 
-    select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
-  
-  #Define header components for the data rows (ignore year). Fill in the blanks here.
-  indicator_names = rep("Commercial landings", 2)
-  unit_names = c("Whole weight (million lbs)", "Million dollars ($)")
-  extent_names = rep(i, 2)
-
-  formatted_assessed_finfish = IEAnalyzeR::convert_cleaned_data(species_data, indicator_names, unit_names, extent_names)
-  
-  # Sanitize species name for safe filename output
-  clean_filename = gsub("[^A-Za-z0-9_]", "_", i)
-  
-  write.csv(formatted_assessed_finfish, here(paste0("data/formatted/formatted_csvs/comm_land_value_", clean_filename, ".csv")), row.names = F)
-  
-  data_obj<-IEAnalyzeR::data_prep(here(paste0("data/formatted/formatted_csvs/comm_land_value_", clean_filename, ".csv")), subind = "unit")
-  
-  saveRDS(data_obj, file = here(paste0("data/formatted/final_objects/comm_land_value_", clean_filename, ".rds")))
-  
-  IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, sep_ylabs = TRUE, manual_title = paste0(clean_filename, "Commercial Landings & Value"))
-ggsave(filename = here(paste0("figures/plots/comm_land_value_", clean_filename, ".png")))
-  
-}
-```
-
-Now let's do the same for the unassessed species.
-
-```{r}
-dat_unassessed = read.csv(here("data/intermediate/gulf_unassessed_reef_fish_guilds_1972_present.csv"))
-head(dat_unassessed)
-
-dat_unassessed$total_mil_lbs = dat_unassessed$total_live_lbs / 1e6
-dat_unassessed$total_mil_dollars = dat_unassessed$total_dollars / 1e6
-
-unassessed_finfish_species = dat_unassessed %>% 
-  group_by(LAND_YEAR, guild) %>%
-  summarize(total_mil_lbs = sum(total_mil_lbs, na.rm = TRUE), total_mil_dollars  = sum(total_mil_dollars, na.rm = TRUE), .groups = "drop") %>% 
-  select(LAND_YEAR, guild, total_mil_lbs, total_mil_dollars)
-
-
-for (i in unique(unassessed_finfish_species$guild)) {
-  
-  species_data = unassessed_finfish_species %>% 
-    filter(guild == i) %>% 
-    select(LAND_YEAR, total_mil_lbs, total_mil_dollars)
-  
-  #Define header components for the data rows (ignore year). Fill in the blanks here.
-  indicator_names = rep("Commercial landings", 2)
-  unit_names = c("Whole weight (million lbs)", "Million dollars ($)")
-  extent_names = rep(i, 2)
-
-  formatted_unassessed_finfish = IEAnalyzeR::convert_cleaned_data(species_data, indicator_names, unit_names, extent_names)
-  
-  # Sanitize species name for safe filename output
-  clean_filename = gsub("[^A-Za-z0-9_]", "_", i)
-  
-  write.csv(formatted_unassessed_finfish, here(paste0("data/formatted/formatted_csvs/comm_land_value_", clean_filename, ".csv")), row.names = F)
-  
-  data_obj<-IEAnalyzeR::data_prep(here(paste0("data/formatted/formatted_csvs/comm_land_value_", clean_filename, ".csv")), subind = "unit")
-  
-  saveRDS(data_obj, file = here(paste0("data/formatted/final_objects/comm_land_value_", clean_filename, ".rds")))
-  
-  IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, sep_ylabs = TRUE, manual_title = paste0(clean_filename, "Commercial Landings & Value"))
-ggsave(filename = here(paste0("figures/plots/comm_land_value_", clean_filename, ".png")))
-  
-}
-```
