@@ -173,11 +173,17 @@ for (i in 1:length(labs))  {
       mutate(spp = "Red Snapper", .before = year) |> as.data.frame()
     ### landings and acl percent are missing private angler data since 2018
   }
-  
+  ### Greater Amberjack changed to different fishing year 2018 Aug-July,
+  ### so summed the second 2017, which is 2017/2018 FYr to 2018
+  if(d2$spp[1] == "Greater Amberjack") {
+    yri <- which(d2$year==2018)
+    d2[yri, 4:5] <- apply(d2[yri:(yri+1), 4:5],2,sum, na.rm = T)
+    d2[yri, 6] <- d2[yri, 4] / d2[yri, 5] * 100
+    d2 <- d2[-(yri+1),]
+  }
   dat <- rbind(dat, d2) |> type.convert(as.is = T)
   rm(d1, d2)
 }
-
 
 
 ##############################
@@ -237,6 +243,10 @@ dat$spp[grep('cobia', dat$spp, ignore.case = T)] <- 'Cobia'
 dat$spp[grep('shallow', dat$spp, ignore.case = T)] <- 'Shallow Water Grouper'
 dat$spp[grep('King Mackerel', dat$spp, ignore.case = T)] <- 'King Mackerel'
 
+names(dat) <- c("spp", "year", "sector", "total_landings_lbs", "acl_lbs", "acl_percent")
+
+
+write.csv(dat, here('data', 'intermediate', 'sero_acl_pull.csv'), row.names = F)
 
 
 ### question: how to deal with units (as reported, gw, ww) when aggregating?
@@ -247,14 +257,14 @@ dat$spp[grep('King Mackerel', dat$spp, ignore.case = T)] <- 'King Mackerel'
 # Florida Keys) is part of the Gulf of Mexico stock and is jointly managed with 
 # the South Atlantic Fishery Management Council.
 
-com_acls <- subset(dat, sector == 'commercial', select = c('year','spp','acl')) |>
+com_acls <- subset(dat, sector == 'commercial', select = c('year','spp','acl_lbs')) |>
   reshape(idvar = 'spp', timevar = 'year', direction = 'wide') #rows as spp and columns as year
-rec_acls <- subset(dat, sector == 'recreational', select = c('year','spp','acl')) |>
+rec_acls <- subset(dat, sector == 'recreational', select = c('year','spp','acl_lbs')) |>
   reshape(idvar = 'spp', timevar = 'year', direction = 'wide')
 rownames(com_acls) <- com_acls$spp
 rownames(rec_acls) <- rec_acls$spp
-names(com_acls) <- gsub('acl.', '', names(com_acls))
-names(rec_acls) <- gsub('acl.', '', names(rec_acls))
+names(com_acls) <- gsub('acl_lbs.', '', names(com_acls))
+names(rec_acls) <- gsub('acl_lbs.', '', names(rec_acls))
 
 ### with cobia 2015-2024; without cobia 2011 (rec) and 2012 (com)
 # with cobia
@@ -306,120 +316,119 @@ dev.off()
 
 
 
-
-### Mandy's old code
-
-lis <- c("Gag Grouper", "Red Grouper", "Deep Water Grouper", "Shallow Waters Grouper", "Red Snapper")
-
-dat <- dat[dat$spp %in% lis, ]
-head(dat)
-head(dat1)
-dat <- rbind(dat, dat1)
-
-d <- data.frame(cbind(acls$spp, acls$year, acls$TOTAL_LANDINGS, acls$ACL, acls$ACL_PCT), stringsAsFactors = FALSE)
-
-head(d)
-head(dat)
-
-names(d) <- names(dat)
-
-dat <- rbind(dat, d)
-dat <- as.data.frame(lapply(dat, type.convert, as.is = TRUE))
-
-dat <- dat[-which(dat$spp == "ROYAL RED SHRIMP"), ]
-dat <- dat[-which(dat$spp == "GAG GROUPER"), ]
-unique(dat$spp)
-
-dat <- dat[order(dat$spp, dat$Year), ]
-#write.csv(dat, file = "comm_ACLs_and_landings.csv", row.names = F)
-
-dat$spp <- str_to_title(dat$spp)
-splis <- names(sort(tapply(dat$ACL, dat$spp, mean, na.rm = T), decreasing = T))
-splis
-
-dat <- dat[-which(dat$spp == "Shallow Waters Grouper" & dat$Year == 2009), ]
-
-par(mfrow = c(5, 4), mar = c(3, 4, 1, 1))
-
-for (i in splis)  {
-  d <- dat[which(dat$spp == i), ]
-  plot(d$Year, d$ACL/10^6, type = "l", col = 2, main = i, ylim = c(0, max(d$ACL/10^6)), 
-       xlab = "", ylab = "millions of pounds")
-  lines(d$Year, d$Total.Landings/10^6)
-  legend("bottom", c("ACL", "landings"), lty = 1, col = c(2, 1), bty= "n")
-}
-
-dev.off()
-
-cols <- glasbey(length(splis))
-ltys <- rep(1, length(splis))
-
-plot(dat$Year, dat$ACL., col = 0, ylim = c(0, 150), xlab = "", ylab = "Usage of annual catch limit (percent)", 
-     las = 2, main = "Percent of commercial annual catch limit used\n for federally managed species in the Gulf")
-abline(h = 100, col = 8, lty = 2)
-
-for (i in 1:length(splis))  { 
-  ds <- dat[which(dat$spp == splis[i]), ]
-  points(ds$Year, (ds$ACL.), col = transparent(cols[i], trans.val = 0.5), pch = 20, cex = 1.5)
-  out <- lm(ds$ACL. ~ ds$Year)
-  if (coef(out)[2] > 0) { lt <- 2 } else { lt <- 1 }
-  abline(out, col = cols[i], lwd = 2, lty = lt)
-  print(splis[i])
-  print((max(predict(out)) - min(predict(out)))/max(predict(out)))
-  print(out$coefficients[2])
-  if (out$coefficients[2] > 0) { ltys[i] <- 2 }
-  #  lines(ds$Year, (ds$ACL.), col = transparent(cols[i], trans.val = 0.7))
-}
-legend("topright", splis, col = cols, lty = ltys, lwd = 2, ncol = 2, bty = "n", cex = 0.8)
-
-
-biom <- readRDS("C:/Users/mandy.karnauskas/Desktop/Gulf-ESR/indicator_data/stock assessment output plots and data/combined_biomass_trends.rds")
-
-biom$`Red Snapper_SEDAR52`<- biom$`Red Snapper_Area1_SEDAR52` + biom$`Red Snapper_Area2_SEDAR52`
-biom$`Vermilion Snapper_SEDAR67` <- biom$`Vermillion Snapper_Area1_SEDAR67` + biom$`Vermillion Snapper_Area2_SEDAR67`
-
-biom <- biom[-grep("Red Snapper_Area", colnames(biom))]
-biom <- biom[-grep("Vermillion Snapper_Area", colnames(biom))]
-biom
-
-colnams <- unlist(strsplit(names(biom), "_"))[seq(2, ncol(biom)*2-1, 2)]
-colnames(biom) <- tolower(c("year", colnams))
-head(biom)
-
-names(biom)[which(names(biom) == "scamp grouper")] <- "Shallow Waters Grouper"
-
-
-splis <- splis[1:19]
-
-par(mfrow = c(5, 4), mar = c(3, 4, 1, 4), mgp=c(3,1,0))
-
-for (i in splis)  {
-  d <- dat[which(dat$spp == i), ]
-  plot(d$Year, d$ACL/10^6, type = "l", col = 2, main = str_to_title(i), ylim = c(0, max(d$ACL/10^6)*1.1), 
-       xlab = "", ylab = "", las = 2)
-  points(d$Year, d$ACL/10^6, pch = 19, col = 2)
-  lines(d$Year, d$Total.Landings/10^6)
-  points(d$Year, d$Total.Landings/10^6, pch = 19)
-  
-  a <- which(names(biom) == tolower(i))
-  if (length(a) > 0) { 
-    b <- biom[which(biom$year %in% d$Year), a] * 2204.62 / 10^6
-    b <- c(b, rep(NA, length(d$Year)-length(b)))
-    if (sum(b, na.rm = T) > 0)  {
-      sc <- max(b, na.rm = T) / max(d$ACL/10^6) 
-      b1 <- b / sc
-      lines(d$Year, b1, col = 4)
-      points(d$Year, b1, col = 4, pch = 19)
-      f <- c(0.1, 0.5, 1, 5, 10, 25, 50)
-      f1 <- max(f[which(round(max(b, na.rm = T))/5 - f > 0)])
-      axis(4, at = seq(0, round(max(b, na.rm = T)/f1)*f1, f1)/sc, 
-           lab = seq(0, round(max(b, na.rm = T)/f1)*f1, f1), las = 2, col = 4)
-      mtext("stock biomass", side = 4, line = 2, cex = 0.6, col = 4)
-    }
-  }
-  mtext("ACL and landings", side = 2, line = 3, cex = 0.6)
-}
-
-plot.new()
-legend("bottom", c("ACL", "landings", "biomass"), lty = 1, lwd = 2, pch = 19, col = c(2, 1, 4), 
-       title = "(in millions of pounds)", cex = 1.2, bty = "n")
+# ### Mandy's old code
+# 
+# lis <- c("Gag Grouper", "Red Grouper", "Deep Water Grouper", "Shallow Waters Grouper", "Red Snapper")
+# 
+# dat <- dat[dat$spp %in% lis, ]
+# head(dat)
+# head(dat1)
+# dat <- rbind(dat, dat1)
+# 
+# d <- data.frame(cbind(acls$spp, acls$year, acls$TOTAL_LANDINGS, acls$ACL, acls$ACL_PCT), stringsAsFactors = FALSE)
+# 
+# head(d)
+# head(dat)
+# 
+# names(d) <- names(dat)
+# 
+# dat <- rbind(dat, d)
+# dat <- as.data.frame(lapply(dat, type.convert, as.is = TRUE))
+# 
+# dat <- dat[-which(dat$spp == "ROYAL RED SHRIMP"), ]
+# dat <- dat[-which(dat$spp == "GAG GROUPER"), ]
+# unique(dat$spp)
+# 
+# dat <- dat[order(dat$spp, dat$Year), ]
+# #write.csv(dat, file = "comm_ACLs_and_landings.csv", row.names = F)
+# 
+# dat$spp <- str_to_title(dat$spp)
+# splis <- names(sort(tapply(dat$ACL, dat$spp, mean, na.rm = T), decreasing = T))
+# splis
+# 
+# dat <- dat[-which(dat$spp == "Shallow Waters Grouper" & dat$Year == 2009), ]
+# 
+# par(mfrow = c(5, 4), mar = c(3, 4, 1, 1))
+# 
+# for (i in splis)  {
+#   d <- dat[which(dat$spp == i), ]
+#   plot(d$Year, d$ACL/10^6, type = "l", col = 2, main = i, ylim = c(0, max(d$ACL/10^6)), 
+#        xlab = "", ylab = "millions of pounds")
+#   lines(d$Year, d$Total.Landings/10^6)
+#   legend("bottom", c("ACL", "landings"), lty = 1, col = c(2, 1), bty= "n")
+# }
+# 
+# dev.off()
+# 
+# cols <- glasbey(length(splis))
+# ltys <- rep(1, length(splis))
+# 
+# plot(dat$Year, dat$ACL., col = 0, ylim = c(0, 150), xlab = "", ylab = "Usage of annual catch limit (percent)", 
+#      las = 2, main = "Percent of commercial annual catch limit used\n for federally managed species in the Gulf")
+# abline(h = 100, col = 8, lty = 2)
+# 
+# for (i in 1:length(splis))  { 
+#   ds <- dat[which(dat$spp == splis[i]), ]
+#   points(ds$Year, (ds$ACL.), col = transparent(cols[i], trans.val = 0.5), pch = 20, cex = 1.5)
+#   out <- lm(ds$ACL. ~ ds$Year)
+#   if (coef(out)[2] > 0) { lt <- 2 } else { lt <- 1 }
+#   abline(out, col = cols[i], lwd = 2, lty = lt)
+#   print(splis[i])
+#   print((max(predict(out)) - min(predict(out)))/max(predict(out)))
+#   print(out$coefficients[2])
+#   if (out$coefficients[2] > 0) { ltys[i] <- 2 }
+#   #  lines(ds$Year, (ds$ACL.), col = transparent(cols[i], trans.val = 0.7))
+# }
+# legend("topright", splis, col = cols, lty = ltys, lwd = 2, ncol = 2, bty = "n", cex = 0.8)
+# 
+# 
+# biom <- readRDS("C:/Users/mandy.karnauskas/Desktop/Gulf-ESR/indicator_data/stock assessment output plots and data/combined_biomass_trends.rds")
+# 
+# biom$`Red Snapper_SEDAR52`<- biom$`Red Snapper_Area1_SEDAR52` + biom$`Red Snapper_Area2_SEDAR52`
+# biom$`Vermilion Snapper_SEDAR67` <- biom$`Vermillion Snapper_Area1_SEDAR67` + biom$`Vermillion Snapper_Area2_SEDAR67`
+# 
+# biom <- biom[-grep("Red Snapper_Area", colnames(biom))]
+# biom <- biom[-grep("Vermillion Snapper_Area", colnames(biom))]
+# biom
+# 
+# colnams <- unlist(strsplit(names(biom), "_"))[seq(2, ncol(biom)*2-1, 2)]
+# colnames(biom) <- tolower(c("year", colnams))
+# head(biom)
+# 
+# names(biom)[which(names(biom) == "scamp grouper")] <- "Shallow Waters Grouper"
+# 
+# 
+# splis <- splis[1:19]
+# 
+# par(mfrow = c(5, 4), mar = c(3, 4, 1, 4), mgp=c(3,1,0))
+# 
+# for (i in splis)  {
+#   d <- dat[which(dat$spp == i), ]
+#   plot(d$Year, d$ACL/10^6, type = "l", col = 2, main = str_to_title(i), ylim = c(0, max(d$ACL/10^6)*1.1), 
+#        xlab = "", ylab = "", las = 2)
+#   points(d$Year, d$ACL/10^6, pch = 19, col = 2)
+#   lines(d$Year, d$Total.Landings/10^6)
+#   points(d$Year, d$Total.Landings/10^6, pch = 19)
+#   
+#   a <- which(names(biom) == tolower(i))
+#   if (length(a) > 0) { 
+#     b <- biom[which(biom$year %in% d$Year), a] * 2204.62 / 10^6
+#     b <- c(b, rep(NA, length(d$Year)-length(b)))
+#     if (sum(b, na.rm = T) > 0)  {
+#       sc <- max(b, na.rm = T) / max(d$ACL/10^6) 
+#       b1 <- b / sc
+#       lines(d$Year, b1, col = 4)
+#       points(d$Year, b1, col = 4, pch = 19)
+#       f <- c(0.1, 0.5, 1, 5, 10, 25, 50)
+#       f1 <- max(f[which(round(max(b, na.rm = T))/5 - f > 0)])
+#       axis(4, at = seq(0, round(max(b, na.rm = T)/f1)*f1, f1)/sc, 
+#            lab = seq(0, round(max(b, na.rm = T)/f1)*f1, f1), las = 2, col = 4)
+#       mtext("stock biomass", side = 4, line = 2, cex = 0.6, col = 4)
+#     }
+#   }
+#   mtext("ACL and landings", side = 2, line = 3, cex = 0.6)
+# }
+# 
+# plot.new()
+# legend("bottom", c("ACL", "landings", "biomass"), lty = 1, lwd = 2, pch = 19, col = c(2, 1, 4), 
+#        title = "(in millions of pounds)", cex = 1.2, bty = "n")

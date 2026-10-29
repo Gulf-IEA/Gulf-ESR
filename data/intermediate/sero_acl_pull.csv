@@ -1,0 +1,176 @@
+"spp","year","sector","total_landings","acl","acl_percent"
+"Cobia East Coast Florida",2024,"commercial",8277,81696,10.1
+"Cobia East Coast Florida",2023,"commercial",11066,81696,13.5
+"Cobia East Coast Florida",2022,"commercial",22458,70000,32.1
+"Cobia East Coast Florida",2021,"commercial",19750,70000,28.2
+"Cobia East Coast Florida",2020,"commercial",19101,70000,27.3
+"Cobia East Coast Florida",2019,"commercial",32642,70000,46.6
+"Cobia East Coast Florida",2018,"commercial",31408,70000,44.9
+"Cobia East Coast Florida",2017,"commercial",38682,70000,55.3
+"Cobia East Coast Florida",2016,"commercial",46395,70000,66.3
+"Cobia East Coast Florida",2015,"commercial",59747,70000,85.4
+"Deep Water Grouper",2024,"commercial",460130,1070000,43
+"Deep Water Grouper",2023,"commercial",625777,1070000,58.5
+"Deep Water Grouper",2022,"commercial",580824,1070000,54.3
+"Deep Water Grouper",2021,"commercial",831911,1070000,77.7
+"Deep Water Grouper",2020,"commercial",823372,1070000,77
+"Deep Water Grouper",2019,"commercial",996660,1070000,93.1
+"Deep Water Grouper",2018,"commercial",863320,1070000,80.7
+"Deep Water Grouper",2017,"commercial",860936,1070000,80.5
+"Deep Water Grouper",2016,"commercial",889965,1070000,83.2
+"Deep Water Grouper",2015,"commercial",955250,1150000,83.1
+"Deep Water Grouper",2014,"commercial",1081145,1160000,93.2
+"Deep Water Grouper",2013,"commercial",920034,1170000,78.6
+"Deep Water Grouper",2012,"commercial",966100,1170000,82.6
+"Deep Water Grouper",2011,"commercial",778728,NA,NA
+"Deep Water Grouper",2010,"commercial",606223,NA,NA
+"Deep Water Grouper",2009,"commercial",1126189,NA,NA
+"Deep Water Grouper",2008,"commercial",1108590,NA,NA
+"Deep Water Grouper",2007,"commercial",1157187,NA,NA
+"Deep Water Grouper",2006,"commercial",1072690,NA,NA
+"Deep Water Grouper",2005,"commercial",1141141,NA,NA
+"Deep Water Grouper",2004,"commercial",1249664,NA,NA
+"Gag Grouper",2024,"commercial",138229,155000,89.2
+"Gag Grouper",2023,"commercial",234579,258000,90.9
+"Gag Grouper",2022,"commercial",693616,1217000,57
+"Gag Grouper",2021,"commercial",562849,1217000,46.2
+"Gag Grouper",2020,"commercial",475714,1217000,39.1
+"Gag Grouper",2019,"commercial",532015,1217000,43.7
+"Gag Grouper",2018,"commercial",492934,1217000,40.5
+"Gag Grouper",2017,"commercial",492095,1217000,40.4
+"Gag Grouper",2016,"commercial",910996,1217000,74.9
+"Gag Grouper",2015,"commercial",542774,1217000,44.6
+"Gag Grouper",2014,"commercial",586377,1100000,53.3
+"Gag Grouper",2013,"commercial",575335,956000,60.2
+"Gag Grouper",2012,"commercial",523138,788000,66.4
+"Gag Grouper",2011,"commercial",318663,1760000,18.1
+"Gag Grouper",2010,"commercial",496826,1710000,29.1
+"Gag Grouper",2009,"commercial",715814,1660000,43.1
+"Gray Triggerfish",2024,"commercial",53389,95949,55.6
+"Gray Triggerfish",2023,"commercial",52839,95949,55.1
+"Gray Triggerfish",2022,"commercial",44822,95949,46.7
+"Gray Triggerfish",2021,"commercial",44692,95949,46.6
+"Gray Triggerfish",2020,"commercial",52597,64100,82.1
+"Gray Triggerfish",2019,"commercial",62487,64100,97.5
+"Gray Triggerfish",2018,"commercial",64702,64100,100.9
+"Gray Triggerfish",2017,"commercial",62647,64100,97.7
+"Gray Triggerfish",2016,"commercial",59147,64100,92.3
+"Gray Triggerfish",2015,"commercial",47496,64100,74.1
+"Gray Triggerfish",2014,"commercial",40664,64100,63.4
+"Gray Triggerfish",2013,"commercial",63086,64100,98.4
+"Gray Triggerfish",2012,"commercial",72778,64100,113.5
+"Gray Triggerfish",2011,"commercial",105251,138000,76.3
+"Gray Triggerfish",2010,"commercial",55661,138000,40.3
+"Gray Triggerfish",2009,"commercial",78117,122000,64
+"Gray Triggerfish",2008,"commercial",76717,105000,73.1
+"Greater Amberjack",2024,"commercial",52262,101000,79.5
+"Greater Amberjack",2023,"commercial",136281,101000,134.9
+"Greater Amberjack",2022,"commercial",277968,484380,57.4
+"Greater Amberjack",2021,"commercial",324100,484380,66.9
+"Greater Amberjack",2020,"commercial",300100,484380,62
+"Greater Amberjack",2019,"commercial",356840,402030,88.8
+"Greater Amberjack",2018,"commercial",325844,319140,102.1
+"Greater Amberjack",2017,"commercial",453726,464400,97.7
+"Greater Amberjack",2016,"commercial",437102,464400,94.1
+"Greater Amberjack",2015,"commercial",461013,481000,95.8
+"Greater Amberjack",2014,"commercial",481883,481000,100.2
+"Greater Amberjack",2013,"commercial",457879,481000,95.2
+"Greater Amberjack",2012,"commercial",308334,481000,64.1
+"Greater Amberjack",2011,"commercial",508871,NA,NA
+"Greater Amberjack",2010,"commercial",534095,NA,NA
+"Greater Amberjack",2009,"commercial",601446,NA,NA
+"Greater Amberjack",2008,"commercial",440936,NA,NA
+"Red Grouper",2024,"commercial",2527545,2940000,86
+"Red Grouper",2023,"commercial",2498024,2940000,85
+"Red Grouper",2022,"commercial",2428938,3160000,76.9
+"Red Grouper",2021,"commercial",2950691,3160000,93.4
+"Red Grouper",2020,"commercial",2368322,3160000,74.9
+"Red Grouper",2019,"commercial",2037046,3160000,64.5
+"Red Grouper",2018,"commercial",2363280,8190000,28.9
+"Red Grouper",2017,"commercial",3328271,8190000,40.6
+"Red Grouper",2016,"commercial",4497582,8190000,54.9
+"Red Grouper",2015,"commercial",4798007,6030000,79.6
+"Red Grouper",2014,"commercial",5601905,6030000,92.9
+"Red Grouper",2013,"commercial",4599001,6030000,76.3
+"Red Grouper",2012,"commercial",5219133,5680000,91.9
+"Red Grouper",2011,"commercial",4783668,5680000,84.2
+"Red Grouper",2010,"commercial",2910970,5870000,49.6
+"Red Grouper",2009,"commercial",3698227,5870000,63
+"Red Grouper",2008,"commercial",4748224,NA,NA
+"Red Grouper",2007,"commercial",3650777,NA,NA
+"Red Grouper",2006,"commercial",5109824,NA,NA
+"Red Grouper",2005,"commercial",5380603,NA,NA
+"Red Grouper",2004,"commercial",5635577,NA,NA
+"Red Snapper",2024,"commercial",7457692,7498784,99.5
+"Red Snapper",2023,"commercial",7414281,7498784,98.9
+"Red Snapper",2022,"commercial",6843047,7701000,88.9
+"Red Snapper",2021,"commercial",6894004,7701000,89.5
+"Red Snapper",2020,"commercial",7625612,7701000,99
+"Red Snapper",2019,"commercial",7658140,7701000,99.4
+"Red Snapper",2018,"commercial",6977131,7007000,99.6
+"Red Snapper",2017,"commercial",6978662,7007000,99.6
+"Red Snapper",2016,"commercial",6723822,6768000,99.3
+"Red Snapper",2015,"commercial",7184210,7293000,98.5
+"Red Snapper",2014,"commercial",5567822,5610000,99.2
+"Red Snapper",2013,"commercial",5448543,5610000,97.1
+"Red Snapper",2012,"commercial",4036398,4121000,97.9
+"Red Snapper",2011,"commercial",3594551,NA,NA
+"Red Snapper",2010,"commercial",3392208,NA,NA
+"Red Snapper",2009,"commercial",2483565,NA,NA
+"Red Snapper",2008,"commercial",2483602,NA,NA
+"Red Snapper",2007,"commercial",3182730,NA,NA
+"Shallow Waters Grouper",2024,"commercial",103326,547000,18.9
+"Shallow Waters Grouper",2023,"commercial",149012,547000,27.2
+"Shallow Waters Grouper",2022,"commercial",146698,547000,26.8
+"Shallow Waters Grouper",2021,"commercial",155928,547000,28.5
+"Shallow Waters Grouper",2020,"commercial",144454,547000,26.4
+"Shallow Waters Grouper",2019,"commercial",140083,547000,25.6
+"Shallow Waters Grouper",2018,"commercial",178293,547000,32.6
+"Shallow Waters Grouper",2017,"commercial",200009,547000,36.6
+"Shallow Waters Grouper",2016,"commercial",335238,547000,61.3
+"Shallow Waters Grouper",2015,"commercial",238427,547000,43.6
+"Shallow Waters Grouper",2014,"commercial",230248,545000,42.2
+"Shallow Waters Grouper",2013,"commercial",300735,540000,55.7
+"Shallow Waters Grouper",2012,"commercial",298102,531000,56.1
+"Shallow Waters Grouper",2011,"commercial",187026,410000,45.6
+"Shallow Waters Grouper",2010,"commercial",176773,410000,43.1
+"Shallow Waters Grouper",2009,"commercial",4701806,410000,1146.8
+"Shallow Waters Grouper",2008,"commercial",6355425,NA,NA
+"Shallow Waters Grouper",2007,"commercial",5210701,NA,NA
+"Shallow Waters Grouper",2006,"commercial",6749318,NA,NA
+"Shallow Waters Grouper",2005,"commercial",8180353,NA,NA
+"Shallow Waters Grouper",2004,"commercial",8877842,NA,NA
+"Tilefish",2024,"commercial",262338,606000,43.3
+"Tilefish",2023,"commercial",313820,606000,51.8
+"Tilefish",2022,"commercial",384139,606000,63.4
+"Tilefish",2021,"commercial",484043,606000,79.9
+"Tilefish",2020,"commercial",348844,606000,57.6
+"Tilefish",2019,"commercial",422926,606000,69.8
+"Tilefish",2018,"commercial",386138,606000,63.7
+"Tilefish",2017,"commercial",484895,606000,80
+"Tilefish",2016,"commercial",429003,606000,70.8
+"Tilefish",2015,"commercial",537512,606000,88.7
+"Tilefish",2014,"commercial",517268,606000,85.4
+"Tilefish",2013,"commercial",440091,606000,72.6
+"Tilefish",2012,"commercial",451121,606000,74.4
+"Tilefish",2011,"commercial",386134,NA,NA
+"Tilefish",2010,"commercial",249708,NA,NA
+"Tilefish",2009,"commercial",550667,NA,NA
+"Tilefish",2008,"commercial",499499,NA,NA
+"Tilefish",2007,"commercial",422181,NA,NA
+"Tilefish",2006,"commercial",423910,NA,NA
+"Tilefish",2005,"commercial",628531,NA,NA
+"Tilefish",2004,"commercial",610843,NA,NA
+"King Mackerel",2012,"commercial",3678050,3808000,96.5874474789916
+"King Mackerel",2013,"commercial",3317974,3456000,96.0061921296296
+"King Mackerel",2014,"commercial",3899926,3456000,112.845081018519
+"King Mackerel",2015,"commercial",3735457,3456000,108.086140046296
+"King Mackerel",2016,"commercial",2902360,2950000,98.3850847457627
+"King Mackerel",2017,"commercial",3032173,2840000,106.766654929577
+"King Mackerel",2018,"commercial",2809639,2790000,100.703906810036
+"King Mackerel",2019,"commercial",2658942,2740000,97.0416788321168
+"King Mackerel",2020,"commercial",2500382,2740000,91.2548175182482
+"King Mackerel",2021,"commercial",1784196,2740000,65.1166423357664
+"King Mackerel",2022,"commercial",1187173,2835928,41.8618878899605
+"King Mackerel",2023,"commercial",1118750,3128544,35.7594459275625
+"King Mackerel",2024,"commercial",1668837,3196800,52.2033596096096
