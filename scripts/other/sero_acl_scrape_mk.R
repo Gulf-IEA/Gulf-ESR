@@ -6,6 +6,7 @@
 library(here)
 library(rvest)
 library(janitor)
+library(dplyr)
 
 
 ##############################
