@@ -35,8 +35,8 @@ dat <- dat[, c('Year','NOAA Figure')] |>
   setNames(c('year','hypoxia_extent_mi2')) |>
   type.convert()
 
-units(dat$hypoxia_extent_mi2) <- make_units(mi^2)
-dat$hypoxia_extent_km2 <- set_units(dat$hypoxia_extent_mi2, km^2)
+# units(dat$hypoxia_extent_mi2) <- make_units(mi^2)
+# dat$hypoxia_extent_km2 <- set_units(dat$hypoxia_extent_mi2, km^2)
 
 
 #----------------------------------------------------
@@ -48,10 +48,10 @@ dat$hypoxia_extent_km2 <- set_units(dat$hypoxia_extent_mi2, km^2)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = c("Hypoxia Extent")
-unit_names = c("Square kilometers")
+unit_names = c("Square miles")
 extent_names = c("Louisiana-Texas Shelf")
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(dat[ , c('year','hypoxia_extent_km2')],
+formatted_data = IEAnalyzeR::convert_cleaned_data(dat[ , c('year','hypoxia_extent_mi2')],
                                                   indicator_names, unit_names, extent_names)
 is_na <- which(is.na(formatted_data$`Hypoxia Extent`))
 
@@ -84,18 +84,15 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T, pt_size = 2, fig.width = 10) +
-  geom_vline(xintercept = as.numeric(formatted_data$indicator[is_na]),
-             color = 4, lwd = 1.5) +
-  annotate("text", label="No data",
-           x = as.numeric(formatted_data$indicator[is_na])-.5,
-           y = mean(as.numeric(formatted_data$`Hypoxia Extent`), na.rm=T),
-           angle = 90, size=4,
-           color = 4, fontface="bold")
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE,
+                        pts = T, pt_size = 2, fig.width = 8) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'))
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename, height = 4, width = 8, unit = "in")
