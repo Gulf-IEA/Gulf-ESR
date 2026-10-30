@@ -102,17 +102,22 @@ p1 <- ggplot(rec_acls_wc_pct_long, aes(x = year, y = pct_change, fill = spp)) +
   geom_bar(stat = "identity", position = "stack", color = 1) +
   scale_fill_cmocean(name = "thermal", discrete = T) +
   geom_hline(yintercept = 0, color = 1) + # Adds a clean baseline
-  scale_x_continuous(breaks = seq(2016, 2024, by = 1)) +
+  scale_x_continuous(breaks = seq(2016, 2024, by = 1))   +
+  labs(x = "Year", y = "Percent Change in ACL") +
   theme_classic()
 
 p2 <- ggplot(com_acls_wc_pct_long, aes(x = year, y = pct_change, fill = spp)) +
   geom_bar(stat = "identity", position = "stack", color = 1) +
   scale_fill_cmocean(name = "thermal", discrete = T) +
   geom_hline(yintercept = 0, color = 1) + # Adds a clean baseline
-  scale_x_continuous(breaks = seq(2016, 2024, by = 1)) +
+  scale_x_continuous(breaks = seq(2016, 2024, by = 1))   +
+  labs(x = "Year", y = "Percent Change in ACL") +
   theme_classic()
 
-p1 / p2
+p2 / p1 + plot_annotation(title = "Percent Change in ACLs by Species") +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 11))
+ggsave(here('figures/plots/acl_bars_plot.png'), height = 7, width = 7, unit="in")
 
 ### total acls
 
@@ -142,24 +147,24 @@ plot(tot_acls$year, tot_acls$com, type = 'o', las = 1, pch = 16,
 #For more info on IEA data format go to the IEAnalyzeR vignette (https://gulf-iea.github.io/IEAnalyzeR/articles/How_to_use_IEAnalyzeR.html).
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
-dat <- cbind(colnames(rec_acl_ind), rec_acl_ind[1,], com_acl_ind[1,]) |>
+dat <- cbind(colnames(rec_acl_ind), com_acl_ind[1,], rec_acl_ind[1,]) |>
   type.convert(as.is = T)
 
 dat_lci <- cbind(colnames(rec_acl_ind), 
-                 rec_acl_ind[1,] - rec_acl_ind[2,], 
-                 com_acl_ind[1,] - com_acl_ind[2,]) |>
+                 com_acl_ind[1,] - com_acl_ind[2,],
+                 rec_acl_ind[1,] - rec_acl_ind[2,]) |>
   type.convert(as.is = T) 
 
 dat_uci <- cbind(colnames(rec_acl_ind), 
-                 rec_acl_ind[1,] + rec_acl_ind[2,], 
-                 com_acl_ind[1,] + com_acl_ind[2,]) |>
+                 com_acl_ind[1,] + com_acl_ind[2,], 
+                 rec_acl_ind[1,] + rec_acl_ind[2,]) |>
   type.convert(as.is = T) 
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c('Recreational ACLs', 'Commercial ACLs')
+indicator_names = c('Commercial ACLs', 'Recreational ACLs')
 unit_names = rep('Percent Change',2)
-extent_names = c('Recreational', 'Commercial')
+extent_names = c('Commercial ACL', 'Recreational ACL')
 
 formatted_data = IEAnalyzeR::convert_cleaned_data(dat, 
                                                   indicator_names, unit_names, extent_names)
@@ -180,7 +185,7 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 #Please use your formatted csv to create a "data_prep" object.
 #For more info on the data_prep function see the vignette linked above.
 
-data_obj <- IEAnalyzeR::data_prep(csv_filename)
+data_obj <- IEAnalyzeR::data_prep(csv_filename, ci_df = ci_acl_pct)
 
 
 #----------------------------------------------------
@@ -196,11 +201,21 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, 
+                        pts = T, pt_size = 1, 
+                        fig.width = 7, 
+                        manual_title = 'Annual Changes to ACLs',
+                        sep_ylab = T,
+                        ylab_sublabel = c('extent','unit'),) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'),
+        strip.text = element_text(size = 12,face = "plain"))
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename, height = 7, width = 7, unit="in")
+
