@@ -74,6 +74,7 @@ polygon(c(colnames(com_acl_ind), rev(colnames(com_acl_ind))),
         col = rgb(0.5, 0.5, 0.5, 0.5), border = NA)
 
 
+### quantiles not informative due to lots of zeros
 # rec_acls_wc_pct <- t(apply(rec_acls_wc, 1, pct_change_na))[,-1]
 # # rec_acl_ind <- apply(rec_acls_wc_pct, 2, function (x) rbind(mean(x), sd(x)))
 # rec_acl_ind <- apply(rec_acls_wc_pct, 2, function (x) quantile(x, probs = c(0.5, 0.25, 0.75), na.rm = TRUE))
