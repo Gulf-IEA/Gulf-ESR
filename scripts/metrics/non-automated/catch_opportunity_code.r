@@ -31,6 +31,13 @@ plot_filename2 <- here(paste0("figures/plots/", root_name2, "_plot.png"))
 #   - Filename should use the syntax rootname_descriptivename
 
 
+pct_change_na <- function(x) {
+  n <- length(x)
+  r <- c(NA, (x[2:n] - x[1:(n - 1)]) / x[1:(n - 1)] * 100)
+  return(r)
+}
+
+
 ### the original "raw" data comes from a curated database created by SEFSC https://github.com/SEFSC/SEFSC-ODM-Management-History
 ### this data is then turned into an output by the R script ~/Gulf-ESR/scripts/automated/ACL_Open-Close-dates_code.R
 ### that output is ingested and transformed by R script ~/Gulf-ESR/scripts/other/create_fishery_open_close_matrices.R
@@ -38,21 +45,68 @@ plot_filename2 <- here(paste0("figures/plots/", root_name2, "_plot.png"))
 setwd(here('data/intermediate/fishery_open_close/'))
 
 ### read recreational data
+spp_rm <- c('DRUM, RED', 'JACK, ALMACO', 'TRIGGERFISH, QUEEN')
+tmp <- read.csv(paste0('recreational_matrix_',1990,'.csv'))
+tmp <- tmp[!is.element(tmp$species, spp_rm), ]
+
 rec_comps <- data.frame(year = 1990:2025)
+rec_spp <- data.frame(spp = tmp$species)
 for(i in 1990:2025){
   tmp <- read.csv(paste0('recreational_matrix_',i,'.csv'))
+  tmp <- tmp[!is.element(tmp$species, spp_rm), ]
   rec_comps$cols[i-1989] <- mean(colSums(tmp[,-1])) ### mean num spp open per day per year
   rec_comps$rows[i-1989] <- mean(rowSums(tmp[,-1])) ### mean season length per year
+  rec_comps$rows_sd[i-1989] <- sd(rowSums(tmp[,-1])) ### sd season length per year
+  
+  ### percent change per year
+  rs_tmp <- data.frame(spp = tmp$species, i = rowSums(tmp[,-1])) |>
+    setNames(c('spp', paste0(i)))
+  rec_spp <- merge(rec_spp, rs_tmp, by = 'spp', all = T)
 }
+
+rec_spp[rec_spp==366] <- 365
+rec_spp[rec_spp==0] <- NA ## gray TF closed 2017 skewing the plot
+rec_pct <- t(apply(rec_spp[,-1], 1, pct_change_na))
+rec_pct_ind <- apply(rec_pct[,-1], 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
+rec_poly <- c(rec_pct_ind[1,] + rec_pct_ind[2,], rev(rec_pct_ind[1,] - rec_pct_ind[2,]))
+
+plot(1991:2025, rec_pct_ind[1,],typ='o',
+     ylim = range(rec_poly),
+     xlab = 'Year', ylab = 'Percent Change in Season Length', 
+     main = 'Recreational Percent Change in Season Length')
+polygon(c(1991:2025,2025:1991),rec_poly, col = rgb(0,0,1,.2), border = NA)
 
 ### read commmercial data
+spp_rm <- c('DRUM, RED', 'JACK, ALMACO', 'TRIGGERFISH, QUEEN')
+tmp <- read.csv(paste0('commercial_matrix_',1990,'.csv'))
+tmp <- tmp[!is.element(tmp$species, spp_rm), ]
+
 com_comps <- data.frame(year = 1990:2025)
+com_spp <- data.frame(spp = tmp$species)
 for(i in 1990:2025){
   tmp <- read.csv(paste0('commercial_matrix_',i,'.csv'))
+  tmp <- tmp[!is.element(tmp$species, spp_rm), ]
   com_comps$cols[i-1989] <- mean(colSums(tmp[,-1])) ### mean num spp open per day per year
   com_comps$rows[i-1989] <- mean(rowSums(tmp[,-1])) ### mean season length per year
+  com_comps$rows_sd[i-1989] <- sd(rowSums(tmp[,-1])) ### sd season length per year
+  
+  ### percent change per year
+  rs_tmp <- data.frame(spp = tmp$species, i = rowSums(tmp[,-1])) |>
+    setNames(c('spp', paste0(i)))
+  com_spp <- merge(com_spp, rs_tmp, by = 'spp', all = T)
 }
 
+com_spp[com_spp==366] <- 365
+com_spp[com_spp==0] <- NA ## gray TF closed 2017 skewing the plot
+com_pct <- t(apply(com_spp[,-1], 1, pct_change_na))
+com_pct_ind <- apply(com_pct[,-1], 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
+com_poly <- c(com_pct_ind[1,] + com_pct_ind[2,], rev(com_pct_ind[1,] - com_pct_ind[2,]))
+
+plot(1991:2025, com_pct_ind[1,],typ='o',
+     ylim = range(com_poly),
+     xlab = 'Year', ylab = 'Percent Change in Season Length', 
+     main = 'Commercial Percent Change in Season Length')
+polygon(c(1991:2025,2025:1991),com_poly, col = rgb(0,0,1,.2), border = NA)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
