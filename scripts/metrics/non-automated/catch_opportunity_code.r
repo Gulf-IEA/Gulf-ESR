@@ -67,14 +67,14 @@ for(i in 1990:2025){
 rec_spp[rec_spp==366] <- 365
 rec_spp[rec_spp==0] <- NA ## gray TF closed 2017 skewing the plot
 rec_pct <- t(apply(rec_spp[,-1], 1, pct_change_na))
-rec_pct_ind <- apply(rec_pct[,-1], 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
+rec_pct_ind <- apply(rec_pct, 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
 rec_poly <- c(rec_pct_ind[1,] + rec_pct_ind[2,], rev(rec_pct_ind[1,] - rec_pct_ind[2,]))
 
-plot(1991:2025, rec_pct_ind[1,],typ='o',
-     ylim = range(rec_poly),
+plot(1990:2025, rec_pct_ind[1,],typ='o',
+     ylim = range(rec_poly,na.rm=T),
      xlab = 'Year', ylab = 'Percent Change in Season Length', 
      main = 'Recreational Percent Change in Season Length')
-polygon(c(1991:2025,2025:1991),rec_poly, col = rgb(0,0,1,.2), border = NA)
+polygon(c(1990:2025,2025:1990),rec_poly, col = rgb(0,0,1,.2), border = NA)
 
 ### read commmercial data
 spp_rm <- c('DRUM, RED', 'JACK, ALMACO', 'TRIGGERFISH, QUEEN')
@@ -99,14 +99,14 @@ for(i in 1990:2025){
 com_spp[com_spp==366] <- 365
 com_spp[com_spp==0] <- NA ## gray TF closed 2017 skewing the plot
 com_pct <- t(apply(com_spp[,-1], 1, pct_change_na))
-com_pct_ind <- apply(com_pct[,-1], 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
+com_pct_ind <- apply(com_pct, 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
 com_poly <- c(com_pct_ind[1,] + com_pct_ind[2,], rev(com_pct_ind[1,] - com_pct_ind[2,]))
 
-plot(1991:2025, com_pct_ind[1,],typ='o',
-     ylim = range(com_poly),
+plot(1990:2025, com_pct_ind[1,],typ='o',
+     ylim = range(com_poly, na.rm=T),
      xlab = 'Year', ylab = 'Percent Change in Season Length', 
      main = 'Commercial Percent Change in Season Length')
-polygon(c(1991:2025,2025:1991),com_poly, col = rgb(0,0,1,.2), border = NA)
+polygon(c(1990:2025,2025:1990),com_poly, col = rgb(0,0,1,.2), border = NA)
 
 #----------------------------------------------------
 #### 2. Clean data and create time series csv ####
@@ -126,12 +126,29 @@ formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(com_comps[,1:2], rec_com
 
 root_name2 <- "season_length"
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names2 = rep("Season Length",2)
-unit_names2 = rep("Mean Season Length",2)
-extent_names2 = c("Commercial", 'Recreational')
+indicator_names2 = c(rep("Season Length",2),
+                     rep("Year-to-year Changes to Season Length",2))
+unit_names2 = c(rep("Mean Season Length",2),
+                rep("Percent Change",2))
+extent_names2 = rep(c("Commercial", 'Recreational'),2)
 
-formatted_data2 = IEAnalyzeR::convert_cleaned_data(cbind(com_comps[,c(1,3)], rec_comps$rows),
-                                                  indicator_names2, unit_names2, extent_names2)
+formatted_data2 = IEAnalyzeR::convert_cleaned_data(cbind(com_comps[,c(1,3)], 
+                                                         rec_comps$rows,
+                                                         com_pct_ind[1,],
+                                                         rec_pct_ind[1,]),
+                                                   indicator_names2, unit_names2, extent_names2)
+
+ci_sealth <- convert_ci_data(cbind(1990:2025, 
+                                   rep(NA, length(1990:2025)),
+                                   rep(NA, length(1990:2025)),
+                                   com_pct_ind[1,] + com_pct_ind[2,],
+                                   rec_pct_ind[1,] + rec_pct_ind[2,]),
+                             cbind(1990:2025, 
+                                   rep(NA, length(1990:2025)),
+                                   rep(NA, length(1990:2025)),
+                                   com_pct_ind[1,] - com_pct_ind[2,],
+                                   rec_pct_ind[1,] - rec_pct_ind[2,]),
+                             indicator_names2, unit_names2, extent_names2)
 
 #----------------------------------------------------
 #### 3. Save Formatted data as csv ####
@@ -148,7 +165,7 @@ write.csv(formatted_data2, file = csv_filename2, row.names = F)
 #For more info on the data_prep function see the vignette linked above.
 
 catopp_obj <- IEAnalyzeR::data_prep(csv_filename)
-sealth_obj <- IEAnalyzeR::data_prep(csv_filename2)
+sealth_obj <- IEAnalyzeR::data_prep(csv_filename2, ci_df = ci_sealth)
 
 
 #----------------------------------------------------
@@ -158,7 +175,6 @@ sealth_obj <- IEAnalyzeR::data_prep(csv_filename2)
   
 saveRDS(catopp_obj, file = object_filename)
 saveRDS(sealth_obj, file = object_filename2)
-
 
 #----------------------------------------------------
 #### 6. Preview Plot ####
@@ -188,17 +204,19 @@ ggsave(filename = plot_filename, height = 7, width = 8, unit = "in")
 # For more info on the plot_fn_obj function go HERE
 
 IEAnalyzeR::plot_fn_obj(df_obj = sealth_obj, trend = TRUE,
-                        sep_ylabs = T, ylab_sublabel = c("unit",'extent'),
+                        sep_ylabs = T, ylab_sublabel = c('extent','unit'),
                         pts = T, pt_size = 1,
-                        fig.width = 8,
+                        fig.width = 10,
                         lwd = .5) +
   theme(plot.title = element_text(size = 12, face = 'bold'),
         axis.title = element_text(size = 12, face = 'plain'),
         axis.text = element_text(size = 11, face = 'plain'))
+
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename2, height = 7, width = 8, unit = "in")
+ggsave(filename = plot_filename2, height = 6, width = 10, unit = "in")
+
