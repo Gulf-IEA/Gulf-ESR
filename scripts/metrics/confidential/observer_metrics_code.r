@@ -49,7 +49,7 @@ shrimp[19,] <- c(2025, NA, NA, NA)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep('Observer Effort',3)
-unit_names = c("Proporition Seadays Observed","Proporition Seadays Observed","Proporition Hours Observed")
+unit_names = c("Seadays Observed","Seadays Observed","Hours Observed")
 extent_names = c('Bottom Longline', 'Vertical Line', 'Shrimp')
 
 formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(rf_obs_sub[,c(1,4,7)], shrimp[,4]), 
@@ -91,7 +91,8 @@ IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE,
   theme(plot.title = element_text(size = 12, face = 'bold'),
         axis.title = element_text(size = 12, face = 'plain'),
         axis.text = element_text(size = 11, face = 'plain'),
-        strip.text = element_text(size = 12, face = 'plain'))
+        strip.text = element_text(size = 12, face = 'plain')) +
+  scale_y_continuous(labels = scales::label_percent())
 
 #----------------------------------------------------
 #### 7. Save plot ####
