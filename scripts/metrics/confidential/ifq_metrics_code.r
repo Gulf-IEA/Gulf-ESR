@@ -239,8 +239,10 @@ plot(ifq_metrics$Year, ifq_metrics$quota_lbs,
      ylab = 'Quota and Landings (million lbs)', xlab = 'Year')
 points(ifq_metrics$Year, ifq_metrics$landings_lbs, 
        type = 'o', pch = 16, lwd = 2, col = 1)
-legend('topleft', legend = c('Quota', 'Landings'), 
+legend('topright', legend = c('Quota', 'Landings'), 
        col = c('red', 1), lwd = 2, bty = 'n', lty = c(5,1))
+# text(2023, 13, 'Quota', col = 'red', cex = 1)
+# text(2023, 10.5, 'Landings', col = 1, cex = 1)
 dev.off()
 
 
