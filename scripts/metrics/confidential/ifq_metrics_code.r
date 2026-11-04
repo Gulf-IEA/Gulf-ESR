@@ -226,6 +226,24 @@ saveRDS(gini_obj, file = object_filename4)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
+########################################################
+### alternative combined plot for quota and landings ###
+########################################################
+
+png(here(paste0("figures/plots/", root_name, "_plot1a.png")),
+    height = 5, width = 7, units = "in", res = 300, pointsize = 12)
+plot(ifq_metrics$Year, ifq_metrics$quota_lbs, 
+     type = 'o', pch = 16, lwd = 2,  las = 1, lty = 5, col = 'red',
+     ylim = c(min(ifq_metrics$quota_lbs, ifq_metrics$landings_lbs), 
+              max(ifq_metrics$quota_lbs, ifq_metrics$landings_lbs)),
+     ylab = 'Quota and Landings (million lbs)', xlab = 'Year')
+points(ifq_metrics$Year, ifq_metrics$landings_lbs, 
+       type = 'o', pch = 16, lwd = 2, col = 1)
+legend('topleft', legend = c('Quota', 'Landings'), 
+       col = c('red', 1), lwd = 2, bty = 'n', lty = c(5,1))
+dev.off()
+
+
 IEAnalyzeR::plot_fn_obj(df_obj = quota_landings_obj, trend = TRUE, 
                         sep_ylabs = T, manual_title = 'IFQ Quota and Landings',
                         ylab_sublabel = c('indicator','unit'),
