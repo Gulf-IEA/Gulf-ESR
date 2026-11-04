@@ -18,7 +18,7 @@ This code is adapted from python code provided from Sang-Ki Lee @ AOML. Filename
 Add any packages that are needed for analysis in this code chunk.
 
 ```{r packages}
-# devtools::install_git("https://github.com/Gulf-IEA/IEAnalyzeR/", branch = "feat_NoLineMissData")
+# devtools::install_git("https://github.com/Gulf-IEA/IEAnalyzeR/")
 
 library(IEAnalyzeR)
 library(here)
@@ -365,7 +365,7 @@ xticks_years <- as.Date(sprintf("%d-01-01", seq(1990, 2025, by = 5)))
 
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c("NA Tripole SSTA")
+indicator_names = c("North Atlantic Tripole SST Anomaly")
 unit_names = c("Principal Component")
 extent_names = c("North Atlantic")
 
@@ -474,13 +474,15 @@ ggplot() +
   scale_x_continuous(breaks = seq(-100, 0, 20), labels = lon_lab) +
   scale_y_continuous(breaks = seq(0, 60, 20),  labels = lat_lab) +
   coord_sf(xlim = c(-100, 0), ylim = c(0, 60), expand = FALSE) +
-  labs(title = "North Atlantic SST Tripole (EOF2)", x = NULL, y = NULL) +
+  labs(title = "North Atlantic SST Tripole", x = NULL, y = NULL) +
   theme_bw(base_size = 11) +
   theme(panel.grid = element_blank(),
-        plot.title = element_text(face = "bold", hjust = 0),
+        plot.title = element_text(face = "bold", hjust = 0, size=13),
+        legend.text = element_text(size=10),
         legend.position = "bottom",
-        legend.key.width = unit(1.5, "cm"),
-        legend.key.height = unit(0.3, "cm"))
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(0.5, "cm"),
+        axis.text = element_text(size=10))
 ```
 
 ```{r}
