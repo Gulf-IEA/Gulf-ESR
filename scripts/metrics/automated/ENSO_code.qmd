@@ -16,10 +16,13 @@ File created on 2026-04-09
 Add any packages that are needed for analysis in this code chunk.
 
 ```{r packages}
+# devtools::install_git("https://github.com/Gulf-IEA/IEAnalyzeR")
+
 library(IEAnalyzeR)
 library(here)
 library(ggplot2)
 library(tidyr)
+
 ```
 
 File Naming Setup.
@@ -52,13 +55,16 @@ col_nms<-c("year", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"
   ## skip the first line that says yearend,
   ## fill empties cause by descriptive rows at end of dataset,
   ## replace NA value with NAs
-raw<-read.table(url, header = F,skip = 1, fill = T, na.strings = "-99.0", col.names = col_nms)
+  ## NA values changed during update
+# raw<-read.table(url, header = F,skip = 1, fill = T, na.strings = "-99.0", col.names = col_nms)
+raw<-read.table(url, header = F,skip = 1, fill = T, na.strings = c("-99.0", "-99.00"),
+                col.names = col_nms, )
+
+# #Filter out rows that do not start with a 4 number year (exclude metadata at bottom of df)
+raw <- raw[grepl("^[12][0-9]{3}$", raw$year), ]
 
 #Set all columns to numeric, make descriptive text NAs before removing
 raw<-as.data.frame(lapply(raw, as.numeric))
-
-#Remove descriptive and NA rows
-raw<-raw[!is.na(raw$year),]
 
 enso<-raw
 ```
@@ -122,7 +128,7 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, )
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, fig.width = 7, pts = F)
 ```
 
 # 7. Save plot
@@ -131,5 +137,5 @@ This will save the plot to the correct folder.
 Adjust height & width using (height=, width=, unit="in") if needed.
 
 ```{r}
-ggsave(filename = plot_filename, height = 3, units = "in")
+ggsave(filename = plot_filename, height = 3, width=7, units = "in")
 ```
