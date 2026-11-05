@@ -50,17 +50,17 @@ for(i in 3:5){
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = rep("SEDAR97 Menhaden",2)
-# unit_names = c("Biomass",'Recruitment')
-# extent_names = c('(1000s metric tons)','(Log Deviations)')
-unit_names = c("Biomass (1000s metric tons)",'Recruitment (Log Deviations)')
-extent_names = c('','')
+# indicator_names = rep("SEDAR97 Menhaden",2)
+# # unit_names = c("Biomass",'Recruitment')
+# # extent_names = c('(1000s metric tons)','(Log Deviations)')
+# unit_names = c("Biomass (1000s metric tons)",'Recruitment (Log Deviations)')
+# extent_names = c('','')
 
-indicator_names = c("Biomass (1000s metric tons)",'Recruitment (Log Deviations)')
-unit_names = c("1000s metric tons",'Log Deviations')
-extent_names = rep("SEDAR97 Menhaden",2)
+indicator_names = c("Menhaden Biomass",'Menhaden Recruitment')
+unit_names = c("million metric tons",'Log Deviations')
+extent_names = rep("Gulf-wide",2)
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr[-48],bp1[-48],rec.dev[-48]),
+formatted_data = IEAnalyzeR::convert_cleaned_data(cbind(yr[-48],bp1[-48]/1e3,rec.dev[-48]),
                                                   indicator_names, unit_names, extent_names)
 
 
@@ -94,8 +94,14 @@ saveRDS(data_obj, file = object_filename)
 # For more info on the plot_fn_obj function go HERE
 
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, pts = T,
-                        sep_ylabs = T, manual_title = 'SEDAR97 Menhaden')
-                        # sep_ylabs = T, ylab_sublabel = c('unit','extent')
+                        pt_size = 1,
+                        fig.width = 7,
+                        manual_title = 'Forage Fish',
+                        sep_ylabs = T, ylab_sublabel = c('indicator','unit')) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'),
+        strip.text = element_text(size = 12, face = "plain"))
 
 #----------------------------------------------------
 #### 7. Save plot ####
