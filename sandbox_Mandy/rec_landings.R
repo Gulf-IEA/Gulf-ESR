@@ -41,15 +41,15 @@ table(dat$FL_REG, dat$COUNCILREG, useNA = "always")
 dat$COUNCILREG[which(dat$FL_REG == 3)] <- 6
 table(dat$FL_REG, dat$COUNCILREG, useNA = "always")
 
-d <- dat[which(dat$COUNCILREG == 7), ]
-table(d$COUNCILREG)
+dg <- dat[which(dat$COUNCILREG == 7), ]
+table(dg$COUNCILREG)
 
-table(d$YEAR, useNA = "always")
-table(d$MONTH, useNA = "always")
-table(d$WAVE, useNA = "always")
-table(d$SUB_REG, useNA = "always")
-table(d$NEW_AREAN, useNA = "always")
-table(d$NEW_COM, useNA = "always")
+table(dg$YEAR, useNA = "always")
+table(dg$MONTH, useNA = "always")
+table(dg$WAVE, useNA = "always")
+table(dg$SUB_REG, useNA = "always")
+table(dg$NEW_AREAN, useNA = "always")
+table(dg$NEW_COM, useNA = "always")
 
 gulf_council_managed <- c(
   # Reef Fish
@@ -91,8 +91,59 @@ FW <- c("largemouth bass", "spotted bass", "smallmouth bass", "bluegill",
   "gizzard shad", "freshwater drum", "yellow perch", "blue tilapia",
   "mayan cichlid", "common carp", "grass carp", "Silver Carp")
 
-dim(d)
-d <- d[d$NEW_COM %in% gulf_council_managed, ]
+dim(dg)
+
+# look at total catch ------------------
+
+par(mar = c(10, 4, 1, 1))
+barplot(sort(tapply(dg$LBSEST_SECWWT, dg$NEW_COM, sum, na.rm = T), decreasing = T)[1:30], las = 2)
+
+dg$class <- "other"
+dg$class[dg$NEW_COM %in% gulf_council_managed] <- "council"
+dg$class[dg$NEW_COM %in% state_managed] <- "state"
+dg$class[dg$NEW_COM %in% FW] <- "FW"
+dg$class[grep("red drum", dg$NEW_COM)] <- "red drum"
+
+d3 <- dg[which(dg$class == "council"), ]
+barplot(sort(tapply(d3$LBSEST_SECWWT, d3$NEW_COM, sum, na.rm = T), decreasing = T)[1:20], las = 2)
+d3 <- dg[which(dg$class == "state"), ]
+barplot(sort(tapply(d3$LBSEST_SECWWT, d3$NEW_COM, sum, na.rm = T), decreasing = T)[1:20], las = 2)
+d3 <- dg[which(dg$class == "other"), ]
+barplot(sort(tapply(d3$LBSEST_SECWWT, d3$NEW_COM, sum, na.rm = T), decreasing = T)[1:20], las = 2)
+
+dg$class <- factor(dg$class, levels = c("council", "state", "red drum", "other", "FW"))
+dg <- dg[which(dg$YEAR <=2025), ]
+
+tab <- data.frame(tapply(dg$LBSEST_SECWWT, list(dg$YEAR, dg$class), sum, na.rm = T))
+matplot(rownames(tab), tab, type = "l", lty = 1, col = 1:5)
+legend("topright", col = 1:5, colnames(tab), lty = 1, bty = "n")
+
+tab <- tab[, 1:4]
+#tab$tot <- rowSums(tab, na.rm = T)
+
+datdata <- as.integer(rownames(tab))
+
+labs <- c("Gulf Council managed species", "millions of lbs", NA, 
+          "State managed species", "millions of lbs", NA, 
+          "Red drum", "millions of lbs", NA, 
+          "Other species", "millions of lbs", NA)
+
+indnames <- data.frame(matrix(labs, nrow = 3, byrow = F))
+
+s <- list(labels = indnames, indicators = tab/10^6, datelist = datdata)
+class(s) <- "indicatordata"
+s
+
+# save and plot ---------------------------------------
+
+plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = T, plotrownum = 2)
+
+plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = T, trendAnalysis = T, outtype = "png", widadj = 1.3, hgtadj = 1.1)
+
+
+# gini index indicator ------------------
+
+d <- dg[dg$NEW_COM %in% gulf_council_managed, ]
 dim(d)
 
 table(d$YEAR, useNA = "always")
@@ -104,7 +155,7 @@ table(d$SUB_REG, useNA = "always")
 table(d$NEW_AREAN, useNA = "always")
 table(d$NEW_COM, useNA = "always")
 
-d <- d[which(d$YEAR > 1997 & d$YEAR < 2026), ]
+d <- d[which(d$YEAR >=1997), ]
 
 tab <- tapply(d$LBSEST_SECWWT, list(d$YEAR, d$WAVE), sum, na.rm = T)
 tabp <- (tab / rowSums(tab, na.rm = TRUE))
