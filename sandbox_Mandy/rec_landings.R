@@ -138,7 +138,7 @@ s
 
 plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = T, plotrownum = 2)
 
-plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = T, trendAnalysis = T, outtype = "png", widadj = 1.3, hgtadj = 1.1)
+plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = T, trendAnalysis = T, outtype = "png", widadj = 1.5, hgtadj = 1.5)
 
 
 # gini index indicator ------------------
@@ -155,7 +155,7 @@ table(d$SUB_REG, useNA = "always")
 table(d$NEW_AREAN, useNA = "always")
 table(d$NEW_COM, useNA = "always")
 
-d <- d[which(d$YEAR >=1997), ]
+d <- d[which(d$YEAR > 1997), ]
 
 tab <- tapply(d$LBSEST_SECWWT, list(d$YEAR, d$WAVE), sum, na.rm = T)
 tabp <- (tab / rowSums(tab, na.rm = TRUE))
