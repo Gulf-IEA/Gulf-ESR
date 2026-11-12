@@ -33,7 +33,7 @@ plot_filename2 <- here(paste0("figures/plots/", root_name2, "_plot.png"))
 
 pct_change_na <- function(x) {
   n <- length(x)
-  r <- c(NA, (x[2:n] - x[1:(n - 1)]) / x[1:(n - 1)] * 100)
+  r <- c(NA, (x[2:n] - x[1:(n - 1)]) / x[1:(n - 1)] * 100) |> abs()
   return(r)
 }
 
@@ -69,6 +69,7 @@ rec_spp[rec_spp==0] <- NA ## gray TF closed 2017 skewing the plot
 rec_pct <- t(apply(rec_spp[,-1], 1, pct_change_na))
 rec_pct_ind <- apply(rec_pct, 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
 rec_poly <- c(rec_pct_ind[1,] + rec_pct_ind[2,], rev(rec_pct_ind[1,] - rec_pct_ind[2,]))
+rec_poly <- ifelse(rec_poly < 0, 0, rec_poly)
 
 plot(1990:2025, rec_pct_ind[1,],typ='o',
      ylim = range(rec_poly,na.rm=T),
@@ -101,6 +102,7 @@ com_spp[com_spp==0] <- NA ## gray TF closed 2017 skewing the plot
 com_pct <- t(apply(com_spp[,-1], 1, pct_change_na))
 com_pct_ind <- apply(com_pct, 2, function (x) rbind(mean(x, na.rm = T), sd(x, na.rm = T)))
 com_poly <- c(com_pct_ind[1,] + com_pct_ind[2,], rev(com_pct_ind[1,] - com_pct_ind[2,]))
+com_poly <- ifelse(com_poly < 0, 0, com_poly)
 
 plot(1990:2025, com_pct_ind[1,],typ='o',
      ylim = range(com_poly, na.rm=T),
@@ -138,16 +140,20 @@ formatted_data2 = IEAnalyzeR::convert_cleaned_data(cbind(com_comps[,c(1,3)],
                                                          rec_pct_ind[1,]),
                                                    indicator_names2, unit_names2, extent_names2)
 
-ci_sealth <- convert_ci_data(cbind(1990:2025, 
+lower_ci <- cbind(1990:2025, 
+                  rep(NA, length(1990:2025)),
+                  rep(NA, length(1990:2025)),
+                  com_pct_ind[1,] - com_pct_ind[2,],
+                  rec_pct_ind[1,] - rec_pct_ind[2,])
+lower_ci <- ifelse(lower_ci < 0, 0, lower_ci)
+
+
+ci_sealth <- convert_ci_data(lower_ci,
+                             cbind(1990:2025, 
                                    rep(NA, length(1990:2025)),
                                    rep(NA, length(1990:2025)),
                                    com_pct_ind[1,] + com_pct_ind[2,],
                                    rec_pct_ind[1,] + rec_pct_ind[2,]),
-                             cbind(1990:2025, 
-                                   rep(NA, length(1990:2025)),
-                                   rep(NA, length(1990:2025)),
-                                   com_pct_ind[1,] - com_pct_ind[2,],
-                                   rec_pct_ind[1,] - rec_pct_ind[2,]),
                              indicator_names2, unit_names2, extent_names2)
 
 #----------------------------------------------------
