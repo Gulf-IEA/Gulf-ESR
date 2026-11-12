@@ -69,34 +69,35 @@ gdp_df$date <- ymd(gdp_df$date)
 gdp_df <- subset(gdp_df, year(date)>=min_yr)
 
 ### select year to adjust for inflation; estiamte a yearly mean
-deflat_2025 <- subset(gdp_df, year(date)==2025, select = gdp_deflator_dollar) |>
+year2deflate <- 2026
+deflat_2026 <- subset(gdp_df, year(date)==year2deflate, select = gdp_deflator_dollar) |>
   unlist() |> mean(na.rm=T) |> round(digits = 3)
 
 g_merge <- merge(gas, gdp_df, by = 'date')
 d_merge <- merge(diesel, gdp_df, by = 'date')
 
 ### adjust for inflation to 2025 USD
-g_merge$value_2025 <- g_merge$fuel_value*(deflat_2025/g_merge$gdp_deflator_dollar)
-d_merge$value_2025 <- d_merge$fuel_value*(deflat_2025/d_merge$gdp_deflator_dollar)
+g_merge$value_2026 <- g_merge$fuel_value*(deflat_2026/g_merge$gdp_deflator_dollar)
+d_merge$value_2026 <- d_merge$fuel_value*(deflat_2026/d_merge$gdp_deflator_dollar)
 
 ### plot for gut check
-plot(d_merge$date,d_merge$value_2025, ylim = c(0, max(d_merge$value_2025,na.rm=T)), 
+plot(d_merge$date,d_merge$value_2026, ylim = c(0, max(d_merge$value_2026,na.rm=T)), 
      typ = 'l', lwd = 3,panel.first = grid())
-points(g_merge$date,g_merge$value_2025, typ = 'l', lwd = 3, col = 3)
+points(g_merge$date,g_merge$value_2026, typ = 'l', lwd = 3, col = 3)
 points(d_merge$date,d_merge$fuel_value, typ = 'l', lwd = 3, col = 1, lty = 3)
 points(g_merge$date,g_merge$fuel_value, typ = 'l', lwd = 3, col = 3,lty = 3)
 
 ### select and merge data
 gas_out <- g_merge |> 
-  select(date, fuel_value, value_2025) |>
+  select(date, fuel_value, value_2026) |>
   rename(gas_usd_gal = fuel_value,
-         gas_2025_usd_gal = value_2025) |>
-  mutate(gas_2025_usd_gal = round(gas_2025_usd_gal, digits = 3))
+         gas_2026_usd_gal = value_2026) |>
+  mutate(gas_2026_usd_gal = round(gas_2026_usd_gal, digits = 3))
 diesel_out <- d_merge |> 
-  select(date, fuel_value, value_2025) |>
+  select(date, fuel_value, value_2026) |>
   rename(diesel_usd_gal = fuel_value,
-         diesel_2025_usd_gal = value_2025) |>
-  mutate(diesel_2025_usd_gal = round(diesel_2025_usd_gal, digits = 3))
+         diesel_2026_usd_gal = value_2026) |>
+  mutate(diesel_2026_usd_gal = round(diesel_2026_usd_gal, digits = 3))
 
 fuel_merged <- merge(gas_out, diesel_out, by = c('date'))
 
@@ -118,8 +119,8 @@ fuel_prices$date <- substr(fuel_prices$date, 1, 7)
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep('Fuel Price', 2)
-unit_names = c('Gasoline $/gallon (2025 USD)', 'Diesel $/gallon (2025 USD)')
-extent_names = rep('Gulf-wide', 2)
+unit_names = c('Gasoline $/gallon (2026 USD)', 'Diesel $/gallon (2026 USD)')
+extent_names = rep('Gulf Coast (PADD3)', 2)
 
 
 fuel_prices_formatted = IEAnalyzeR::convert_cleaned_data(fuel_prices, indicator_names, unit_names, extent_names)
@@ -155,11 +156,18 @@ saveRDS(fuel_price_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = fuel_price_obj, trend = T, sep_ylabs = TRUE, ylab_sublabel = c("extent", "unit"))
+IEAnalyzeR::plot_fn_obj(df_obj = fuel_price_obj, 
+                        trend = T, sep_ylabs = TRUE, 
+                        ylab_sublabel = c("extent", "unit"),
+                        fig.width = 7) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'))
 
-----------------------------------------------------
+#----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename, height = 5, width = 7, unit="in")
+
