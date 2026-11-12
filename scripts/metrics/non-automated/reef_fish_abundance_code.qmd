@@ -23,6 +23,7 @@ library(tidyverse)
 library(vegan)
 library(rioja)
 library(plotTimeSeries)
+library(ggrepel)
 ```
 
 File Naming Setup.
@@ -71,7 +72,7 @@ str(matrix_dat2)
 
 #view plot        
 par(mar = c(5, 11, 4, 2))
-plotTimeSeries::trafficLightPlot(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "pca", PC = 1)
+traffic = traffic_plot2(matrix_dat2, noNAs = 0.8, cexlabs = 0.9, splits = 4, method = "pca", PC = 1)
 
 mtext("Year", side = 1, line = 3, cex = 1.1, font = 2)
 
@@ -127,6 +128,23 @@ legend(
   cex = 0.85
 )
 dev.off()
+```
+
+Save the PCA loadings
+```{r}
+loadings = data.frame(traffic[[2]]$rotation)
+
+label = summary(traffic[[2]])$importance[2,1:2]
+
+ggplot(loadings, aes(x = PC1, y = PC2, label = rownames(loadings))) +
+  geom_point() +
+  geom_vline(xintercept = 0, lty = "dashed", color = "gray") +
+  geom_hline(yintercept = 0, lty = "dashed", color = "gray") +
+  scale_y_continuous(limits = c(-0.7, 0.7), expand = c(0,0)) +
+  scale_x_continuous(limits = c(-0.7, 0.7), expand = c(0,0)) +
+  geom_text_repel(aes(label = rownames(loadings)), size = 4) +
+  labs(title = "PCA Loadings for Reef Fish Abundance", x = paste0("PC1 (variance explained = ", (round((label[1])*100,2)),"%)"), y = paste0("PC2 (variance explained = ", (round((label[2])*100,2)),"%)")) +
+  theme_minimal()
 ```
 
 

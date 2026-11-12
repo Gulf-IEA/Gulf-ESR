@@ -27,9 +27,13 @@ File Naming Setup.
 
 root_name<- "engine_sales"
 
-csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv")) 
-object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
-plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
+csv_filename1<-here(paste0("data/formatted/formatted_csvs/", root_name, "byengine_formatted.csv")) 
+object_filename1<-here(paste0("data/formatted/final_objects/", root_name, "byengine_object.rds"))
+plot_filename1<-here(paste0("figures/plots/", root_name, "byengine_plot.png"))
+
+csv_filename2<-here(paste0("data/formatted/formatted_csvs/", root_name, "bystate_formatted.csv")) 
+object_filename2<-here(paste0("data/formatted/final_objects/", root_name, "bystate_object.rds"))
+plot_filename2<-here(paste0("figures/plots/", root_name, "bystate_plot.png"))
 
 ```
 
@@ -172,7 +176,7 @@ outboard_summary <- hp_data_list %>%
   # Row-wise sum of the 5 states, then group-wise sum by category
   mutate(five_state_total = Texas + Louisiana + Mississippi + Alabama + Florida) %>%
   group_by(year, category) %>%
-  summarise(total_sales = sum(five_state_total, na.rm = TRUE), .groups = "drop") %>%
+  summarise(total_sales = sum(five_state_total/1000, na.rm = TRUE), .groups = "drop") %>%
   # Pivot to wide format to match your requested column structure
   pivot_wider(names_from = category, values_from = total_sales) %>%
   # Ensure columns are in the specific order you requested
@@ -191,7 +195,7 @@ category_map <- list(
 )
 
 # Process the list into 4-column table
-outboard_summary <- hp_data_list %>%
+total_sales <- hp_data_list %>%
   # Convert list of dataframes into one long dataframe
   imap_dfr(~ .x %>% mutate(segment = .y)) %>%
   # Create the new category labels
@@ -201,7 +205,7 @@ outboard_summary <- hp_data_list %>%
   filter(category == "Far-offshore") 
 
   
-total_sales <- outboard_summary %>% 
+total_sales <- total_sales %>% 
   group_by(year, category) %>%
   summarise(FL = sum(Florida, na.rm = TRUE), AL = sum(Alabama, na.rm = TRUE), MS = sum(Mississippi, na.rm = TRUE), LA = sum(Louisiana, na.rm = TRUE), TX = sum(Texas, na.rm = TRUE), .groups = "drop") %>%
   mutate(across(where(is.numeric), na_if, 0)) %>% 
@@ -218,18 +222,25 @@ head(total_sales)
 # unit_names = c("<50 hp", "50-150 hp", "150-300 hp", "<300 hp")
 # extent_names = c("Inshore", "Nearshore", "Near-offshore", "Far-offshore")
 
+indicator_names = rep("Outboard Engine Sales", ncol(outboard_summary)-1)
+unit_names = rep("Thousands of sales", ncol(outboard_summary)-1)
+extent_names = c("Inshore (<50 hp)", "Nearshore (50-149 hp)", "Near-offshore (150-299 hp)", "Far-offshore (>=300 hp)")
+
+formatted_data1 = IEAnalyzeR::convert_cleaned_data(outboard_summary, indicator_names, unit_names, extent_names)
+
 indicator_names = rep("Far Offshore Capable Outboard Engine Sales", ncol(total_sales)-1)
 unit_names = rep(">300 hp units sold", ncol(total_sales)-1)
 extent_names = c("Florida", "Alabama", "Mississippi", "Louisiana", "Texas")
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(total_sales, indicator_names, unit_names, extent_names)
+formatted_data2 = IEAnalyzeR::convert_cleaned_data(total_sales, indicator_names, unit_names, extent_names)
 ```
 
 # 3. Save Formatted data as csv
 
 This will save your data to the appropriate folder.
 ```{r}
-write.csv(formatted_data, file = csv_filename, row.names = F)
+write.csv(formatted_data1, file = csv_filename1, row.names = F)
+write.csv(formatted_data2, file = csv_filename2, row.names = F)
 ```
 
 
@@ -238,14 +249,16 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 Please use your formatted csv to create a "data_prep" object.
 For more info on the data_prep function see the vignette linked above.
 ```{r}
-data_obj<-IEAnalyzeR::data_prep(csv_filename, subind = "extent")
+data_obj1<-IEAnalyzeR::data_prep(csv_filename1, subind = "extent")
+data_obj2<-IEAnalyzeR::data_prep(csv_filename2, subind = "extent")
 ```
 
 # 5. Save Formatted data_prep object
 
 This will save your data to the appropriate folder.
 ```{r}
-saveRDS(data_obj, file = object_filename)
+saveRDS(data_obj1, file = object_filename1)
+saveRDS(data_obj2, file = object_filename2)
 ```
 
 # 6. Preview Plot
@@ -255,7 +268,8 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, xbreaks_by = 2, ncol = 1)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, xbreaks_by = 2, ncol = 2, facet_scales = "fixed")
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, xbreaks_by = 2, ncol = 1)
 ```
 
 # 7. Save plot
