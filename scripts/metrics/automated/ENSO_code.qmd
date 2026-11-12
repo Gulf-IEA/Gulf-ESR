@@ -110,7 +110,7 @@ write.csv(formatted_data, file = csv_filename, row.names = F)
 Please use your formatted csv to create a "data_prep" object.
 For more info on the data_prep function see the vignette linked above.
 ```{r}
-data_obj<-IEAnalyzeR::data_prep(csv_filename)
+data_obj<-IEAnalyzeR::data_prep(csv_filename, trends = F)
 
 ```
 
@@ -128,7 +128,8 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, fig.width = 7, pts = F)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = F, fig.width = 7, pts = F)+
+  theme(plot.margin = margin(r=0.5, unit = "cm"))
 ```
 
 # 7. Save plot
