@@ -162,7 +162,8 @@ IEAnalyzeR::plot_fn_obj(df_obj = fuel_price_obj,
                         fig.width = 7) +
   theme(plot.title = element_text(size = 12, face = 'bold'),
         axis.title = element_text(size = 12, face = 'plain'),
-        axis.text = element_text(size = 11, face = 'plain'))
+        axis.text = element_text(size = 11, face = 'plain'),
+        strip.text = element_text(size = 11, face = 'plain'))
 
 #----------------------------------------------------
 #### 7. Save plot ####
