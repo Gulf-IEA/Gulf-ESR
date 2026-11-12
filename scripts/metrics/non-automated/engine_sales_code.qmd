@@ -269,14 +269,9 @@ For more info on the plot_fn_obj function go HERE
 
 ```{r}
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, xbreaks_by = 2, ncol = 2, facet_scales = "fixed")
+ggsave(filename = plot_filename1)
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, xbreaks_by = 2, ncol = 1)
+ggsave(filename = plot_filename2)
 ```
 
-# 7. Save plot
 
-This will save the plot to the correct folder.
-Adjust height & width using (height=, width=, unit="in") if needed.
-
-```{r}
-ggsave(filename = plot_filename)
-```
