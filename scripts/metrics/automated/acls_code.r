@@ -5,6 +5,7 @@
 library(IEAnalyzeR)
 library(here)
 library(ggplot2)
+# library(ggh4x)
 library(patchwork)
 library(cmocean)
 
@@ -41,7 +42,7 @@ com_acls <- subset(acls, sector == 'commercial', select = c('year','spp','acl_lb
 rec_acls <- subset(acls, sector == 'recreational', select = c('year','spp','acl_lbs')) |>
   reshape(idvar = 'spp', timevar = 'year', direction = 'wide')
 sto_acls <- subset(acls, sector == 'total stock', select = c('year','spp','acl_lbs')) |>
-  reshape(idvar = 'spp', timevar = 'year', direction = 'wide') #rows as spp and columns as year
+  reshape(idvar = 'spp', timevar = 'year', direction = 'wide') # ignore warning: duplicate values in 2016
 rownames(com_acls) <- com_acls$spp
 rownames(rec_acls) <- rec_acls$spp
 rownames(sto_acls) <- sto_acls$spp
@@ -58,6 +59,12 @@ sto_acls_wc <- sto_acls[,c(11:2)]
 ### function that computes the percent different between previous value and current value returns a vector
 pct_change_na <- function(x) {
   n <- length(x)
+  r <- c(NA, (x[2:n] - x[1:(n - 1)]) / x[1:(n - 1)] * 100) |> abs()
+  return(r)
+}
+
+pct_change_na2 <- function(x) {
+  n <- length(x)
   r <- c(NA, (x[2:n] - x[1:(n - 1)]) / x[1:(n - 1)] * 100)
   return(r)
 }
@@ -66,14 +73,17 @@ pct_change_na <- function(x) {
 com_acls_wc_pct <- t(apply(com_acls_wc, 1, pct_change_na))[,-1]
 com_acl_ind <- apply(com_acls_wc_pct, 2, function (x) rbind(mean(x), sd(x)))
 com_poly <- c(com_acl_ind[1,] + com_acl_ind[2,], rev(com_acl_ind[1,] - com_acl_ind[2,]))
+com_poly <- ifelse(com_poly < 0, 0, com_poly)
 
 rec_acls_wc_pct <- t(apply(rec_acls_wc, 1, pct_change_na))[,-1]
 rec_acl_ind <- apply(rec_acls_wc_pct, 2, function (x) rbind(mean(x), sd(x)))
 rec_poly <- c(rec_acl_ind[1,] + rec_acl_ind[2,], rev(rec_acl_ind[1,] - rec_acl_ind[2,]))
+rec_poly <- ifelse(rec_poly < 0, 0, rec_poly)
 
 sto_acls_wc_pct <- t(apply(sto_acls_wc, 1, pct_change_na))[,-1]
 sto_acl_ind <- apply(sto_acls_wc_pct, 2, function (x) rbind(mean(x), sd(x)))
 sto_poly <- c(sto_acl_ind[1,] + sto_acl_ind[2,], rev(sto_acl_ind[1,] - sto_acl_ind[2,]))
+sto_poly <- ifelse(sto_poly < 0, 0, sto_poly)
 
 
 par(mfrow=c(2,2), mar = c(4,4,1.5,1))
@@ -96,7 +106,12 @@ polygon(c(colnames(sto_acl_ind), rev(colnames(sto_acl_ind))),
         sto_poly,
         col = rgb(0.5, 0.5, 0.5, 0.5), border = NA)
 
-
+png(here('figures', 'plots', 'acl_change_pct.png'), width = 7, height = 5, units = 'in', res = 300, pointsize = 11)
+par(mfrow=c(2,2), mar = c(4,4,1.5,1))
+colSums(com_acls_wc) |> pct_change_na2() |> barplot(las = 2, main = 'Commercial', ylab = 'Percent Change in total ACL')
+colSums(rec_acls_wc) |> pct_change_na2() |> barplot(las = 2, main = 'Recreational', ylab = 'Percent Change in total ACL')
+colSums(sto_acls_wc) |> pct_change_na2() |> barplot(las = 2, main = 'Stock', ylab = 'Percent Change in total ACL')
+dev.off()
 
 ### quantiles not informative due to lots of zeros
 # rec_acls_wc_pct <- t(apply(rec_acls_wc, 1, pct_change_na))[,-1]
@@ -112,36 +127,37 @@ polygon(c(colnames(sto_acl_ind), rev(colnames(sto_acl_ind))),
 # boxplot(com_acls_wc_pct)
 # matlines(com_acls_wc_pct|>t(),typ='o')
 
-rec_acls_wc_pct_long <- cbind(expand.grid(2016:2024,row.names(rec_acls_wc_pct),
-                                          stringsAsFactors = F),
-      as.vector(t(rec_acls_wc_pct))) |> 
-  setNames(c('year','spp','pct_change'))
-
-com_acls_wc_pct_long <- cbind(expand.grid(2016:2024,row.names(com_acls_wc_pct),
-                                          stringsAsFactors = F),
-                              as.vector(t(com_acls_wc_pct))) |> 
-  setNames(c('year','spp','pct_change'))
-com_acls_wc_pct_long$spp <- factor(com_acls_wc_pct_long$spp)
-
-p1 <- ggplot(rec_acls_wc_pct_long, aes(x = year, y = pct_change, fill = spp)) +
-  geom_bar(stat = "identity", position = "stack", color = 1) +
-  scale_fill_cmocean(name = "thermal", discrete = T) +
-  geom_hline(yintercept = 0, color = 1) + # Adds a clean baseline
-  scale_x_continuous(breaks = seq(2016, 2024, by = 1))   +
-  labs(x = "Year", y = "Percent Change in ACL") +
-  theme_classic()
-
-p2 <- ggplot(com_acls_wc_pct_long, aes(x = year, y = pct_change, fill = spp)) +
-  geom_bar(stat = "identity", position = "stack", color = 1) +
-  scale_fill_cmocean(name = "thermal", discrete = T) +
-  geom_hline(yintercept = 0, color = 1) + # Adds a clean baseline
-  scale_x_continuous(breaks = seq(2016, 2024, by = 1))   +
-  labs(x = "Year", y = "Percent Change in ACL") +
-  theme_classic()
-
-p2 / p1 + plot_annotation(title = "Percent Change in ACLs by Species") +
-  theme(plot.title = element_text(size = 12, face = "bold"),
-        axis.text = element_text(size = 11))
+### experimental plot
+# rec_acls_wc_pct_long <- cbind(expand.grid(2016:2024,row.names(rec_acls_wc_pct),
+#                                           stringsAsFactors = F),
+#       as.vector(t(rec_acls_wc_pct))) |> 
+#   setNames(c('year','spp','pct_change'))
+# 
+# com_acls_wc_pct_long <- cbind(expand.grid(2016:2024,row.names(com_acls_wc_pct),
+#                                           stringsAsFactors = F),
+#                               as.vector(t(com_acls_wc_pct))) |> 
+#   setNames(c('year','spp','pct_change'))
+# com_acls_wc_pct_long$spp <- factor(com_acls_wc_pct_long$spp)
+# 
+# p1 <- ggplot(rec_acls_wc_pct_long, aes(x = year, y = pct_change, fill = spp)) +
+#   geom_bar(stat = "identity", position = "stack", color = 1) +
+#   scale_fill_cmocean(name = "thermal", discrete = T) +
+#   geom_hline(yintercept = 0, color = 1) + # Adds a clean baseline
+#   scale_x_continuous(breaks = seq(2016, 2024, by = 1))   +
+#   labs(x = "Year", y = "Percent Change in ACL") +
+#   theme_classic()
+# 
+# p2 <- ggplot(com_acls_wc_pct_long, aes(x = year, y = pct_change, fill = spp)) +
+#   geom_bar(stat = "identity", position = "stack", color = 1) +
+#   scale_fill_cmocean(name = "thermal", discrete = T) +
+#   geom_hline(yintercept = 0, color = 1) + # Adds a clean baseline
+#   scale_x_continuous(breaks = seq(2016, 2024, by = 1))   +
+#   labs(x = "Year", y = "Percent Change in ACL") +
+#   theme_classic()
+# 
+# p2 / p1 + plot_annotation(title = "Percent Change in ACLs by Species") +
+#   theme(plot.title = element_text(size = 12, face = "bold"),
+#         axis.text = element_text(size = 11))
 # ggsave(here('figures/plots/acl_bars_plot.png'), height = 7, width = 7, unit="in")
 
 ### total acls
@@ -156,17 +172,21 @@ tot_acls <- merge(
                      stock = apply(sto_acls_wc, 2, sum)/1e6),
           by = 'year')
 
+tot_acls$rec_pct <- tot_acls$rec / (tot_acls$rec + tot_acls$com)
+
 # png(here('figures', 'plots', 'acl_totals_tmp.png'), width = 4, height = 4, units = 'in', res = 300, pointsize = 11)
 par(mfrow=c(2,2), mar = c(4,4,1.5,1))
-plot(tot_acls$year, tot_acls$rec, type = 'o', las = 1, pch = 16,
-     xlab = 'Year', ylab = 'Total ACL (million lbs)', main = 'Recreational ACL',
-     ylim = c(range(tot_acls$rec, tot_acls$com)))
 plot(tot_acls$year, tot_acls$com, type = 'o', las = 1, pch = 16,
      xlab = 'Year', ylab = 'Total ACL (million lbs)', main = 'Commercial ACL',
+     ylim = c(range(tot_acls$rec, tot_acls$com)))
+plot(tot_acls$year, tot_acls$rec, type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Total ACL (million lbs)', main = 'Recreational ACL',
      ylim = c(range(tot_acls$rec, tot_acls$com)))
 plot(tot_acls$year, tot_acls$stock, type = 'o', las = 1, pch = 16,
      xlab = 'Year', ylab = 'Total ACL (million lbs)', main = 'Stock ACL',
      ylim = c(range(tot_acls$rec, tot_acls$com, tot_acls$stock)))
+plot(tot_acls$year, tot_acls$rec_pct, type = 'o', las = 1, pch = 16,
+     xlab = 'Year', ylab = 'Percent of Total ACL', main = 'Recreational ACL Percent of Total')
 # dev.off()
 
 
@@ -179,9 +199,9 @@ plot(tot_acls$year, tot_acls$stock, type = 'o', las = 1, pch = 16,
 
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = rep('Total ACLs',3)
-unit_names = rep('(million lbs)',3)
-extent_names = c('Commercial ACL', 'Recreational ACL', 'Stock ACL')
+indicator_names = c(rep('Total ACLs',3),'Recreational Proporition of ACLs')
+unit_names = c(rep('(million lbs)',3),'(Com + Rec)')
+extent_names = c('Commercial ACL', 'Recreational ACL', 'Stock ACL','Recreational Proporition')
 
 formatted_data = IEAnalyzeR::convert_cleaned_data(tot_acls, 
                                                    indicator_names, unit_names, extent_names)
@@ -196,6 +216,7 @@ dat_lci <- cbind(colnames(rec_acl_ind),
                  rec_acl_ind[1,] - rec_acl_ind[2,],
                  sto_acl_ind[1,] - sto_acl_ind[2,]) |>
   type.convert(as.is = T) 
+dat_lci <- ifelse(dat_lci<0,0,dat_lci)
 
 dat_uci <- cbind(colnames(rec_acl_ind), 
                  com_acl_ind[1,] + com_acl_ind[2,], 
@@ -247,15 +268,21 @@ saveRDS(data_obj2, file = object_filename2)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
+
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, 
                         pts = T, pt_size = 1, 
                         fig.width = 10, 
-                        facet_scales = 'fixed',
+                        # facet_scales = 'fixed',
                         ncol = 2,
                         # manual_title = 'Annual Changes to ACLs',
                         sep_ylab = T,
                         ylab_sublabel = c('extent','unit'),) +
   scale_x_continuous(breaks = seq(2015, 2024, by = 1)) +
+  # facetted_pos_scales(y = list(scale_y_continuous(limits  = c(16,30)),
+  #                              scale_y_continuous(limits  = c(16,30)),
+  #                              scale_y_continuous(limits  = c(16,30)),
+  #                              scale_y_continuous(labels = scales::label_percent(),
+  #                                                 limits  = c(.45,.55)))) + 
   theme(plot.title = element_text(size = 12, face = 'bold'),
         axis.title = element_text(size = 12, face = 'plain'),
         axis.text = element_text(size = 10, face = 'plain'),
