@@ -701,7 +701,8 @@ Let's run a Pareto distribution & sensitivity analysis on the rest of the specie
 ```{r}
 unmanaged_all = df_categorized %>% 
   filter(category %in% c("coastal", "marine_demersal", "marine_pelagic")) %>% 
-  filter(LAND_YEAR >= 1990)
+  filter(LAND_YEAR >= 1990) %>% 
+  filter(!COMMON_NAME %in% gmfmc_finfish_official)
 
 # Cumulative Landings Pareto Analysis
 pareto_df <- unmanaged_all %>%
@@ -834,7 +835,7 @@ Replace "your_data" in the code below with whatever your dataframe is called.
 ```{r}
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Commercial landings", 2)
-unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
+unit_names = c("Whole weight (million lbs)", "Real value (2024 $million)")
 extent_names = c("Managed finfish", "Managed finfish")
 
 managed_finfish = managed_finfish %>% 
@@ -843,8 +844,8 @@ formatted_managed_finfish = IEAnalyzeR::convert_cleaned_data(managed_finfish, in
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Commercial landings", 6)
-unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)", "Whole weight (million lbs)", "Real value (2024 $ million)", "Whole weight (million lbs)", "Real value (2024 $ million)")
-extent_names = c("Coastal species", "Coastal species", "Marine demersal species", "Marine demersal species", "Marine pelagic species", "Marine pelagic species")
+unit_names = c("Million lbs", "Value (2024 $million)", "Million lbs)", "Value (2024 $million)", "Million lbs", "Value (2024 $million)")
+extent_names = c("Coastal", "Coastal", "Marine demersal", "Marine demersal", "Marine pelagic", "Marine pelagic")
 
 unmanaged_summary = unmanaged_summary %>% 
   filter(LAND_YEAR >= 1990)
@@ -852,7 +853,7 @@ formatted_unmanaged_all = IEAnalyzeR::convert_cleaned_data(unmanaged_summary, in
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Commercial landings", 2)
-unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
+unit_names = c("Million lbs", "Value (2024 $million)")
 extent_names = c("All species except shrimp & menhaden", "All species except shrimp & menhaden")
 
 formatted_all = IEAnalyzeR::convert_cleaned_data(all_summary, indicator_names, unit_names, extent_names)
@@ -866,7 +867,7 @@ formatted_all_cat = IEAnalyzeR::convert_cleaned_data(all_cat_summary, indicator_
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
 indicator_names = rep("Commercial landings", 2)
-unit_names = c("Whole weight (million lbs)", "Real value (2024 $ million)")
+unit_names = c("Whole weight (million lbs)", "Real value (2024 $million)")
 extent_names = c("Unmanaged finfish", "Unmanaged finfish")
 
 unmanaged_finfish_overall = unmanaged_summary_overall %>% 
@@ -919,19 +920,19 @@ This will not necessarily be the final figure used in reports.
 For more info on the plot_fn_obj function go HERE
 
 ```{r}
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Managed Finfish", fig.width = 8, xbreaks_by = 10)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj1, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Managed Finfish", fig.width = 6, xbreaks_by = 10) + theme(plot.title = element_text(size = 14, face = 'bold'),axis.title = element_text(size = 14, face = 'plain'),axis.text = element_text(size = 14, face = 'plain'))
 ggsave(filename = plot_filename1, width = 6, height = 6)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 8, xbreaks_by = 10)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj2, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", ylab_sublabel = c("extent", "unit"), fig.width = 8, xbreaks_by = 10) + theme(plot.title = element_text(size = 14, face = 'bold'),axis.title = element_text(size = 14, face = 'plain'),axis.text = element_text(size = 14, face = 'plain'))
 ggsave(filename = plot_filename2, width = 8, height = 6)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj3, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value (excl. shrimp, menhaden)", fig.width = 6, xbreaks_by = 10)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj3, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value (excl. shrimp, menhaden)", fig.width = 6, xbreaks_by = 10) + theme(plot.title = element_text(size = 14, face = 'bold'),axis.title = element_text(size = 14, face = 'plain'),axis.text = element_text(size = 14, face = 'plain'))
 ggsave(filename = plot_filename3, width = 6, height = 6)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj4, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings of All Species by Category", fig.width = 8, xbreaks_by = 10, ylab_sublabel = c("extent", "unit"))
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj4, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings of All Species by Category", fig.width = 8, xbreaks_by = 20, ylab_sublabel = c("extent", "unit")) + theme(plot.title = element_text(size = 14, face = 'bold'),axis.title = element_text(size = 14, face = 'plain'),axis.text = element_text(size = 14, face = 'plain'))
 ggsave(filename = plot_filename4, width = 8, height = 6)
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj5, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", fig.width = 8, xbreaks_by = 10)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj5, trend = TRUE, sep_ylabs = TRUE, manual_title = "Commercial Landings & Value of Top Unmanaged Finfish", fig.width = 6, xbreaks_by = 10) + theme(plot.title = element_text(size = 14, face = 'bold'),axis.title = element_text(size = 14, face = 'plain'),axis.text = element_text(size = 14, face = 'plain'))
 ggsave(filename = plot_filename5, width = 6, height = 6)
 ```
 
