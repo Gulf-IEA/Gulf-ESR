@@ -5,9 +5,11 @@ plot.new()
 dev.off()
 
 library(plotTimeSeries)
-library(rerddap)
+library(pals)
+library(zoo)
+library(tidyverse)
 
-df <- read.csv("../../data/intermediate/combined_biomass_trends.csv")
+df <- read.csv("data/intermediate/combined_biomass_trends.csv")
 
 ########## NOTE: NEED TO CHECK UNITS HERE!!!!!!!  
 
@@ -52,9 +54,10 @@ rowSums(d2)
 
 sppnames <- spp <- sub("_.*$", "", colnames(d1))
 numspp <- length(sppnames)
+cols <- as.numeric(as.factor(sppnames))
 matplot(datdata, d1, type = "b", lwd = 1, lty = 1, pch = 1:numspp, 
-        col = glasbey(numspp))
-legend("topleft", ncol = 2, lwd = 1, lty = 1, pch = 1:20, col = glasbey(numspp), sppnames, bty = "n")
+        col = glasbey()[cols])
+legend("topleft", ncol = 2, lwd = 1, lty = 1, pch = 1:20, col = glasbey()[cols], sppnames, bty = "n")
 
 sppnames <- spp <- sub("_.*$", "", colnames(d2))
 numspp <- length(sppnames)
@@ -76,11 +79,68 @@ s <- list(labels = indnames, indicators = inddata, datelist = datdata) # , ulim 
 class(s) <- "indicatordata"
 s
 
+
+###########
+years <- datdata
+
+d2 <- t(d1)
+d2 <- d2[order(rowSums(d2)), ]
+colnames(d2) <- years
+
+# 2. Convert d2 safely (handles both matrices and data frames, even with duplicate rownames)
+df_clean <- tibble(raw_name = rownames(d2)) %>%
+  bind_cols(as_tibble(d2, .name_repair = "minimal")) %>%
+  setNames(c("raw_name", as.character(years))) %>%
+  
+  # 3. Clean species names
+  mutate(
+    Species = raw_name %>%
+      str_remove("_SEDAR.*") %>%
+      str_replace_all("\\.", " ") %>%
+      str_to_sentence()
+  ) %>%
+  
+  # 4. Reshape to long format
+  pivot_longer(
+    cols = -c(raw_name, Species),
+    names_to = "Year",
+    values_to = "Biomass"
+  ) %>%
+  mutate(
+    Year = as.numeric(Year),
+    Biomass = as.numeric(Biomass)
+  ) %>%
+  
+  # 5. Sum duplicate species per year and sort descending
+  group_by(Year, Species) %>%
+  summarise(Biomass = sum(Biomass, na.rm = TRUE), .groups = "drop") %>%
+  mutate(Species = fct_reorder(Species, Biomass, .fun = sum, .desc = TRUE))
+
+# 6. Generate Glasbey colors
+glasbey_colors <- pals::glasbey(n_distinct(df_clean$Species))
+
+# 7. Plot
+ggplot(df_clean, aes(x = Year, y = Biomass, fill = Species)) +
+  geom_col(position = "stack", width = 0.75) +
+  scale_fill_manual(values = glasbey_colors) +
+  labs(
+    x = "",
+    y = "Biomass (millions of pounds)",
+    fill = "Species"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 10),
+    legend.position = "right"
+  )
+
+
+
 # save and plot ---------------------------------------
 
 plotIndicatorTimeSeries(s, coltoplot = 1:2, plotrownum = 2)
 
-plotIndicatorTimeSeries(s, coltoplot = 1:2, plotrownum = 1, trendAnalysis = T, widadj = 0.7, hgtadj = 0.6, outtype = "png")
+plotIndicatorTimeSeries(s, coltoplot = 1:2, plotrownum = 2, trendAnalysis = T, widadj = 0.9, hgtadj = 0.6, outtype = "png")
 
 
 

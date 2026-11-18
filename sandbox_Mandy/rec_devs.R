@@ -62,3 +62,40 @@ ggplot(df_long, aes(x = factor(Year), y = RecDev, fill = Species_Assessment)) +
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
   )
 
+shapes <- setNames(rep(15:18, length.out = length(cols)), names(cols))
+
+
+
+ggplot(df_long, aes(x = factor(Year), y = RecDev)) +
+  geom_hline(yintercept = 0, color = "black", linewidth = 0.5, linetype = 2) +
+  stat_summary(
+    aes(group = 1),
+    fun.data = mean_se, # or mean_sdl for +/- 1 SD
+    geom = "ribbon",
+    fill = "gray50",
+    alpha = 0.25,
+    color = NA
+  ) +
+  geom_point(
+    aes(color = Species_Assessment, shape = Species_Assessment),
+    size = 2.5,
+    alpha = 0.8,
+    position = position_jitter(width = 0.2, height = 0, seed = 42)
+  ) +
+  labs(
+    x = "Year",
+    y = "Recruitment Deviations",
+    color = "Stock Assessment",
+    shape = "Stock Assessment"
+  ) +
+  scale_color_manual(values = cols) +
+  scale_shape_manual(values = shapes) +
+  theme_minimal() +
+  theme(
+    axis.ticks = element_line(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.3),
+    panel.grid = element_blank(),
+    axis.title = element_text(size = rel(1)),
+    axis.text = element_text(size = rel(1), color = "black"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+  )
