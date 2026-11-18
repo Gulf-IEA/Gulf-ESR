@@ -205,7 +205,12 @@ saveRDS(data_obj, file = object_filename)
 # Use the IEAnalyzeR plotting function to preview the data. This will not necessarily be the final figure used in reports.
 # For more info on the plot_fn_obj function go HERE
 
-IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE, lwd = .5, fig.width = 8)
+IEAnalyzeR::plot_fn_obj(df_obj = data_obj, trend = TRUE,
+                        fig.width = 7,
+                        lwd = .5) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'))
 
 #----------------------------------------------------
 #### 7. Save plot ####

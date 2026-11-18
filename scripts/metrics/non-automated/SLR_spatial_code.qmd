@@ -1,0 +1,119 @@
+---
+title: "Metric Analysis Code"
+format: html
+execute: 
+  echo: true
+  warning: false
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+File created on 2026-06-15
+
+# 0. Setup
+
+Add any packages that are needed for analysis in this code chunk.
+
+```{r packages}
+library(IEAnalyzeR)
+library(here)
+library(ggplot2)
+
+library(terra)
+library(tidyterra)
+library(tigris)
+```
+
+File Naming Setup.
+!! Auto generated-Do Not Change !!
+
+```{r}
+
+root_name<- "SLR_spatial"
+
+# csv_filename<-here(paste0("data/formatted/formatted_csvs/", root_name, "_formatted.csv"))
+# object_filename<-here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
+plot_filename<-here(paste0("figures/plots/", root_name, "_plot.png"))
+
+```
+
+# 1. Read Data
+
+Pull data from its source: Manual data: data/unformatted data. Automated data: Add script for data call (API, package, etc.). Confidential data: Store locally in the confidential data folder - This folder is excluded using gitignore and will not push to the GitHub repo. If intermediate data (shapefiles etc.) are needed, please put them in data\>intermediate - Filename should use the syntax rootname_descriptivename
+
+```{r}
+grid<-terra::rast("../../../data/unformatted/slr_map_ref.nc")
+```
+
+# 2. Format data
+- NOT A TIMESERIES, ALTERNATE CHUNK WRITTEN
+
+```{r create gulf eez shape}
+
+#Cut grid to gulf eez
+eez<-vect("../../../data/intermediate/gulf_eez/eez.shx")
+
+#Bounding Box
+gulf_box<-ext(-100, -80.25, 20, 32)
+gulf_box<-vect(gulf_box, crs(eez))
+
+#Shape Point DF
+gulf<-data.frame(lon= c(-100,-100, -82.97, -80.445,-80.37222,-80.37222),
+           lat= c(20,32, 32, 25.292, 25.174,20))
+gulf<-vect(gulf,geom=c("lon", "lat"), crs(eez))
+gulf<-convHull(gulf)
+
+#Crop gulf EEZ
+gulf_eez<-crop(eez, gulf)
+
+grid_gulf<-crop(grid, gulf_eez)
+grid_gulf<-mask(grid_gulf, gulf_eez)
+
+```
+
+
+
+# 6. Preview Plot
+
+Use the IEAnalyzeR plotting function to preview the data.
+This will not necessarily be the final figure used in reports.
+For more info on the plot_fn_obj function go HERE
+
+```{r}
+#cut state outline to gulf states
+gulf_states<-states(cb = T, resolution = "5m")
+state_nms<-c("Texas", "Louisiana", "Mississippi", "Alabama", "Georgia","Florida")
+gulf_states<-gulf_states[gulf_states$NAME %in% state_nms,]
+gulf_states<-gulf_states$geometry
+
+#cut gulf states to not full state
+new_bb<-ext(-99.3,-80, 22.87229, 32)
+new_bb<-vect(new_bb, crs(eez))
+
+gulf_states<-as_spatvector(gulf_states)
+gulf_out<-crop(gulf_states, new_bb)
+# plot(gulf_out)
+
+ggplot()+
+  geom_spatraster(data=grid_gulf)+
+  geom_spatvector(data = gulf_out, fill="grey80", color="white")+
+  # geom_spatvector(data = gulf_eez, fill=NA, color="black")+
+  scale_fill_viridis_c(na.value = "transparent", option = "D")+
+  scale_x_continuous(expand = c(0,0))+
+  scale_y_continuous(expand = c(0,0))+
+  labs(fill="Sea Level\nTrends (mm/yr)")+
+  theme_void()+ theme(legend.position = c(0.25, 0.1),
+                      legend.direction = "horizontal",
+                      plot.margin = margin(3,3,3,3,"pt"))
+```
+
+# 7. Save plot
+
+This will save the plot to the correct folder.
+Adjust height & width using (height=, width=, unit="in") if needed.
+
+```{r}
+ggsave(filename = plot_filename, height = 3, width = 5.5, units = "in")
+```
+

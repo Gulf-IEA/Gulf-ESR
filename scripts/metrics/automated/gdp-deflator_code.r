@@ -19,7 +19,7 @@ csv_filename <- here(paste0("data/formatted/formatted_csvs/", root_name, "_forma
 object_filename <- here(paste0("data/formatted/final_objects/", root_name, "_object.rds"))
 plot_filename <- here(paste0("figures/plots/", root_name, "_plot.png"))
 
-----------------------------------------------------
+### ----------------------------------------------------
 #### 1. Read Data ####
 
 ### need personal api key requested from BEA.gov; I keep mine in a file that is gitignored
