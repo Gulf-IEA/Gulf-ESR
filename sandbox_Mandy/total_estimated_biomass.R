@@ -9,7 +9,7 @@ library(pals)
 library(zoo)
 library(tidyverse)
 
-df <- read.csv("data/intermediate/combined_biomass_trends.csv")
+df <- read.csv("../../data/intermediate/combined_biomass_trends.csv")
 
 ########## NOTE: NEED TO CHECK UNITS HERE!!!!!!!  
 
