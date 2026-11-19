@@ -30,7 +30,7 @@ for (i in 1:ncol(d1)) {
   clean_name <- gsub("\\.", " ", sub("_.*", "", names(d1)[i]))
   names(d1)[i] <- clean_name
   }
-
+clean_name
 
 # 1. Combine years with d1 and reshape to long format
 df_long <- as.data.frame(d1) %>%

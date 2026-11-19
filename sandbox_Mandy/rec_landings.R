@@ -184,7 +184,7 @@ s
 
 plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = F, plotrownum = 2)
 
-plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = F, trendAnalysis = T, outtype = "png", widadj = 1.5, hgtadj = 1.5)
+plotIndicatorTimeSeries(s, coltoplot = 1:4, sameYscale = F, trendAnalysis = T, outtype = "png", widadj = 1.5, hgtadj = 1.3)
 
 
 # gini index indicator ------------------

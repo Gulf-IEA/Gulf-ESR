@@ -31,7 +31,7 @@ landings_sub[, species_cols] <- na.locf(landings_sub[, species_cols], na.rm = FA
 
 matplot(discards_sub$year, discards_sub[, species_cols], type = "b", lwd = 1, lty = 1, pch = 1:12, 
         col = glasbey(numspp), xlab = "year", ylab = "thousands of lbs", main = "commercial discards by species")
-legend("topright", lwd = 1, lty = 1, pch = 1:numspp, col = glasbey(numspp), sppnames, bty = "n")
+legend("topright", lwd = 1, lty = 1, pch = 1:numspp, col = glasbey(numspp), sppnames, bty = "n", ncol = 2)
 
 matplot(landings_sub$year, landings_sub[, species_cols], type = "b", lwd = 1, lty = 1, pch = 1:12, 
         col = glasbey(numspp), xlab = "year", ylab = "thousands of lbs", main = "commercial landings by species")
@@ -40,7 +40,7 @@ legend("topleft", ncol = 2, lwd = 1, lty = 1, pch = 1:numspp, col = glasbey(nums
 # 4. Sum across species rows
 total_discards <- rowSums(discards_sub[, species_cols])/ 1000
 total_landings <- rowSums(landings_sub[, species_cols])/ 1000
-ldratio <- total_landings / total_discards
+ldratio <- total_discards / total_landings 
 
 discards_sub$year == landings_sub$year
 
@@ -106,7 +106,7 @@ legend("topleft", ncol = 2, lwd = 1, lty = 1, pch = 1:numspp, col = glasbey(nums
 # 4. Sum across species rows
 total_discards <- rowSums(discards_sub[, species_cols])/1000
 total_landings <- rowSums(landings_sub[, species_cols])/1000
-ldratio <- total_landings / total_discards
+ldratio <- total_discards / total_landings 
 
 discards_sub$year == landings_sub$year
 

@@ -32,18 +32,21 @@ matplot(df1$extent, df1[, -1], type = "b", pch = 19)
 plot(df$extent, rowMeans(df[, -1], na.rm = T), type = "b")
 
 tot <- rowMeans(df1[, -1])
+totse <- apply(df1[, -1], 1, sd)
 
 plot(df1$extent, tot, type = "b")
 
 # format indicator ------------------------
 
 inddata <- data.frame(tot)
-datdata <- as.integer(df$extent)
+llidata <- data.frame(tot - totse)
+ulidata <- data.frame(tot + totse)
+datdata <- as.integer(df1$extent)
 
 labs <- c("Average of standardized indices", "relative abundance", NA)
 indnames <- data.frame(matrix(labs, nrow = 3, byrow = F))
 
-s <- list(labels = indnames, indicators = inddata, datelist = datdata) # , ulim = ulidata, llim = llidata)
+s <- list(labels = indnames, indicators = inddata, datelist = datdata, ulim = ulidata, llim = llidata)
 class(s) <- "indicatordata"
 s
 
