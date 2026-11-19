@@ -34,12 +34,18 @@ dat <- read.csv('offshore-winds-chart.csv', skip = 5)
 #Once data are formatted with time (annual or monthly) as column 1 and metric values in the remaining columns, you can use the function convert_cleaned_data to convert your csv into a format that can be read by the data_prep function. Replace "your_data" in the code below with whatever your dataframe is called.
 
 #Define header components for the data rows (ignore year). Fill in the blanks here.
-indicator_names = c('Annual Near Gale (≥28kts) Events with ≥25% Coverage',
-                    'Annual Gale (≥34kts) Events with ≥25% Coverage')
-unit_names = rep('Event count',2)
-extent_names = rep('Gulf-wide', 2)
+# indicator_names = c('Annual Near Gale (≥28kts) Events with ≥25% Coverage',
+                    # 'Annual Gale (≥34kts) Events with ≥25% Coverage')
+# unit_names = rep('Event count',2)
+# extent_names = rep('Gulf-wide', 2)
 
-formatted_data = IEAnalyzeR::convert_cleaned_data(dat[,c(1,3,5)], indicator_names, unit_names, extent_names)
+# formatted_data = IEAnalyzeR::convert_cleaned_data(dat[,c(1,3,5)], indicator_names, unit_names, extent_names)
+
+indicator_names = c('Annual Near Gale (≥28kts) Events with ≥25% Coverage')
+unit_names = 'Event count'
+extent_names = 'Gulf-wide'
+
+formatted_data = IEAnalyzeR::convert_cleaned_data(dat[,c(1,3)], indicator_names, unit_names, extent_names)
 
 
 #----------------------------------------------------
@@ -73,14 +79,19 @@ saveRDS(data_obj, file = object_filename)
 
 IEAnalyzeR::plot_fn_obj(df_obj = data_obj, 
                         trend = TRUE,
+                        manual_ylab = 'Near Gale (≥28kts) Events',
                         manual_title = 'Storminess',
                         fig.width = 10,
-                        pts = T, pt_size = 2)
+                        pts = T, pt_size = 2) +
+  theme(plot.title = element_text(size = 12, face = 'bold'),
+        axis.title = element_text(size = 12, face = 'plain'),
+        axis.text = element_text(size = 11, face = 'plain'))
 
 #----------------------------------------------------
 #### 7. Save plot ####
 # This will save the plot to the correct folder.
 # Adjust height & width using (height=, width=, unit="in") if needed.
 
-ggsave(filename = plot_filename)
+ggsave(filename = plot_filename, 
+       height = 3, width = 8, unit = "in")
 
